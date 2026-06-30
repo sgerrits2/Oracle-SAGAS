@@ -1,0 +1,49 @@
+{
+    "workshoptitle": "Oracle Sagas: Simplifying Distributed Application Development",
+    "help": "livelabs-help-db_us@oracle.com",
+    "tutorials": [
+        {
+            "title": "About the Workshop",
+            "description": "About the workshop.",
+            "filename": "../../l0-about-the-workshop/about-the-workshop.md"
+        },
+        {
+            "title": "Get Started",
+            "description": "This is the prerequisites for customers using Free Trial and Paid tenancies, and Always Free accounts (if applicable). The title of the lab and the Contents Menu title (the title above) match for Prerequisite lab. This lab is always first.",
+            "filename": "https://oracle-livelabs.github.io/common/labs/cloud-login/pre-register-free-tier-account.md"
+        },
+        {
+            "title": "Lab 1: Distributed Transactions and the Power of Sagas",
+            "filename": "../../l1-introduction/introduction.md"
+        },
+        {
+            "title": "Lab 2: Prepare your environment",
+            "filename": "../../l2-provision/provision.md"
+        },
+        {
+            "title": "Lab 3: Core Setup: Sagas Broker, Coordinator & Participants",
+            "filename": "../../l3-core-setup/core-setup.md"
+        },
+        {
+            "title": "Lab 4: Developing Oracle Sagas with Java Client",
+            "filename": "../../l4-java-client/java-client.md"
+        },
+        {
+            "title": "Lab 5: Oracle Sagas in Action: The CloudBank Application",
+            "filename": "../../l5-demo/demo.md"
+        },
+        {
+            "title": "Lab 6: Cleanup",
+            "filename": "../../l6-cleanup/cleanup.md"
+        },
+        {
+            "title": "Lab 7: Extended Lab",
+            "filename": "../../l7-extended/extended.md"
+        },
+        {
+            "title": "Need Help?",
+            "description": "Solutions to Common Problems and Directions for Receiving Live Help",
+            "filename":"https://oracle-livelabs.github.io/common/labs/need-help/need-help-freetier.md"
+        }
+    ]
+}

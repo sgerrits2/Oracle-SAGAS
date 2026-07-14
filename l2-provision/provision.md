@@ -121,31 +121,6 @@ Your instance will begin provisioning. In a few minutes, the state will turn fro
 
 ![provisioning the instance will take a few minutes ](./images/lab1-task1-6.png "provisioning the instance will take a few minutes")
 
-### **Step 10: Save Database Configuration for Later Labs**
-
-Would you like to save your database details to automatically populate later labs?
-
-<div class="input-section">
-<strong>Database Configuration:</strong><br/>
-<strong>Database Name:</strong> <input type="text" id="adb-name" placeholder="<DATABASE_NAME>" class="input-field"><br/>
-<strong>Admin Password:</strong> <input type="text" id="adb-password" placeholder="<DATABASE
-_ADMIN_PASSWORD>" class="input-field"><br/>
-
-<button onclick="saveAdbConfig()" class="save-btn">Save Configuration</button>
-<button onclick="deleteStoredConfig()" class="delete-btn">Delete Saved Values</button>
-<button onclick="clearFields()" class="clear-btn">Clear Fields</button>
-</div>
-
-<div id="save-status" style="display:none;" class="save-status">
-<span id="save-message"></span>
-</div>
-
-> **Note**:
->
-> - **Browser Session Only**: Configuration is saved only in your browser's session storage and will be automatically removed when you close the browser tab/window
-> - **Auto-population**: Fields are pre-filled with standard lab values but can be modified
-> - **Partial Saving**: You can save just the database name, just the password, or both
-> - **Delete Option**: Use "Delete Saved Values" to remove any previously saved configuration
 
 ## Task 2: Create CloudBank Application–Specific Users via SQL Script
 
@@ -160,97 +135,8 @@ Before running the SQL script, let's configure the users we need to create. Rath
 
 ### **Step 1: Configure User Details**
 
-<div class="user-config-section">
-<h4>Database Users Configuration</h4>
-
-<div class="java-users-section">
-<h5>Java Client Users (Labs 4-5)</h5>
-<div class="user-grid">
-<div class="user-header">
-<span>Role</span>
-<span>Username</span>
-<span>Password</span>
-<span>Action</span>
-<span>Description</span>
-</div>
-<div class="user-row">
-<label>Broker 1:</label>
-<input type="text" id="broker1-user" value="broker1" class="user-field">
-<input type="text" id="broker1-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('broker1')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Broker & Saga Coordinator</small>
-</div>
-<div class="user-row">
-<label>Orchestrator 1:</label>
-<input type="text" id="orchestrator1-user" value="orchestrator1" class="user-field">
-<input type="text" id="orchestrator1-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('orchestrator1')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Coordinator (Java-annotation demo)</small>
-</div>
-<div class="user-row">
-<label>Bank A:</label>
-<input type="text" id="banka-user" value="banka" class="user-field">
-<input type="text" id="banka-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('banka')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Participant (Java Client workflow)</small>
-</div>
-<div class="user-row">
-<label>Bank B:</label>
-<input type="text" id="bankb-user" value="bankb" class="user-field">
-<input type="text" id="bankb-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('bankb')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Participant (Java Client workflow)</small>
-</div>
-</div>
-</div>
-
-<div class="plsql-users-section">
-<h5>PL/SQL Users (Lab 7 - Extended)</h5>
-<div class="user-grid">
-<div class="user-header">
-<span>Role</span>
-<span>Username</span>
-<span>Password</span>
-<span>Description</span>
-</div>
-<div class="user-row">
-<label>Broker 2:</label>
-<input type="text" id="broker2-user" value="broker2" class="user-field">
-<input type="text" id="broker2-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('broker2')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Broker & Saga Coordinator</small>
-</div>
-<div class="user-row">
-<label>Orchestrator 2:</label>
-<input type="text" id="orchestrator2-user" value="orchestrator2" class="user-field">
-<input type="text" id="orchestrator2-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('orchestrator2')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Coordinator (PL/SQL API demo)</small>
-</div>
-<div class="user-row">
-<label>Bank C:</label>
-<input type="text" id="bankc-user" value="bankc" class="user-field">
-<input type="text" id="bankc-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('bankc')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Participant (PL/SQL demonstration)</small>
-</div>
-<div class="user-row">
-<label>Bank D:</label>
-<input type="text" id="bankd-user" value="bankd" class="user-field">
-<input type="text" id="bankd-password" value="Welcome_123#" class="password-field">
-<button onclick="clearUser('bankd')" class="clear-user-btn">Clear</button>
-<small>Roles: Saga Participant (PL/SQL demonstration)</small>
-</div>
-</div>
-</div>
-
-<div class="script-controls">
-<button onclick="generateScript()" class="save-btn">Generate Script</button>
-<button onclick="resetToDefaults()" class="reset-btn">Reset to Defaults</button>
-</div>
-
 <div class="script-section">
-<h5>Generated SQL Script:</h5>
+<h5>SQL Script:</h5>
 <pre id="generated-script" class="script-display">
 -- Template Script (Click "Generate Script" to customize with your values)
 -- 1) Create Broker & Orchestrator Schemas  
@@ -338,54 +224,7 @@ SELECT username
 
 ![Verify user list output](./images/lab2-task2-5.png "All eight schemas should appear")
 
-### **Step 7: Save User Configuration for Later Labs**
-
-Save your user configuration to automatically populate later labs:
-
-<div class="save-user-config-section">
-<h4>Save Configuration for Later Labs</h4>
-<p>Click the button below to save your user configuration for automatic use in Labs 4, 5, and 7:</p>
-
-<div id="saved-config-display" class="saved-config-section" >
-<h4>Current Configuration (Ready to Save)</h4>
-<div class="readonly-config-grid">
-<div class="readonly-column">
-<h5>Java Client Users (Labs 4-5)</h5>
-<strong>Broker 1:</strong> <span id="saved-broker1" class="saved-value">-</span><br/>
-<strong>Orchestrator 1:</strong> <span id="saved-orchestrator1" class="saved-value">-</span><br/>
-<strong>Bank A:</strong> <span id="saved-banka" class="saved-value">-</span><br/>
-<strong>Bank B:</strong> <span id="saved-bankb" class="saved-value">-</span><br/>
 </div>
-
-<div class="readonly-column">
-<h5>PL/SQL Users (Lab 7)</h5>
-<strong>Broker 2:</strong> <span id="saved-broker2" class="saved-value">-</span><br/>
-<strong>Orchestrator 2:</strong> <span id="saved-orchestrator2" class="saved-value">-</span><br/>
-<strong>Bank C:</strong> <span id="saved-bankc" class="saved-value">-</span><br/>
-<strong>Bank D:</strong> <span id="saved-bankd" class="saved-value">-</span><br/>
-</div>
-
-<div id="user-save-status" style="display:none;" class="save-status">
-<span id="user-save-message"></span>
-</div>
-
-</div>
-
-<div class="save-controls">
-<button onclick="saveUserConfig()" class="save-btn">Save User Configuration</button>
-<button onclick="updateUserConfig()" class="update-btn">Update Configuration</button>
-<button onclick="deleteUserConfig()" class="delete-btn">Delete Saved Configuration</button>
-</div>
-
-</div>
-</div>
-
-> **Note**:
->
-> - **Flexible Configuration**: You can customize both usernames and passwords for each user
-> - **Template Available**: Default script is shown as a template with standard values
-> - **Generate on Demand**: Click "Generate Script" to create a customized version
-> - **Browser Session**: Your configuration is automatically saved for use in later labs
 
 ## Task 3: Configure Oracle Cloud Infrastructure Networking
 
@@ -999,10 +838,10 @@ Navigate back to your Autonomous Database details page in the OCI Console:
 Use the interactive form below to generate your wallet download command:
 
 <div class="input-section">
-<strong>Enter your values below. The command will update in real time:</strong><br/>
+<strong>Enter your Autonomous Database OCID:</strong><br/>
 <strong>Autonomous Database OCID:</strong> <input type="text" id="adb-ocid" placeholder="ocid1.autonomousdatabase.oc1..example" class="input-field" oninput="updateWalletCommand()"><br/>
-<strong>Wallet File Name:</strong> <input type="text" id="wallet-file" placeholder="wallet.zip" class="input-field" oninput="updateWalletCommand()"><br/>
-<strong>Wallet Password:</strong> <input type="text" id="wallet-password" placeholder="<WALLET_PASSWORD>" class="input-field" oninput="updateWalletCommand()">
+<strong>Wallet File Name:</strong> <input type="text" id="wallet-file" value="SagasWallet.zip" class="input-field" disabled><br/>
+<strong>Wallet Password:</strong> <input type="text" id="wallet-password" value="Wallet123#" class="input-field" disabled>
 </div>
 
 **Generated Command (downloads wallet to oracle-saga-cloudbank/adbsSetup/adb_wallet directory):**
@@ -1069,8 +908,8 @@ Then use the form below to generate your database connection command:
 <button onclick="deleteConnectionString()" class="delete-btn-small">Delete</button>
 <button onclick="clearConnectionString()" class="clear-btn-small">Clear</button>
 </div><br/>
-<strong>Username:</strong> <input type="text" id="task5-db-username" placeholder="ADMIN" value="ADMIN" class="input-field" oninput="updateTask5ConnectionCommand()"><br/>
-<strong>Password:</strong> <input type="text" id="task5-db-password" placeholder="<DATABASE_ADMIN_PASSWORD>" class="input-field" oninput="updateTask5ConnectionCommand()">
+<strong>Username:</strong> <input type="text" id="task5-db-username" value="ADMIN" class="input-field" disabled><br/>
+<strong>Password:</strong> <input type="text" id="task5-db-password" value="admin123#" class="input-field" disabled>
 </div>
 
 <div id="connection-string-save-status" style="display:none;" class="save-status">
@@ -2620,6 +2459,7 @@ setTimeout(initializeCloudBank, 3000);
 
 ## Acknowledgements
 
-- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal
+- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal, 
+Luis Cruz, Sebastian Gerritsen
 - **Created By/Date** - Vinay Pandhariwal, April 2025
 - **Last Updated By/Date** - Vinay Pandhariwal, April 2025

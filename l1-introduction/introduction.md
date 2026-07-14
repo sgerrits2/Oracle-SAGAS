@@ -709,6 +709,7 @@ You may now [proceed to the next lab](#next)
 
 ## Acknowledgements
 
-- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal
+- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal,
+Luis Cruz, Sebastian Gerritsen
 - **Created By/Date** - Vinay Pandhariwal, August 2025
 - **Last Updated By/Date** - Vinay Pandhariwal, August 2025

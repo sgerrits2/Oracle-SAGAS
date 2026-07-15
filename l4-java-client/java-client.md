@@ -2323,6 +2323,7 @@ Failure Scenarios:
 
 ## Acknowledgements
 
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney  
+* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney,
+Luis Cruz, Sebastian Gerritsen  
 * **Created By/Date** — Vinay Pandhariwal, August 2025  
 * **Last Updated By/Date** — Vinay Pandhariwal, August 2025

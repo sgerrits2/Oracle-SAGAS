@@ -1,4 +1,4 @@
-# Lab 4: Developing Oracle Sagas with Java Client
+# Lab 4: Developing Oracle Sagas with the Java Client
 
 ## **Introduction**
 
@@ -9,11 +9,11 @@ In this lab, you will **develop and execute a Java-based saga client** that prov
 This lab follows a structured approach to understanding and implementing Oracle Sagas in Java:
 
 1. **Configure Maven Dependencies**: Set up your project with the required Oracle Saga artifacts and repositories
-2. **Add Saga Annotations**: Use the **code editor** to add Oracle's LRA and Saga annotations to **pre-existing CloudBank application files**, specifically:
+2. **Add Saga Annotations**: Use the **code editor** to add Oracle's LRA and Saga annotations to **preexisting CloudBank application files**, specifically:
    - **One Saga Initiator** with `@LRA`, `@Complete`, `@Compensate` annotations
    - **One Saga Participant** with `@Participant`, `@Request`, `@Response` annotations
    - Verify all annotations are correctly added and ready for deployment
-3. **Understand the CloudBank Demo Application**: Deep dive into the application structure including:
+3. **Understand the CloudBank Demo Application**: Dive deep into the application structure, including:
    - **Schema & Architecture**: Database tables and service components
    - **Extra Demo Tables**: Additional tables created specifically for saga demonstration
    - **Saga Workflows**: Bank Account Creation and Money Transfer workflows
@@ -24,7 +24,7 @@ The **CloudBank demo application** is a Jersey-based Spring application that sho
 
 - **CloudBank Orchestrator**: Saga initiator for banking workflows
 - **CloudBank Coordinator**: Database-resident saga orchestrator managing commits and rollbacks  
-- **BankA & BankB Services**: Saga participants handling account operations and inter-bank transfers
+- **BankA & BankB Services**: Saga participants handling account operations and interbank transfers
 - **Transaction Processing Services**: Handle deposits, transfers, and account management
 
 > **⚠️ Important Note**: This is a **demo application** designed for learning purposes. The business logic may vary and might not be completely comprehensive or production-ready. The focus is on understanding saga patterns rather than complete banking business rules.
@@ -35,7 +35,7 @@ The **Oracle Saga Java Client** provides application-layer functionality that **
 
 - **Java Client Actions** ↔ **PL/SQL DBMS_SAGA Procedures**
 - **LRA Annotations** ↔ **PL/SQL Saga Management**
-- **Jersey RESTful Services** ↔ **Database Resident Coordination**
+- **Jersey RESTful Services** ↔ **Database-Resident Coordination**
 - **Spring Framework Integration** ↔ **PL/SQL Package Integration**
 
 Both approaches provide the same distributed transaction capabilities, but the Java client offers object-oriented, annotation-driven development for modern microservice architectures.
@@ -79,7 +79,7 @@ The goal of this lab is to gain hands-on experience with Oracle Saga Java develo
 In this lab, you will:
 
 - **Configure Maven dependencies** for Oracle Saga framework integration  
-- **Add LRA and Saga annotations** to pre-existing CloudBank application files using code editor
+- **Add LRA and Saga annotations** to preexisting CloudBank application files using the code editor
 - **Implement one Saga Initiator** with `@LRA`, `@Complete`, `@Compensate` annotations
 - **Implement one Saga Participant** with `@Participant`, `@Request`, `@Response` annotations  
 - **Verify annotation setup** and prepare application for deployment
@@ -148,7 +148,7 @@ This single dependency is all you need to start developing with Oracle Sagas in 
 
 ---
 
-In this task, you will use the **code editor** to examine Oracle's **LRA and Saga annotations** in pre-existing CloudBank application files. The CloudBank demo application already contains most annotations, and you'll analyze two key files: the **Saga Initiator (Orchestrator)** and a **Saga Participant (BankA)**.
+In this task, you will use the **code editor** to examine Oracle's **LRA and Saga annotations** in preexisting CloudBank application files. The CloudBank demo application already contains most annotations, and you'll analyze two key files: the **Saga Initiator (Orchestrator)** and a **Saga Participant (BankA)**.
 
 ### Step 1: Oracle LRA and Saga Annotations Overview
 
@@ -223,8 +223,8 @@ The `@SagaConnection` annotation provides database connections for saga operatio
 - **Must be static** and return `java.sql.Connection`
 - **Is called automatically** by the framework when database access is needed
 - **Supports connection pooling** for performance
-- **Can be annotated over any method** that returns `Connection` but **must be present inside a @Participant annotated class**
-- **Provides flexibility** to choose connection type and configure datasource, pools, etc. as per requirements
+- **Can annotate any method** that returns `Connection` but **must be present inside a @Participant-annotated class**
+- **Provides flexibility** to choose the connection type and configure data sources, pools, etc., as required
 
 **Method Signature Requirements:**
 ```java
@@ -312,7 +312,7 @@ If using `@LRA` annotation instead, you would need:
     ```
 </details>
 
-**Note:** CloudBank uses **programmatic approach** with `beginSaga()` for explicit control over saga lifecycle.
+**Note:** CloudBank uses a **programmatic approach** with `beginSaga()` for explicit control over the saga lifecycle.
 
 **Screenshot Placeholder:**  
 ![beginSaga Method](./images/lab4-task2-beginsaga.png "beginSaga() method calls in CloudBank controller")
@@ -382,11 +382,11 @@ public void onPostRollback(SagaMessageContext info) {
 
 The `@Compensate` annotation marks methods for saga rollback processing. According to Oracle's documentation, this annotation:
 
-- **Invoked automatically** when saga fails or is rolled back during distributed transaction processing
+- **Invoked automatically** when a saga fails or is rolled back during distributed transaction processing
 - **Receives SagaMessageContext** with complete saga details including saga ID, sender information, and payload data
 - **Handles cleanup operations** and state restoration to maintain data consistency
 - **Must be idempotent** to handle retry scenarios and ensure reliable compensation
-- **Supports complex rollback logic** including database operations, cache cleanup, and external service notifications
+- **Supports complex rollback logic**, including database operations, cache cleanup, and external service notifications
 - **Can access participant-specific information** through the context for targeted compensation
 - **Executes in reverse order** of participant enrollment for proper dependency handling
 
@@ -438,11 +438,11 @@ public void onPostCommit(SagaMessageContext info) {
 
 The `@Complete` annotation marks methods for successful saga completion. According to Oracle's documentation, this annotation:
 
-- **Invoked automatically** when saga commits successfully after all participants complete their operations
+- **Invoked automatically** when a saga commits successfully after all participants complete their operations
 - **Performs finalization tasks** including cleanup, notifications, and post-processing operations
 - **Receives SagaMessageContext** with complete saga information and execution history
 - **Should be idempotent** to ensure reliable completion even with retries
-- **Executes after all participants confirm** their successful operation completion
+- **Executes after all participants confirm** successful operation completion
 - **Can perform cleanup tasks** such as removing temporary data and clearing caches
 - **Enables post-transaction processing** like sending success notifications and updating metrics
 - **Supports audit logging** and compliance reporting for successful transactions
@@ -586,7 +586,7 @@ public static Connection getAccountsConnection() throws SQLException {
     return ConnectionPools.getAccountsConnection();
 }
 ```
-**Purpose:** Provides database connection for BankA participant operations.
+**Purpose:** Provides the database connection for BankA participant operations.
 
 #### @Request(sender = "CloudBank") - Line 481
 ```java
@@ -612,7 +612,7 @@ public String onRequest(SagaMessageContext info) {
 
 
 #### Key Takeaways
-- **CloudBank uses programmatic approach** with `beginSaga()` instead of declarative `@LRA`
+- **CloudBank uses a programmatic approach** with `beginSaga()` instead of declarative `@LRA`
 - **Participant names must match** between `saga.sendRequest()` calls and `@Participant` annotations
 - **All files contain complete annotation sets** for their respective roles
 - **Replace stub constants** with actual participant names ("BankA", "BankB", "CloudBank")
@@ -1329,7 +1329,7 @@ public void sendRequest(String recipient, String payload)
 ```
 
 **Parameters:**
-- `recipient` - Name of the participant to be enrolled (must match `@Participant` annotation)
+- `recipient` - Name of the participant to enroll (must match the `@Participant` annotation)
 - `payload` - Saga payload data
 
 **Usage Examples:**
@@ -1376,7 +1376,7 @@ public void sendRequest(java.sql.Connection connection, String publisher, String
 **Parameters:**
 - `connection` - User-supplied JDBC connection for transaction control
 - `publisher` - Topic publisher name
-- `recipient` - Name of the participant to be enrolled
+- `recipient` - Name of the participant to enroll
 - `payload` - Saga payload data
 
 **Usage Examples:**
@@ -1474,7 +1474,7 @@ conn.commit(); // Commit saga and DML together
 <details>
 <summary><mark>commitSaga(boolean force)</mark></summary>
 
-**Purpose:** Force commit saga locally without waiting for initiator finalization.
+**Purpose:** Forces the saga to commit locally without waiting for initiator finalization.
 
 **Method Signature:**
 ```java
@@ -1487,7 +1487,7 @@ public void commitSaga(boolean force)
 saga.commitSaga(true);
 ```
 
-**Use Case:** Can be used by saga participants in special situations to locally commit and inform coordinator.
+**Use Case:** Can be used by saga participants in special situations to commit locally and inform the coordinator.
 
 </details>
 
@@ -1576,14 +1576,14 @@ try {
 <details>
 <summary><mark>rollbackSaga(boolean force)</mark></summary>
 
-**Purpose:** Force rollback saga locally without waiting for initiator finalization.
+**Purpose:** Forces the saga to roll back locally without waiting for initiator finalization.
 
 **Method Signature:**
 ```java
 public void rollbackSaga(boolean force)
 ```
 
-**Use Case:** Can be used by saga participants in special situations to locally rollback and inform coordinator.
+**Use Case:** Can be used by saga participants in special situations to roll back locally and inform the coordinator.
 
 </details>
 
@@ -1614,7 +1614,7 @@ public boolean isSagaFinalized()
 ```
 
 **Return Values:**
-- `false` - If saga is in JOINING, JOINED, or TIMEDOUT state
+- `false` - If the saga is in JOINING, JOINED, or TIMEDOUT state
 - `true` - Otherwise (finalized states)
 
 **Usage Examples:**
@@ -1633,7 +1633,7 @@ if (!saga.isSagaFinalized()) {
 <details>
 <summary><mark>beginSagaTransaction() / endSagaTransaction()</mark></summary>
 
-**Purpose:** Start/end saga transactions outside Saga-annotated methods (e.g., under `@LRA`).
+**Purpose:** Starts/ends saga transactions outside Saga-annotated methods (e.g., under `@LRA`).
 
 **Method Signatures:**
 ```java
@@ -1899,14 +1899,14 @@ public String processRequest(SagaMessageContext context) {
 ```
 
 **Important Notes:**
-- Connection from `getConnection()` cannot use explicit `commit()` or `rollback()`
+- Connections from `getConnection()` cannot use explicit `commit()` or `rollback()`
 - Can be used at initiator or participant level
 - `getSaga()` allows access to saga finalization methods
 - All methods provide access to current saga context
 
 </details>
 
-This comprehensive methods guide covers the accurate Oracle Saga API methods with their actual signatures and usage patterns as documented in Oracle Database 23ai. These methods provide the foundation for building distributed transaction systems using Oracle Sagas Version 1.
+This comprehensive methods guide covers the Oracle Saga API methods with their actual signatures and usage patterns as documented in Oracle Database 23ai. These methods provide the foundation for building distributed transaction systems using Oracle Sagas Version 1.
 
 </details>
 
@@ -1931,7 +1931,7 @@ The CloudBank application is deployed within a **single Oracle Database 23ai PDB
 
 [![CloudBank Architecture Screenshot](https://img.shields.io/badge/🏛️%20CloudBank-Architecture%20Demo-blue?style=for-the-badge&logo=database&logoColor=white)](images/Arch.mp4)
 
-*Click above to download and view the CloudBank database schema and microservice architecture demonstration*
+*Click above to download and view the CloudBank database schema and microservice architecture demonstration.*
 
 > **📋 Reference**: For detailed deployment information, refer to **Lab 2** which covers the specific setup of brokers, coordinators, and participants within the database environment.
 
@@ -2030,7 +2030,7 @@ Both `bankA.balance_amount` and `bankB.balance_amount` use Oracle's **RESERVABLE
 - **Orchestrator Service**: Saga initiator handling customer requests and coordinating transactions
 - **BankA Service**: Saga participant managing BankA account operations  
 - **BankB Service**: Saga participant managing BankB account operations
-- All services expose **REST APIs** for transaction processing
+- All services expose **REST APIs** for transaction processing.
 
 **🔹 Schema Separation:**
 - **Orchestrator + Coordinator**: Share the same schema for centralized coordination
@@ -2323,7 +2323,6 @@ Failure Scenarios:
 
 ## Acknowledgements
 
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney,
-Luis Cruz, Sebastian Gerritsen  
+* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney, Luis Cruz, Sebastian Gerritsen  
 * **Created By/Date** — Vinay Pandhariwal, August 2025  
 * **Last Updated By/Date** — Vinay Pandhariwal, August 2025

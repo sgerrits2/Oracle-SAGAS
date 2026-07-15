@@ -6,9 +6,9 @@ Modern software systems are increasingly composed of distributed microservices t
 
 Traditional approaches such as **Two-Phase Commit (2PC)** are often heavyweight and difficult to scale, particularly for long-running transactions. Moreover, they can introduce performance bottlenecks due to locks and tight coordination across services. To address these issues, the **Saga Pattern** has emerged as a reliable alternative for managing **long-running, distributed transactions (LRA)**.
 
-In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** makes implementing this pattern seamless inside the Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from one bank to another, such as from **Bank A to Bank B**, involving account debit, credit, validations, and failure handling.
+In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** make implementing this pattern seamless inside Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from one bank to another, such as from **Bank A to Bank B**, involving account debit, credit, validations, and failure handling.
 
-* Estimated Time: XX minutes
+* Estimated Time: 20 minutes
 
 ### Objectives
 
@@ -20,7 +20,7 @@ By the end of this lab, you will be able to:
 
 ### Prerequisites
 Before starting this lab, ensure you have:
-- A Free-Tier or Livelabs Oracle Cloud account.
+- A Free-Tier or LiveLabs Oracle Cloud account.
 - Basic understanding of **PL/SQL** or **Java** programming.
 
 
@@ -47,7 +47,7 @@ Traditional 2PC would try to lock both databases until the entire operation comp
 **Real-World Pain Points**:
 
 - **Network partitions** between services.
-- **Partial failures** that are hard to rollback.
+- **Partial failures** that are hard to roll back.
 - **Inconsistent recovery logic** coded across different teams.
 - **Retry storms**, where multiple retries lead to duplicate or invalid operations.
 
@@ -64,10 +64,10 @@ The **Saga Pattern** is a sequence of **local transactions**, where each transac
 ### Key Concepts:
 
 - **Local Transactions:** Each step is a local transaction that commits independently.
-- **Compensation:** Reverses effects of already-committed transactions on failure.
-- **Forward Recovery:** Instead of rolling back, sagas aim to restore consistency by applying business-defined compensations.
+- **Compensation:** Reverses the effects of already-committed transactions on failure.
+- **Forward Recovery:** Instead of rolling back, sagas aim to restore consistency by applying business-defined compensating actions.
 
-### Characteristics of Saga:
+### Characteristics of Sagas:
 
 - **Asynchronous coordination**
 - **No global locks**
@@ -80,7 +80,7 @@ The **Saga Pattern** is a sequence of **local transactions**, where each transac
 
 ---
 
-Oracle Sagas provide **native support for the Saga Pattern** in Oracle Database 23ai onwards. The feature enables developers to model, execute, monitor, and compensate multi-step workflows directly within the database engine using either **PL/SQL** or **Java**. Implementing the Saga pattern manually requires:
+Oracle Sagas provide **native support for the Saga Pattern** in Oracle Database 23ai onward. The feature enables developers to model, execute, monitor, and compensate multi-step workflows directly within the database engine using either **PL/SQL** or **Java**. Implementing the Saga pattern manually requires:
 
 - Messaging infrastructure
 - State management
@@ -89,13 +89,13 @@ Oracle Sagas provide **native support for the Saga Pattern** in Oracle Database 
 
 This can become error-prone and time-consuming.
 
-Oracle Sagas allows developers to:
+Oracle Sagas allow developers to:
 
 - Register participants, coordinators, and initiators using the `DBMS_SAGA_ADM` package.
-- Define compensation logic in PL/SQL or Java
-- Use declarative annotations in Java or the API's `DBMS_SAGA` PL/SQL package
-- Monitor saga execution states
-- Scale across PDBs or databases using TEQ and DB Links
+- Define compensation logic in PL/SQL or Java.
+- Use declarative annotations in Java or the `DBMS_SAGA` PL/SQL package.
+- Monitor saga execution states.
+- Scale across PDBs or databases using TEQ and DB links.
 
 ### Key Features:
 
@@ -116,12 +116,12 @@ Oracle Sagas allows developers to:
 
 Going back to our CloudBank scenario, developers only need to:
 
-- Register the Initiator and Participants
-- Define the saga workflows
-- Add optional compensating procedures
-- Use simple APIs or annotations to trigger the Saga
+- Register the Initiator and Participants.
+- Define the saga workflows.
+- Add optional compensating procedures.
+- Use simple APIs or annotations to trigger the saga.
 
-Manually building this infrastructure is not just slow—it’s painful, and often fragile. Oracle Sagas are tightly integrated with the Oracle database, enabling rollback-safe distributed transactions with minimal overhead.
+Manually building this infrastructure is not just slow—it’s painful, and often fragile. Oracle Sagas are tightly integrated with Oracle Database, enabling rollback-safe distributed transactions with minimal overhead.
 
 ---
 
@@ -149,22 +149,22 @@ Oracle Sagas can be applied to a variety of real-world distributed business proc
 ### 4. **Healthcare Scheduling**
 
 - Schedule doctor → reserve lab → confirm pharmacy
-- If lab slot unavailable, rollback appointment
+- If a lab slot is unavailable, roll back the appointment
 
 ### 5. **Insurance Claims**
 
 - Multi-step claim approval with cross-departmental validation
-- Claim rejection requiring compensations for already-processed steps
+- Claim rejection requiring compensation for already-processed steps
 
 ### Additional Use Cases:
 - Telecom service provisioning
 - IoT device onboarding
 - Banking KYC and onboarding
 - Travel planning
-- and many more ...
+- and many more...
 
-In each case, Oracle Sagas gives you a flexible, native, and resilient way to model all of these without external tools or heavyweight locking mechanisms.
-In real-world teams, workflows rarely go as planned. Oracle Sagas let you build systems that expect the unexpected—and recover gracefully.
+In each case, Oracle Sagas give you a flexible, native, and resilient way to model all of these without external tools or heavyweight locking mechanisms.
+In real-world teams, workflows rarely go as planned. Oracle Sagas let you build systems that expect the unexpected and recover gracefully.
 
 ---
 
@@ -343,7 +343,7 @@ const questions = [
     correct: 1
   },
   {
-    question: "Why would a developer prefer Saga over traditional 2PC for distributed transactions?",
+    question: "Why would a developer prefer Sagas over traditional 2PC for distributed transactions?",
     options: [
       "Sagas use fancy locks",
       "Sagas avoid long-held locks and allow easier scaling",
@@ -358,7 +358,7 @@ const questions = [
       "Ignore the error",
       "Restart the whole database",
       "Refund the amount by compensating the debit from Bank A",
-      "Ask user to retry after some time"
+      "Ask the user to retry after some time"
     ],
     correct: 2
   },
@@ -407,7 +407,7 @@ const questions = [
     options: [
       "Only REST APIs",
       "Manual shell scripts",
-      "DBMS_SAGA or Java Annotations",
+      "DBMS_SAGA or Java annotations",
       "Triggers and views"
     ],
     correct: 2
@@ -457,7 +457,7 @@ const questions = [
     options: [
       "DBMS_OUTPUT",
       "Oracle AQ (Advanced Queuing)",
-      "SQL Loader",
+      "SQL*Loader",
       "Oracle Scheduler"
     ],
     correct: 1
@@ -709,7 +709,6 @@ You may now [proceed to the next lab](#next)
 
 ## Acknowledgements
 
-- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal,
-Luis Cruz, Sebastian Gerritsen 
+- **Contributors** - Amit Ketkar, Pavas Navaney, Vinay Pandhariwal, Luis Cruz, Sebastian Gerritsen
 - **Created By/Date** - Vinay Pandhariwal, August 2025
 - **Last Updated By/Date** - Vinay Pandhariwal, August 2025

@@ -75,48 +75,7 @@ The **Oracle Saga Broker** serves as the central messaging hub in saga topology,
 
 In Oracle's saga architecture, each saga participant or coordinator is associated with exactly one broker (either local or remote), and the broker automatically generates topic names in the format `SAGA$_<broker_name>_INOUT` to establish these communication channels. The broker's intelligent message routing ensures that messages are propagated only to their intended participants, supporting cross-database message transfer through database links when needed. This design enables microservices and distributed applications to participate in saga transactions without requiring direct point-to-point connections, making the broker an essential infrastructure component for scalable, resilient saga implementations in enterprise environments.
 
-**Syntax:**
-```
-DBMS_SAGA_ADM.ADD_BROKER(
-  broker_name      => '&lt;BROKER_NAME&gt;',
-  broker_schema    => '&lt;BROKER_SCHEMA&gt;',     -- Default: current user
-  storage_clause   => '&lt;STORAGE_CLAUSE&gt;',    -- Optional: NULL
-  queue_partitions => '&lt;QUEUE_PARTITIONS&gt;',    -- Default: 1
-  version          => '&lt;VERSION&gt';              -- Default: 1
-);
-```
-
-<details open>
-<summary><strong>📋 `DBMS_SAGA_ADM.ADD_BROKER` Parameters</strong></summary>
-
-**Complete Parameter Reference:**
-
-- **`broker_name`** (VARCHAR2): 
-    - Unique identifier for the broker within the database
-    - Case-sensitive string that will be used in topic naming
-    - Example: `'CloudBankBroker'`, `'TEST'`, `'prod_broker_01'`
-
-- **`broker_schema`** (VARCHAR2): 
-    - Database schema where broker objects will be created
-    - Must have appropriate SAGA roles assigned.
-    - Example: `'BROKER1'`, `USER`
-
-- **`storage_clause`** (VARCHAR2, Optional):
-    - Tablespace and storage specifications for broker objects
-    - NULL uses default tablespace settings
-    - Example: `'TABLESPACE USERS'`, `NULL`
-
-- **`queue_partitions`** (NUMBER, Default: 1):
-    - Number of queue partitions for performance optimization
-    - Higher values improve concurrency but increase complexity
-    - Must match across all associated coordinators and participants
-    - Example: `1`, `4` 
-
-- **`version`** (NUMBER, Default: 1):
-    - Version number for broker configuration management
-    - Used for future upgrades and compatibility
-    - Example: `1`
-</details>
+[Full syntax and parameter reference for Saga Broker.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-75EF00AD-BA50-4D12-995B-9475F2846E74)
 <br/>
 
 ### Step 1: Switch to CloudShell
@@ -129,102 +88,66 @@ Since we were using the Code Editor in Lab 2, we need to switch back to the Clou
 
 ![Switch to CloudShell](./images/lab3-task1-step1.png "Switch to CloudShell tab")
 
-### Step 2: Enter Connection String 
+### Step 2: Enter Connection String
 
-Connect to your broker schema using the auto-populated connection details from Lab 2:
+The TNS connection string isn't something new — it's the same alias defined in the wallet's `tnsnames.ora` from the previous lab (`l2-provision/provision.md`, Step 10). Paste it below and the script will update automatically.
 
 <div class="input-section">
-<strong>Broker Username:</strong> 
-<input type="text" id="broker1-user" placeholder="<BROKER_SCHEMA>" class="input-field" oninput="updateBrokerConnectionCommand()"><br/>
-<strong>Broker Password:</strong> 
-<input type="text" id="broker1-password" placeholder="<BROKER_SCHEMA_PASSWORD>" class="input-field" oninput="updateBrokerConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="broker-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateBrokerConnectionCommand()"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateBrokerScript()">
 </div>
 
-**Generated Connection Command:**
-<pre id="broker-connection-command-container" class="interactive-command">
-<span id="broker-connection-command" class="command-text">sql &lt;BROKER_USERNAME&gt;/&lt;BROKER_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('broker-connection-command', 'broker-connection-command-container')">Copy</button>
-</pre>
+![Enter Connection String](./images/lab3-task1-step2.png "Enter the database connection string from Lab 2")
 
-**Expected Output:**
-```text
-SQLcl: Release 24.4 Production on Wed Aug 21 14:30:15 2025
-
-Copyright (c) 1982, 2025, Oracle.  All rights reserved.
-
-Connected to:
-Oracle Database 23ai Enterprise Edition Release 23.0.0.0.0 - for Oracle Cloud and Engineered Systems
-Version 23.7.0.25.03
-
-SQL> 
-```
-
-![Connect to Broker Schema](./images/lab3-task1-step2.png "Successfully connected to broker1 schema")
-
-### Step 3: Verify SAGA Roles
-
-Verify that the broker user has the necessary SAGA roles:
-
-```
-<copy>
-SELECT GRANTED_ROLE FROM USER_ROLE_PRIVS WHERE GRANTED_ROLE LIKE '%SAGA%';
-</copy>
-```
-
-**Expected Output:**
-```text
-ROLE
---------------------
-`SAGA_ADM_ROLE`
-`SAGA_PARTICIPANT_ROLE`
-
-2 rows selected.
-```
-
-![Verify SAGA Roles](./images/lab3-task1-step3.png "SAGA roles verification for broker user")
-
-### Step 4: Configure Broker Details
-
-Configure your broker name and settings. The broker name is case-sensitive and will be used in topic naming:
-
-<div class="input-section" style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<strong>Broker Database Name (case-sensitive):</strong> 
-<input type="text" id="broker-db-name" placeholder="<BROKER_DB_NAME>" class="input-field" oninput="updateBrokerCommand(); saveBrokerDbName()">
-
-<button onclick="saveBrokerConfig()" class="save-btn-small">Save</button>
-<button onclick="deleteBrokerConfig()" class="delete-btn-small">Delete</button>
-<button onclick="clearBrokerConfig()" class="clear-btn-small">Clear</button>
-</div>
-
-<div id="broker-save-status" style="display:none;" class="save-status">
-<span id="broker-save-message"></span>
-</div>
-
-![Configure Broker Details](./images/lab3-task1-step4.png "Configure broker name and settings")
-
-### Step 5: Generate ADD_BROKER Command
+### Step 3: Connect, Create, and Verify the Broker
 
 The command below is auto-generated based on your configuration:
 
-**Generated ADD_BROKER Command:**
-<pre id="broker-command-container" class="interactive-command">
-<span id="broker-command" class="command-text">-- Configure broker details above to generate command</span>
-<button class="copy-btn" onclick="copyToClipboard('broker-command', 'broker-command-container')">Copy</button>
+**Generated Script:**
+<pre id="broker-script-container" class="interactive-command">
+<span id="broker-script" class="command-text">-- =========================================================
+-- CONFIG
+-- =========================================================
+DEFINE BROKER_SCHEMA          = 'broker1'
+DEFINE BROKER_SCHEMA_PASSWORD = 'Welcome_123#'
+DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+DEFINE BROKER_NAME            = 'TEST'   -- broker name (case-sensitive)
+
+-- =========================================================
+-- 1. Connect to the broker schema
+-- =========================================================
+CONNECT &BROKER_SCHEMA/&BROKER_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+-- =========================================================
+-- 2. Verify the user has the required SAGA roles
+-- =========================================================
+SELECT granted_role
+FROM   user_role_privs
+WHERE  granted_role LIKE '%SAGA%';
+
+-- =========================================================
+-- 3. Create the broker
+-- =========================================================
+EXEC DBMS_SAGA_ADM.ADD_BROKER(
+  broker_name   =&gt; '&BROKER_NAME',
+  broker_schema =&gt; '&BROKER_SCHEMA'
+);
+
+-- =========================================================
+-- 4. Confirm it was created successfully
+-- =========================================================
+SELECT broker_name, owner, queue_partitions, version, created_date
+FROM   user_saga_brokers
+WHERE  broker_name = '&BROKER_NAME';</span>
+<button class="copy-btn" onclick="copyToClipboard('broker-script', 'broker-script-container')">Copy</button>
 </pre>
 
-![Generate ADD_BROKER Command](./images/lab3-task1-step5.png "Auto-generated ADD_BROKER command")
-
-### Step 6: Verify Broker Creation
-
-After executing the ADD_BROKER command, verify the broker was created successfully:
-
-**Check Broker Creation:**
-<pre id="verify-broker-command-container" class="interactive-command">
-<span id="verify-broker-command" class="command-text">-- Will auto-update based on your broker name above</span>
-<button class="copy-btn" onclick="copyToClipboard('verify-broker-command', 'verify-broker-command-container')">Copy</button>
-</pre>
+<script>
+function updateBrokerScript() {
+  const tns = document.getElementById('tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
+  const el = document.getElementById('broker-script');
+  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
+}
+</script>
 
 **Expected Output:**
 ```text
@@ -234,6 +157,8 @@ TEST        BROKER1                 1       1 21-AUG-25 14:35:22
 
 1 row selected.
 ```
+
+![Verify Broker Creation](./images/lab3-task1-step3.png "Broker created and verified successfully")
 
 ---
 
@@ -245,64 +170,7 @@ As the control center of the saga pattern, the coordinator maintains detailed lo
 
 > **Important Architectural Limitation**: In Oracle Database 23ai's initial saga implementation, the **saga coordinator and the saga initiator (orchestrator) must be co-located in the same database schema and PDB**. This is a fundamental constraint that requires the orchestrating service to also act as a saga participant. While other participants can be distributed across different schemas or databases, the coordinator-initiator pair cannot be separated. This architectural decision optimizes performance by eliminating cross-schema communication overhead during saga initialization and coordination, but limits deployment flexibility compared to fully distributed saga frameworks.
 
-**Syntax:**
-```
-DBMS_SAGA_ADM.ADD_COORDINATOR(
-  coordinator_name      => '&lt;COORDINATOR_NAME&gt;',
-  coordinator_schema    => '&lt;COORDINATOR_SCHEMA&gt;',    -- Default: current user
-  storage_clause        => '&lt;STORAGE_CLAUSE&gt;',        -- Optional: NULL
-  dblink_to_broker      => '&lt;DBLINK_TO_BROKER&gt;',      -- Optional: NULL
-  mailbox_schema        => '&lt;MAILBOX_SCHEMA&gt;',
-  broker_name           => '&lt;BROKER_NAME&gt;',
-  dblink_to_coordinator => '&lt;DBLINK_TO_COORDINATOR&gt;', -- Optional: NULL
-  queue_partitions      => '&lt;QUEUE_PARTITIONS&gt;',      -- Default: 1
-  listener_count        => '&lt;LISTENER_COUNT&gt;',        -- Default: -1 (AQ notification)
-  version               => '&lt;VERSION&gt;'                -- Default: 1
-);
-```
-
-<details open>
-<summary><strong>📋 `DBMS_SAGA_ADM.ADD_COORDINATOR` Parameters</strong></summary>
-
-**Complete Parameter Reference:**
-
-- **`coordinator_name`** (VARCHAR2): 
-    - Unique identifier for the coordinator within the saga infrastructure
-    - Case-sensitive string used for participant registration
-    - Example: `'CloudBankCoordinator'`, `'ORDER_COORDINATOR'`, `'payment_coord_01'`
-
-- **`coordinator_schema`** (VARCHAR2): 
-    - Database schema where coordinator objects will be created
-    - Must have appropriate SAGA roles assigned
-    - Example: `'ORCHESTRATOR1'`, `'COORD_USER'`
-
-- **`broker_name`** (VARCHAR2):
-    - Must reference an existing broker created in Task 1
-    - Links coordinator to the messaging infrastructure
-    - Example: Same broker name from Task 1 configuration
-
-- **`mailbox_schema`** (VARCHAR2):
-    - Schema containing the broker's mailbox infrastructure
-    - Typically the same as broker_schema from Task 1
-    - Example: `'BROKER1'`, same as broker user
-
-- **`queue_partitions`** (NUMBER, Default: 1):
-    - Must exactly match the broker's partition count
-    - Inconsistent values will cause connection failures
-    - Example: `1` (must match broker configuration)
-
-- **`listener_count`** (NUMBER):
-    - Controls message processing concurrency and notification method
-    - `DBMS_SAGA_ADM.AQ_NTFN` (value: -2): Standard AQ notification (recommended)
-    - `DBMS_SAGA_ADM.AUTO_NTFN` (value: -1): Dynamic listener scaling
-    - Positive integer: Fixed number of dequeue jobs
-    - Example: `DBMS_SAGA_ADM.AQ_NTFN` for most use cases
-
-- **`version`** (NUMBER, Default: 1):
-    - Version number for coordinator configuration management
-    - Used for future upgrades and compatibility tracking
-    - Example: `1`
-</details>
+[Full syntax and parameter reference for Saga Coordinator.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-E1678F33-E49B-4F4A-BC14-2222D9703A42)
 <br/>
 
 ### Step 1: Switch to CloudShell
@@ -315,102 +183,72 @@ Ensure you're still in the CloudShell tab from Task 1:
 
 ![Continue in CloudShell](./images/lab3-task2-step1.png "Continue using CloudShell tab")
 
-### Step 2: Enter Connection String 
+### Step 2: Enter Connection String
 
-Connect to your orchestrator schema using the auto-populated connection details from Lab 2:
+Connect to your orchestrator schema. This reuses the same connection string you entered in Task 1 — only the schema and password change.
 
 <div class="input-section">
-<strong>Orchestrator Username:</strong> 
-<input type="text" id="orchestrator1-user" placeholder="<ORCHESTRATOR_SCHEMA>" class="input-field" oninput="updateCoordinatorConnectionCommand()"><br/>
-<strong>Orchestrator Password:</strong> 
-<input type="text" id="orchestrator1-password" placeholder="<ORCHESTRATOR_SCHEMA_PASSWORD>" class="input-field" oninput="updateCoordinatorConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="coordinator-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateCoordinatorConnectionCommand()"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="coord-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateCoordinatorScript()">
 </div>
 
-**Generated Connection Command:**
-<pre id="coordinator-connection-command-container" class="interactive-command">
-<span id="coordinator-connection-command" class="command-text">connect &lt;ORCHESTRATOR_USERNAME&gt;/&lt;ORCHESTRATOR_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('coordinator-connection-command', 'coordinator-connection-command-container')">Copy</button>
+![Enter Connection String](./images/lab3-task2-step2.png "Enter the database connection string from Lab 2")
+
+### Step 3: Connect, Create, and Verify the Coordinator
+
+The command below is auto-generated based on your configuration and Task 1's broker settings:
+
+**Generated Script:**
+<pre id="coordinator-script-container" class="interactive-command">
+<span id="coordinator-script" class="command-text">-- =========================================================
+-- CONFIG
+-- =========================================================
+DEFINE ORCHESTRATOR_SCHEMA          = 'orchestrator1'
+DEFINE ORCHESTRATOR_SCHEMA_PASSWORD = 'Welcome_123#'
+DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+DEFINE BROKER_NAME                  = 'TEST'                  -- must match Task 1
+DEFINE MAILBOX_SCHEMA                = 'broker1'               -- must match Task 1 broker schema
+DEFINE COORDINATOR_NAME             = 'CloudBankCoordinator'  -- case-sensitive
+
+-- =========================================================
+-- 1. Connect to the orchestrator schema
+-- =========================================================
+CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+-- =========================================================
+-- 2. Verify the user has the required SAGA roles
+-- =========================================================
+SELECT role
+FROM   user_role_privs
+WHERE  role LIKE '%SAGA%';
+
+-- =========================================================
+-- 3. Create the coordinator (references Task 1's broker)
+-- =========================================================
+EXEC DBMS_SAGA_ADM.ADD_COORDINATOR(
+  coordinator_name   =&gt; '&COORDINATOR_NAME',
+  coordinator_schema =&gt; '&ORCHESTRATOR_SCHEMA',
+  mailbox_schema      =&gt; '&MAILBOX_SCHEMA',
+  broker_name         =&gt; '&BROKER_NAME',
+  queue_partitions    =&gt; 1,
+  listener_count      =&gt; DBMS_SAGA_ADM.AQ_NTFN
+);
+
+-- =========================================================
+-- 4. Confirm it was created successfully
+-- =========================================================
+SELECT coordinator_name, coordinator_schema, broker_name, queue_partitions, listener_count
+FROM   user_saga_coordinators
+WHERE  coordinator_name = '&COORDINATOR_NAME';</span>
+<button class="copy-btn" onclick="copyToClipboard('coordinator-script', 'coordinator-script-container')">Copy</button>
 </pre>
 
-**Expected Output:**
-```text
-SQLcl: Release 24.4 Production on Wed Aug 21 14:35:20 2025
-
-Copyright (c) 1982, 2025, Oracle.  All rights reserved.
-
-Connected to:
-Oracle Database 23ai Enterprise Edition Release 23.0.0.0.0 - for Oracle Cloud and Engineered Systems
-Version 23.7.0.25.03
-
-SQL> 
-```
-
-![Connect to Orchestrator Schema](./images/lab3-task2-step2.png "Successfully connected to orchestrator1 schema")
-
-### Step 3: Verify SAGA Roles
-
-Verify that the orchestrator user has the necessary SAGA roles:
-
-```
-<copy>
-SELECT role FROM USER_ROLE_PRIVS WHERE role LIKE '%SAGA%';
-</copy>
-```
-
-**Expected Output:**
-```text
-ROLE
---------------------
-`SAGA_ADM_ROLE`
-`SAGA_PARTICIPANT_ROLE`
-
-2 rows selected.
-```
-
-![Verify SAGA Roles](./images/lab3-task2-step3.png "SAGA roles verification for orchestrator user")
-
-### Step 4: Configure Coordinator Details
-
-Configure your coordinator name and settings. The coordinator will reference the broker created in Task 1:
-
-<div class="input-section" style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<strong>Coordinator Name (case-sensitive):</strong> 
-<input type="text" id="coordinator-name" placeholder="<COORDINATOR_PARTICIPANT_NAME>" class="input-field" oninput="updateCoordinatorCommand(); saveCoordinatorName()">
-
-<button onclick="saveCoordinatorConfig()" class="save-btn-small">Save</button>
-<button onclick="deleteCoordinatorConfig()" class="delete-btn-small">Delete</button>
-<button onclick="clearCoordinatorConfig()" class="clear-btn-small">Clear</button>
-</div>
-
-<div id="coordinator-save-status" style="display:none;" class="save-status">
-<span id="coordinator-save-message"></span>
-</div>
-
-![Configure Coordinator Details](./images/lab3-task2-step4.png "Configure coordinator name and settings")
-
-### Step 5: Generate ADD_COORDINATOR Command
-
-The command below is auto-generated based on your configuration and Task 1 broker settings:
-
-**Generated ADD_COORDINATOR Command:**
-<pre id="coordinator-command-container" class="interactive-command">
-<span id="coordinator-command" class="command-text">-- Configure coordinator details above to generate command</span>
-<button class="copy-btn" onclick="copyToClipboard('coordinator-command', 'coordinator-command-container')">Copy</button>
-</pre>
-
-![Generate ADD_COORDINATOR Command](./images/lab3-task2-step5.png "Auto-generated ADD_COORDINATOR command")
-
-### Step 6: Verify Coordinator Creation
-
-After executing the ADD_COORDINATOR command, verify the coordinator was created successfully:
-
-**Check Coordinator Creation:**
-<pre id="verify-coordinator-command-container" class="interactive-command">
-<span id="verify-coordinator-command" class="command-text">-- Will auto-update based on your coordinator name above</span>
-<button class="copy-btn" onclick="copyToClipboard('verify-coordinator-command', 'verify-coordinator-command-container')">Copy</button>
-</pre>
+<script>
+function updateCoordinatorScript() {
+  const tns = document.getElementById('coord-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
+  const el = document.getElementById('coordinator-script');
+  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
+}
+</script>
 
 **Expected Output:**
 ```text
@@ -428,274 +266,119 @@ CLOUDBANKCOORDINATOR  ORCHESTRATOR1      TEST                       1           
 The **Oracle Saga Participants** are the business service endpoints that implement the actual work within saga transactions, serving as the distributed components that execute specific business operations while maintaining the ability to compensate for their actions when required. Each participant follows the **Request-Response-COMMIT-Rollback** pattern, where REQUEST operations attempt to perform the business work, RESPONSE operations send status updates back to the coordinator, COMMIT operations finalize successful transactions, and ROLLBACK operations execute compensating actions to undo their specific work when the coordinator initiates saga rollback. Participants communicate asynchronously with the saga coordinator through Oracle's Advanced Queuing infrastructure, receiving operation requests and sending status responses that drive the overall saga state machine.
 
 In Oracle's saga architecture, participants can be implemented either as database-native PL/SQL packages with callback procedures or as external Java applications that interact with the saga framework through JDBC connections and queue operations. The Java client approach offers greater flexibility for microservices architectures, allowing business logic to reside outside the database while still benefiting from Oracle's transactional guarantees and message reliability. Each participant maintains its own input queue for receiving saga instructions and automatically handles message acknowledgment, retry logic, and error reporting back to the coordinator, enabling robust distributed transaction processing across heterogeneous application environments.
-
-**Syntax:**
-```
-DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name      => '&lt;PARTICIPANT_NAME&gt;',
-  participant_schema    => '&lt;PARTICIPANT_SCHEMA&gt;',    -- Default: current user
-  storage_clause        => '&lt;STORAGE_CLAUSE&gt;',        -- Optional: NULL
-  coordinator_name      => '&lt;COORDINATOR_NAME&gt;',      -- Optional: NULL
-  dblink_to_broker      => '&lt;DBLINK_TO_BROKER&gt;',      -- Required for distributed
-  mailbox_schema        => '&lt;MAILBOX_SCHEMA&gt;',
-  broker_name           => '&lt;BROKER_NAME&gt;',
-  callback_schema       => '&lt;CALLBACK_SCHEMA&gt;',       -- Default: current user
-  callback_package      => '&lt;CALLBACK_PACKAGE&gt;',
-  dblink_to_participant => '&lt;DBLINK_TO_PARTICIPANT&gt;', -- Required for distributed
-  queue_partitions      => '&lt;QUEUE_PARTITIONS&gt;',      -- Default: 1
-  version               => '&lt;VERSION&gt;'                -- Default: 1
-);
-```
-
-<details open>
-<summary><strong>📋 `DBMS_SAGA_ADM.ADD_PARTICIPANT` Parameters</strong></summary>
-
-**Complete Parameter Reference:**
-
-- **`participant_name`** (VARCHAR2): 
-    - Unique identifier for the participant within the broker's scope
-    - Case-sensitive string used in saga workflows and monitoring
-    - Example: `'CloudBank'`, `'BankA'`, `'BankB'`, `'PAYMENT_SERVICE'`
-
-- **`participant_schema`** (VARCHAR2): 
-    - Database schema where participant objects will be created
-    - Must have appropriate SAGA roles assigned
-    - Example: `'CLOUDBANK'`, `'BANKA'`, `'BANKB'`
-
-- **`coordinator_name`** (VARCHAR2):
-    - Must reference an existing coordinator created in Task 2
-    - Links participant to the saga orchestration engine
-    - Example: Same coordinator name from Task 2 configuration
-
-- **`broker_name`** (VARCHAR2):
-    - Must reference an existing broker created in Task 1
-    - Links participant to the messaging infrastructure
-    - Example: Same broker name from Task 1 configuration
-
-- **`mailbox_schema`** (VARCHAR2):
-    - Schema containing the broker's mailbox infrastructure
-    - Typically the same as broker_schema from Task 1
-    - Example: `'BROKER1'`, same as broker user
-
-- **`callback_schema`** (VARCHAR2, Optional):
-    - Schema containing PL/SQL callback package implementation
-    - NULL for Java client implementations (our approach)
-    - Example: `NULL` (for Java clients), `'CLOUDBANK'` (for PL/SQL callbacks)
-
-- **`callback_package`** (VARCHAR2, Optional):
-    - Name of PL/SQL package implementing TRY/CONFIRM/CANCEL methods
-    - NULL for Java client implementations (our approach)
-    - Example: `NULL` (for Java clients), `'PKG_CLOUDBANK_CB'` (for PL/SQL callbacks)
-
-- **`queue_partitions`** (NUMBER, Default: 1):
-    - Must exactly match broker and coordinator partition counts
-    - Inconsistent values will cause connection failures
-    - Example: `1` (must match broker and coordinator configuration)
-
-- **`version`** (NUMBER, Default: 1):
-    - Version number for participant configuration management
-    - Used for future upgrades and compatibility tracking
-    - Example: `1`
-</details>
+[Full syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-75EF00AD-BA50-4D12-995B-9475F2846E74)
 <br/>
 
-### Step 1: Continue in CloudShell
+### Step 1: Enter Connection Details
 
-Since we're already connected to the orchestrator schema from Task 2, we'll continue without exiting.
-
-1. **Verify Current Connection**: You should still be connected to the orchestrator schema from Task 2.
-
-![Continue in CloudShell](./images/lab3-task3-step1.png "Continue using current SQL session with connect commands")
-
-
-### Step 2: Register CloudBank Participant in Orchestrator Schema
-
-Since the orchestrator schema already hosts the coordinator, we'll register the "CloudBank" participant in the same orchestrator schema. This participant represents the central bank in our money transfer scenario.
-
-> **Note**: The orchestrator schema serves dual roles - it hosts both the saga coordinator AND the CloudBank participant. This co-location is **required** in Oracle Database 23ai's saga implementation, as the coordinator and initiator must reside in the same schema and PDB. This architectural constraint ensures optimal performance but means the orchestrating service must also function as a saga participant.
-
-<div class="input-section" style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<strong>CloudBank Participant Name (case-sensitive):</strong> 
-<input type="text" id="cloudbank-participant-name" value="CloudBank" class="input-field-fixed" readonly style="background-color: #f5f5f5; cursor: not-allowed;" oninput="updateCloudbankCommand(); saveCloudbankParticipantName()">
-</div>
-
-<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>The CloudBank demo application uses this specific participant name ("CloudBank"), so we will be using this fixed name for consistency.</em>
-</div>
-
-<div id="cloudbank-save-status" style="display:none;" class="save-status">
-<span id="cloudbank-save-message"></span>
-</div>
-
-**Generated CloudBank ADD_PARTICIPANT Command:**
-<pre id="cloudbank-command-container" class="interactive-command">
-<span id="cloudbank-command" class="command-text">-- Configure participant name above to generate command</span>
-<button class="copy-btn" onclick="copyToClipboard('cloudbank-command', 'cloudbank-command-container')">Copy</button>
-</pre>
-
-Execute the generated command in the orchestrator schema (which already hosts the coordinator).
-
-![CloudBank Participant Registration](./images/lab3-task3-cloudbank.png "CloudBank participant registration in orchestrator schema")
-
-### Step 3: Connect to BankA Schema
-
-Connect to the BankA participant schema:
+SQLcl lets a single script hop between schemas with multiple `CONNECT` commands, so CloudBank, BankA, BankB, and the final verification all run as **one script** below.
 
 <div class="input-section">
-<strong>BankA Username:</strong> 
-<input type="text" id="banka-user" placeholder="<BANKA_SCHEMA>" class="input-field" oninput="updateBankaConnectionCommand()"><br/>
-<strong>BankA Password:</strong> 
-<input type="text" id="banka-password" placeholder="<BANKA_SCHEMA_PASSWORD>" class="input-field" oninput="updateBankaConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="banka-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateBankaConnectionCommand()"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="p-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateParticipantsScript()"><br/>
 </div>
 
-**Generated BankA Connection Command:**
-<pre id="banka-connection-command-container" class="interactive-command">
-<span id="banka-connection-command" class="command-text">connect &lt;BANKA_USERNAME&gt;/&lt;BANKA_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('banka-connection-command', 'banka-connection-command-container')">Copy</button>
+> 💡 `CloudBank` and `BankA` use fixed names required by the demo app. `BankB`'s name is configurable since it's manipulated via PL/SQL later in the lab.
+
+### Step 2: Register All Participants and Verify
+
+**Generated Script:**
+<pre id="participants-script-container" class="interactive-command">
+<span id="participants-script" class="command-text">-- =========================================================
+-- CONFIG
+-- =========================================================
+DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+DEFINE ORCHESTRATOR_SCHEMA          = 'orchestrator1'
+DEFINE ORCHESTRATOR_SCHEMA_PASSWORD = 'Welcome_123#'
+DEFINE BANKA_SCHEMA                 = 'banka'
+DEFINE BANKA_SCHEMA_PASSWORD        = 'Welcome_123#'
+DEFINE BANKB_SCHEMA                 = 'bankb'
+DEFINE BANKB_SCHEMA_PASSWORD        = 'Welcome_123#'
+DEFINE ADMIN_PASSWORD               = 'Welcome_123#'
+DEFINE BANKB_PARTICIPANT_NAME       = 'BankB'
+DEFINE COORDINATOR_NAME             = 'CloudBankCoordinator'   -- must match Task 2
+DEFINE BROKER_NAME                  = 'TEST'                   -- must match Task 1
+DEFINE MAILBOX_SCHEMA               = 'broker1'                -- must match Task 1 broker schema
+
+-- =========================================================
+-- 1. Register CloudBank (runs from the orchestrator schema, which
+--    already hosts the coordinator — required co-location in 23ai)
+-- =========================================================
+CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
+  participant_name =&gt; 'CloudBank',
+  coordinator_name =&gt; '&COORDINATOR_NAME',
+  mailbox_schema    =&gt; '&MAILBOX_SCHEMA',
+  broker_name       =&gt; '&BROKER_NAME'
+);
+
+-- =========================================================
+-- 2. Register BankA
+-- =========================================================
+CONNECT &BANKA_SCHEMA/&BANKA_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+SELECT role FROM user_role_privs WHERE role LIKE '%SAGA%';
+
+EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
+  participant_name =&gt; 'BankA',
+  coordinator_name =&gt; '&COORDINATOR_NAME',
+  mailbox_schema    =&gt; '&MAILBOX_SCHEMA',
+  broker_name       =&gt; '&BROKER_NAME'
+);
+
+-- =========================================================
+-- 3. Register BankB
+-- =========================================================
+CONNECT &BANKB_SCHEMA/&BANKB_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+SELECT role FROM user_role_privs WHERE role LIKE '%SAGA%';
+
+EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
+  participant_name =&gt; '&BANKB_PARTICIPANT_NAME',
+  coordinator_name =&gt; '&COORDINATOR_NAME',
+  mailbox_schema    =&gt; '&MAILBOX_SCHEMA',
+  broker_name       =&gt; '&BROKER_NAME'
+);
+
+-- =========================================================
+-- 4. Verify everything (as admin)
+-- =========================================================
+CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+SELECT participant_name, participant_schema, coordinator_name, broker_name, mailbox_schema
+FROM   user_saga_participants
+WHERE  coordinator_name = '&COORDINATOR_NAME';
+
+SELECT queue_name, queue_table, owner
+FROM   all_queues
+WHERE  owner IN (
+  SELECT participant_schema
+  FROM   user_saga_participants
+  WHERE  coordinator_name = '&COORDINATOR_NAME'
+);</span>
+<button class="copy-btn" onclick="copyToClipboard('participants-script', 'participants-script-container')">Copy</button>
 </pre>
 
-### Step 4: Verify SAGA Roles for BankA
-
-Verify that the BankA user has the necessary SAGA roles:
-
-```
-<copy>
-SELECT role FROM USER_ROLE_PRIVS WHERE role LIKE '%SAGA%';
-</copy>
-```
-
-### Step 5: Configure BankA Participant Name
-
-Configure the participant name (case-sensitive) for BankA:
-
-<div class="input-section" style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<strong>BankA Participant Name (case-sensitive):</strong> 
-<input type="text" id="banka-participant-name" value="BankA" class="input-field-fixed" readonly style="background-color: #f5f5f5; cursor: not-allowed;" oninput="updateBankaCommand(); saveBankaParticipantName()">
-</div>
-
-<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>The CloudBank demo application uses this specific participant name ("BankA"), so we will be using this fixed name for consistency.</em>
-</div>
-
-<div id="banka-save-status" style="display:none;" class="save-status">
-<span id="banka-save-message"></span>
-</div>
-
-### Step 6: Generate BankA ADD_PARTICIPANT Command
-
-**Generated BankA ADD_PARTICIPANT Command:**
-<pre id="banka-command-container" class="interactive-command">
-<span id="banka-command" class="command-text">-- Configure participant name above to generate command</span>
-<button class="copy-btn" onclick="copyToClipboard('banka-command', 'banka-command-container')">Copy</button>
-</pre>
-
-### Step 11: Execute BankA Registration
-
-Execute the generated command in the BankA schema.
-
-![BankA Registration](./images/lab3-task3-banka.png "BankA participant registration")
-
-### Step 7: Connect to BankB Schema
-
-Connect to the BankB participant schema:
-
-<div class="input-section">
-<strong>BankB Username:</strong> 
-<input type="text" id="bankb-user" placeholder="<BANKB_SCHEMA>" class="input-field" oninput="updateBankbConnectionCommand()"><br/>
-<strong>BankB Password:</strong> 
-<input type="text" id="bankb-password" placeholder="<BANKB_SCHEMA_PASSWORD>" class="input-field" oninput="updateBankbConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="bankb-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateBankbConnectionCommand()"><br/>
-</div>
-
-**Generated BankB Connection Command:**
-<pre id="bankb-connection-command-container" class="interactive-command">
-<span id="bankb-connection-command" class="command-text">connect &lt;BANKB_USERNAME&gt;/&lt;BANKB_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('bankb-connection-command', 'bankb-connection-command-container')">Copy</button>
-</pre>
-
-### Step 8: Verify SAGA Roles for BankB
-
-Verify that the BankB user has the necessary SAGA roles:
-
-```
-<copy>
-SELECT role FROM USER_ROLE_PRIVS WHERE role LIKE '%SAGA%';
-</copy>
-```
-
-### Step 9: Configure BankB Participant Name
-
-Configure the participant name (case-sensitive) for BankB:
-
-<div class="input-section" style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<strong>BankB Participant Name (case-sensitive):</strong> 
-<input type="text" id="bankb-participant-name" placeholder="<BANKB_PARTICIPANT_NAME>" class="input-field" oninput="updateBankbCommand(); saveBankbParticipantName()">
-
-<button onclick="saveBankbConfig()" class="save-btn-small">Save</button>
-<button onclick="deleteBankbConfig()" class="delete-btn-small">Delete</button>
-<button onclick="clearBankbConfig()" class="clear-btn-small">Clear</button>
-</div>
-
-<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>Unlike CloudBank and BankA, this participant name is configurable since BankB is manipulated using PL/SQL functions in Lab 3 and doesn't require a fixed name for the demo application.</em>
-</div>
-
-<div id="bankb-save-status" style="display:none;" class="save-status">
-<span id="bankb-save-message"></span>
-</div>
-
-### Step 10: Generate BankB ADD_PARTICIPANT Command
-
-**Generated BankB ADD_PARTICIPANT Command:**
-<pre id="bankb-command-container" class="interactive-command">
-<span id="bankb-command" class="command-text">-- Configure participant name above to generate command</span>
-<button class="copy-btn" onclick="copyToClipboard('bankb-command', 'bankb-command-container')">Copy</button>
-</pre>
-
-### Step 11: Execute BankB Registration
-
-Execute the generated command in the BankB schema.
-
-![BankB Registration](./images/lab3-task3-bankb.png "BankB participant registration")
-
-### Step 17: Connect to Admin Session
-
-Connect using the admin credentials saved from Lab 2 to verify all participant registrations:
-
-<div class="input-section">
-<strong>Admin Username:</strong> 
-<input type="text" id="admin-user" placeholder="<ADMIN_SCHEMA>" value="ADMIN" class="input-field" oninput="updateAdminConnectionCommand()"><br/>
-<strong>Admin Password:</strong> 
-<input type="text" id="admin-password" placeholder="<DATABASE_ADMIN_PASSWORD>" class="input-field" oninput="updateAdminConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="admin-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateAdminConnectionCommand()"><br/>
-</div>
-
-**Generated Admin Connection Command:**
-<pre id="admin-connection-command-container" class="interactive-command">
-<span id="admin-connection-command" class="command-text">connect &lt;ADMIN_USERNAME&gt;/&lt;ADMIN_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('admin-connection-command', 'admin-connection-command-container')">Copy</button>
-</pre>
-
-### Step 12: Verify All Participants Registration
-
-Run the verification commands from the admin session to see all participants:
-
-<pre id="verify-all-participants-command-container" class="interactive-command">
-<span id="verify-all-participants-command" class="command-text">-- Will auto-update based on your coordinator configuration</span>
-<button class="copy-btn" onclick="copyToClipboard('verify-all-participants-command', 'verify-all-participants-command-container')">Copy</button>
-</pre>
+<script>
+function updateParticipantsScript() {
+  const tns = document.getElementById('p-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
+  const bankbEl = document.getElementById('p-bankb-name');
+  const bankbName = bankbEl ? bankbEl.value : 'BankB';
+  const el = document.getElementById('participants-script');
+  const text = el.innerText;
+  el.innerText = text
+    .replace(/DEFINE DATABASE_CONNECTION_TNS_NAME\s*=\s*'[^']*'/, "DEFINE DATABASE_CONNECTION_TNS_NAME = '" + tns + "'")
+    .replace(/DEFINE BANKB_PARTICIPANT_NAME\s*=\s*'[^']*'/, "DEFINE BANKB_PARTICIPANT_NAME       = '" + bankbName + "'");
+}
+</script>
 
 **Expected Output:**
 ```text
 PARTICIPANT_NAME  PARTICIPANT_SCHEMA COORDINATOR_NAME      BROKER_NAME MAILBOX_SCHEMA
 ----------------- ------------------ -------------------- ----------- --------------
-CLOUDBANK         ORCHESTRATOR1     CLOUDBANKCOORDINATOR  TEST        BROKER1
-BANKA             BANKA             CLOUDBANKCOORDINATOR  TEST        BROKER1  
-BANKB             BANKB             CLOUDBANKCOORDINATOR  TEST        BROKER1
+CLOUDBANK         ORCHESTRATOR1      CLOUDBANKCOORDINATOR  TEST        BROKER1
+BANKA             BANKA              CLOUDBANKCOORDINATOR  TEST        BROKER1
+BANKB             BANKB              CLOUDBANKCOORDINATOR  TEST        BROKER1
 
 3 rows selected.
 
@@ -708,56 +391,76 @@ BANKB_IN_Q           BANKB_IN_QT          BANKB
 3 rows selected.
 ```
 
+> **Note**: All participants are registered for Java client implementation, so `CALLBACK_SCHEMA` and `CALLBACK_PACKAGE` columns show NULL values.
+
 ![Verify All Participants](./images/lab3-task3-verify-all.png "Successful registration of all three participants")
-
-> **Note**: All participants are registered for Java client implementation, so `CALLBACK_SCHEMA` and `CALLBACK_PACKAGE` columns will show NULL values.
-
-## Task 4: Roles & Permissions
 
 ---
 
-Oracle Database 23ai implements a comprehensive Role-Based Access Control (RBAC) security model for the Saga framework, ensuring that only authorized users can perform specific operations within the distributed transaction ecosystem. The Saga framework utilizes three distinct roles to provide granular control over administrative, participant, and connectivity functions. **`SAGA_ADM_ROLE`** grants full administrative privileges, enabling users to invoke the complete `DBMS_SAGA_ADM` package for initial setup, broker configuration, coordinator management, and participant registration. This role is essential for database administrators who need to establish and maintain the Saga infrastructure across multiple database schemas.
+## Task 4: Roles & Permissions
 
-**`SAGA_PARTICIPANT_ROLE`** is designed specifically for application schemas that will act as participants in Saga transactions, providing the necessary privileges to invoke Saga primitives and interact with the coordination framework during transaction execution. This role ensures that participant services can communicate with coordinators while maintaining security boundaries between different application domains. **`SAGA_CONNECT_ROLE`** facilitates secure remote connectivity for distributed Saga participants, particularly when using database links to connect remote participants to the central Saga infrastructure. This three-tier security model ensures that each component of the Saga ecosystem operates with the minimum required privileges.
+Oracle Database 23ai secures the Saga framework with three roles. **`SAGA_ADM_ROLE`** grants full administrative privileges — the complete `DBMS_SAGA_ADM` package for setup, broker/coordinator management, and participant registration. **`SAGA_PARTICIPANT_ROLE`** lets an application schema invoke Saga primitives and participate in transactions. **`SAGA_CONNECT_ROLE`** enables secure remote connectivity for participants reached via database links. Each schema only gets the minimum role it needs.
 
-### Step 1: View Schema Roles from Lab 2
+- **broker1**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE` (creates the broker and also participates)
+- **orchestrator1**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE` (manages the coordinator, initiates sagas, and hosts the CloudBank participant)
+- **banka / bankb**: `SAGA_PARTICIPANT_ROLE` only (plain Java client participants)
 
-Enter the schema details from Lab 2 to examine the SAGA roles assigned to each schema type. These schemas were configured for Java client implementation in the previous lab:
+### Step 1: Check Role Assignments
+
+Schema names are already fixed from Tasks 1–3, so only the admin password and connection string are needed.
 
 <div class="input-section">
-<strong>Broker Schema:</strong> 
-<input type="text" id="task4-broker-schema" placeholder="<BROKER_SCHEMA>" class="input-field" oninput="updateTask4SchemaQuery()"><br/>
-<strong>Orchestrator Schema:</strong> 
-<input type="text" id="task4-orchestrator-schema" placeholder="<ORCHESTRATOR_SCHEMA>" class="input-field" oninput="updateTask4SchemaQuery()"><br/>
-<strong>BankA Schema:</strong> 
-<input type="text" id="task4-banka-schema" placeholder="<BANKA_SCHEMA>" class="input-field" oninput="updateTask4SchemaQuery()"><br/>
-<strong>BankB Schema:</strong> 
-<input type="text" id="task4-bankb-schema" placeholder="<BANKB_SCHEMA>" class="input-field" oninput="updateTask4SchemaQuery()"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="t4-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateTask4Script()">
 </div>
 
-**Generated Schema Role Query:**
-<pre id="task4-schema-query-container" class="interactive-command">
-<span id="task4-schema-query" class="command-text">-- Query will auto-update based on schema names above</span>
-<button class="copy-btn" onclick="copyToClipboard('task4-schema-query', 'task4-schema-query-container')">Copy</button>
+**Generated Script:**
+<pre id="task4-script-container" class="interactive-command">
+<span id="task4-script" class="command-text">-- =========================================================
+-- CONFIG
+-- =========================================================
+DEFINE ADMIN_PASSWORD = 'Welcome_123#'
+DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+
+-- =========================================================
+-- 1. Connect as admin
+-- =========================================================
+CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+-- =========================================================
+-- 2. Check SAGA role assignments across all Lab 2 schemas
+-- =========================================================
+SELECT grantee, granted_role, admin_option, default_role
+FROM   dba_role_privs
+WHERE  grantee IN ('BROKER1','ORCHESTRATOR1','BANKA','BANKB')
+AND    granted_role LIKE '%SAGA%'
+ORDER  BY grantee, granted_role;</span>
+<button class="copy-btn" onclick="copyToClipboard('task4-script', 'task4-script-container')">Copy</button>
 </pre>
+
+<script>
+function updateTask4Script() {
+  const pw = document.getElementById('t4-admin-password').value || '<DATABASE_ADMIN_PASSWORD>';
+  const tns = document.getElementById('t4-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
+  const el = document.getElementById('task4-script');
+  el.innerText = el.innerText
+    .replace(/ADMIN_PASSWORD = '.*'/, "ADMIN_PASSWORD = '" + pw + "'")
+    .replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
+}
+</script>
 
 **Expected Output:**
 ```text
-GRANTEE       GRANTED_ROLE          ROLE_DESCRIPTION                              ADMIN_OPTION DEFAULT_ROLE
-------------- --------------------- --------------------------------------------- ------------ ------------
-BROKER1       SAGA_ADM_ROLE         Saga Administrator - Broker/Coordinator Management    NO           YES
-BROKER1       SAGA_PARTICIPANT_ROLE Saga Participant - Java Client Implementation         NO           YES
-ORCHESTRATOR1 SAGA_ADM_ROLE         Saga Administrator - Broker/Coordinator Management    NO           YES  
-ORCHESTRATOR1 SAGA_PARTICIPANT_ROLE Saga Participant - Java Client Implementation         NO           YES
-BANKA         SAGA_PARTICIPANT_ROLE Saga Participant - Java Client Implementation         NO           YES
-BANKB         SAGA_PARTICIPANT_ROLE Saga Participant - Java Client Implementation         NO           YES
-```
+GRANTEE       GRANTED_ROLE          ADMIN_OPTION DEFAULT_ROLE
+------------- --------------------- ------------ ------------
+BANKA         SAGA_PARTICIPANT_ROLE NO           YES
+BANKB         SAGA_PARTICIPANT_ROLE NO           YES
+BROKER1       SAGA_ADM_ROLE         NO           YES
+BROKER1       SAGA_PARTICIPANT_ROLE NO           YES
+ORCHESTRATOR1 SAGA_ADM_ROLE         NO           YES
+ORCHESTRATOR1 SAGA_PARTICIPANT_ROLE NO           YES
 
-**Role Assignments Explained:**
-- **Admin Schema**: Full database privileges (not shown in SAGA-specific query)
-- **Broker1**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE` (broker creation and participation)
-- **Orchestrator1**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE` (coordinator management, saga initiation, AND CloudBank participant)
-- **BankA/BankB**: `SAGA_PARTICIPANT_ROLE` only (Java client participants)
+6 rows selected.
+```
 
 ![Schema Role Assignments](./images/lab3-task4-1.png "SAGA role assignments across Lab 2 schemas")
 
@@ -765,56 +468,59 @@ BANKB         SAGA_PARTICIPANT_ROLE Saga Participant - Java Client Implementatio
 
 ## Task 5: Dictionary Views & Monitoring
 
----
+Oracle Database 23ai exposes the Saga framework through dictionary views at three privilege levels: **`DBA_SAGA_*`** (full visibility, DBA-only), **`USER_SAGA_*`** (current schema's own objects), and **`CDB_SAGA_*`** (multitenant/container level). Configuration views like `DBA_SAGA_PARTICIPANTS` show what's registered; runtime views like `DBA_SAGAS` and `DBA_SAGA_DETAILS` track live transactions — we'll use those with real data once a saga actually runs in **Lab 5**.
 
-Oracle Database 23ai provides comprehensive dictionary views for monitoring and managing Saga transactions. These views are organized into different categories for configuration monitoring, runtime tracking, and historical analysis. The Saga framework integrates with Oracle's Advanced Queuing infrastructure, allowing DBAs to monitor message flow, participant status, and transaction lifecycle through standard Oracle dictionary views. **`DBA_SAGA_PARTICIPANTS`** provide administrative visibility into the configured Saga infrastructure, while runtime views like **`DBA_SAGAS`** and **`DBA_SAGA_DETAILS`** track active transaction execution.
+📖 Full list of Saga dictionary views: [Oracle docs — Developing Applications with Oracle Database Saga](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html#GUID-3CA20647-5C14-4EDB-9A62-DE0894FA0338)
 
-### Step 2: Explore Dictionary Views from Admin Schema
+### Step 1: Explore the Participants View
 
-Connect to your admin schema and explore the DBA_ dictionary views that provide comprehensive visibility into Saga operations:
+If you're still connected as `ADMIN` from Task 4, you can skip straight to the query. Otherwise, fill in your credentials again.
 
 <div class="input-section">
-<strong>Admin Username:</strong> 
-<input type="text" id="task5-admin-user" placeholder="<ADMIN_SCHEMA>" value="ADMIN" class="input-field" oninput="updateTask5AdminConnectionCommand()"><br/>
-<strong>Admin Password:</strong> 
-<input type="text" id="task5-admin-password" placeholder="<DATABASE_ADMIN_PASSWORD>" class="input-field" oninput="updateTask5AdminConnectionCommand()"><br/>
-<strong>Connection String:</strong> 
-<input type="text" id="task5-admin-connection-string" placeholder="<DATABASE_CONNECTION_TNS_NAME>" class="input-field" oninput="updateTask5AdminConnectionCommand()"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="t5-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateTask5Script()">
 </div>
 
-**Generated Connection Command:**
-<pre id="task5-admin-connection-command-container" class="interactive-command">
-<span id="task5-admin-connection-command" class="command-text">connect &lt;ADMIN_USERNAME&gt;/&lt;ADMIN_PASSWORD&gt;@'&lt;CONNECTION_STRING&gt;'</span>
-<button class="copy-btn" onclick="copyToClipboard('task5-admin-connection-command', 'task5-admin-connection-command-container')">Copy</button>
+**Generated Script:**
+<pre id="task5-script-container" class="interactive-command">
+<span id="task5-script" class="command-text">-- =========================================================
+-- CONFIG
+-- =========================================================
+DEFINE ADMIN_PASSWORD = 'Welcome_123#'
+DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+
+-- =========================================================
+-- 1. Connect as admin
+-- =========================================================
+CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+-- =========================================================
+-- 2. View all registered Saga participants
+-- =========================================================
+SELECT * FROM DBA_SAGA_PARTICIPANTS;</span>
+<button class="copy-btn" onclick="copyToClipboard('task5-script', 'task5-script-container')">Copy</button>
 </pre>
 
-```sql
-<copy>
--- View all Saga participants
-SELECT * FROM DBA_SAGA_PARTICIPANTS;
-</copy>
-```
+<script>
+function updateTask5Script() {
+  const pw = document.getElementById('t5-admin-password').value || '<DATABASE_ADMIN_PASSWORD>';
+  const tns = document.getElementById('t5-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
+  const el = document.getElementById('task5-script');
+  el.innerText = el.innerText
+    .replace(/ADMIN_PASSWORD = '.*'/, "ADMIN_PASSWORD = '" + pw + "'")
+    .replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
+}
+</script>
 
 **Expected Output:**
 ```text
-PARTICIPANT_NAME PARTICIPANT_SCHEMA COORDINATOR_NAME BROKER_NAME MAILBOX_SCHEMA CALLBACK_SCHEMA CALLBACK_PACKAGE
----------------- ------------------ ---------------- ----------- -------------- --------------- ----------------
-BANKA            BANKA              CLOUDBANKCOORDINATOR BROKER1   BANKA          BANKA           BANKA_SAGA
-BANKB            BANKB              CLOUDBANKCOORDINATOR BROKER1   BANKB          BANKB           BANKB_SAGA
-CLOUDBANK        ORCHESTRATOR1      CLOUDBANKCOORDINATOR BROKER1   ORCHESTRATOR1  ORCHESTRATOR1   CLOUDBANK_SAGA
-```
+PARTICIPANT_NAME PARTICIPANT_SCHEMA COORDINATOR_NAME      BROKER_NAME MAILBOX_SCHEMA CALLBACK_SCHEMA CALLBACK_PACKAGE
+---------------- ------------------ --------------------- ----------- -------------- --------------- ----------------
+BANKA            BANKA              CLOUDBANKCOORDINATOR  BROKER1     BANKA          NULL            NULL
+BANKB            BANKB              CLOUDBANKCOORDINATOR  BROKER1     BANKB          NULL            NULL
+CLOUDBANK        ORCHESTRATOR1      CLOUDBANKCOORDINATOR  BROKER1     ORCHESTRATOR1  NULL             NULL
 
-> **Important Notes about Oracle Saga Dictionary Views:**
->
-> 1. **View Hierarchy Levels**: Oracle provides Saga dictionary views at different privilege levels:
->    - **`DBA_SAGA_`*** views: Database administrator level - full visibility across all schemas
->    - **`USER_SAGA_`*** views: Schema user level - limited to current user's schema objects
->    - **`CDB_SAGA_`*** views: Container database level - for multitenant environments
->
-> 2. **Complete View Reference**: For comprehensive documentation of all available Saga views and their detailed descriptions, refer to the official Oracle documentation:  
->    [Oracle Database 23ai - Developing Applications with Oracle Database Saga](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html#GUID-3CA20647-5C14-4EDB-9A62-DE0894FA0338)
->
-> 3. **Runtime Views**: Additional views like `DBA_SAGAS` and `DBA_SAGA_DETAILS` provide runtime monitoring capabilities. We will explore these views with actual data once we execute a complete Saga transaction flow in **Lab 5**.
+3 rows selected.
+```
 
 ![Dictionary Views Overview](./images/lab3-task5-1.png "Saga dictionary views and monitoring capabilities")
 
@@ -1470,7 +1176,7 @@ function updateVerificationCommands() {
     
     const verifyBrokerCommand = `-- Check the new broker
 SELECT broker_name, owner, queue_partitions, version, created_date
-FROM ALL_SAGA_BROKERS
+FROM USER_SAGA_BROKERS
 WHERE broker_name = ${quotedBrokerName};`;
     
     const verifyBrokerElement = document.getElementById('verify-broker-command');
@@ -1620,7 +1326,7 @@ function updateCoordinatorVerificationCommands() {
     
     const verifyCoordinatorCommand = `-- Check the new coordinator
 SELECT coordinator_name, coordinator_schema, broker_name, queue_partitions, listener_count
-FROM ALL_SAGA_COORDINATORS
+FROM USER_SAGA_COORDINATORS
 WHERE coordinator_name = ${quotedCoordinatorName};`;
     
     const verifyCoordinatorElement = document.getElementById('verify-coordinator-command');

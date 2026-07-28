@@ -2,23 +2,13 @@
 
 ## **Introduction**
 
-Before you can develop and run Oracle Sagas, you need a properly configured environment. In this lab you will:
-
-1. Provision an Oracle Autonomous Database instance.
-2. Create the necessary database users and grant privileges.
-3. Configure your OCI network for secure connectivity.
-4. Provision a Virtual Machine to host your demo application containers.
-5. Connect to the Autonomous Database using Cloud Shell and SQLcl.
-
-We'll continue to use the **CloudBank** money-transfer application as our running example. By the end of this lab, you'll have a fully ready environment to deploy and test Oracle Sagas.
+This lab prepares an Autonomous Database, OCI network, compute instance, and Cloud Shell for the CloudBank demo application.
 
 - Estimated time: XX minutes
 
 Watch the video below for a quick walk-through of the lab.
 
-<!-- [Prepare your environment](videohub:1_nw8ufqzp:medium) -->
-
-[Prepare your environment](videohub::medium)
+[Prepare your environment](videohub:1_nw8ufqzp:medium)
 
 ### Objectives
 
@@ -39,7 +29,7 @@ By completing this lab, you will be able to:
 
 ---
 
-**Note:** If you plan to use an Oracle-provided environment, you can skip the Task 1 through Task 4.
+**Note:** If you are using an Oracle-provided environment, skip Tasks 1–4.
 
 ### **Step 1: Access Oracle Cloud Infrastructure Console**
 
@@ -71,7 +61,7 @@ On the **Create Autonomous Database** page, provide basic information for your d
     <copy>Oracle-Saga-Demo</copy>
     ```
 
-- **Database Name** - Enter _`OracleSagaDemo`_, it's important to use letters and numbers only, starting with a letter (the maximum length is 14 characters and Underscores are not supported)
+- **Database Name** - Enter _`OracleSagaDemo`_. Names must begin with a letter, contain only letters and numbers, and be no longer than 14 characters.
 
      ```
      <copy>OracleSagaDemo</copy>
@@ -96,11 +86,7 @@ Configure the database:
 
 Create administrator credentials:
 
-- **Password** and **Confirm Password** - Specify a password for the ADMIN database user and jot it down. The password must be between 12 and 30 characters long and must include at least one uppercase letter, one lowercase letter, and one numeric character. It cannot contain your username or the double quote (") character. For example : _`Welcome_123#`_
-
-    ```
-    <copy>Welcome_123#</copy>
-    ```
+- **Password** and **Confirm Password** - Enter and save a password that meets the console requirements. For example : _`Welcome_123#`_
 
 ### **Step 7: Configure Network Access**
 
@@ -447,15 +433,6 @@ After adding all six rules, click **Add Ingress Rules** to save the configuratio
 
 ![Save Ingress Rules](./images/lab2-task3-13.png "Click Add Ingress Rules to save")
 
-**Expected Output**:
-
-- VCN named `Oracle-Saga-VCN` with CIDR 10.0.0.0/16
-- Public subnet (10.0.0.0/24) with internet access
-- SSH access (port 22) automatically configured by wizard
-- CloudBank application ports (8081-8085) manually added
-- Zipkin distributed tracing port (9411) manually added
-- Proper routing for internet connectivity
-
 ### CloudBank Application and Monitoring Port Usage
 
 - **Port 22 (SSH)**: Automatically opened by VCN wizard for server management
@@ -466,14 +443,7 @@ After adding all six rules, click **Add Ingress Rules** to save the configuratio
 - **Port 8085**: Swagger UI - required for API documentation and testing
 - **Port 9411**: Zipkin UI - for distributed tracing and monitoring of demo application
 
-### Zipkin Integration Benefits
-
-- **Distributed Tracing**: Track saga execution across multiple microservices
-- **Performance Monitoring**: Identify bottlenecks in saga workflows
-- **Debugging Support**: Visualize transaction flows and error paths
-- **Real-time Insights**: Monitor active saga transactions
-
-> **Note**: Ports 8082 and 8083 (individual bank services) provide direct access to bank APIs for testing and debugging. Port 9411 (Zipkin) is used for demo application observability and is not a requirement of Oracle Sagas itself - it's an optional monitoring tool to enhance the demo experience and provide insights into distributed transaction flows.
+> **Note:** Ports 8082, 8083, and 9411 are optional for direct service testing and Zipkin observability.
 
 ## Task 4: Provision a Compute Instance for CloudBank
 
@@ -508,56 +478,28 @@ Enter the basic instance details:
 
 ![Instance Basic Details](./images/lab2-task4-3.png "Enter instance name, compartment, and placement details")
 
-### **Step 4: Access Image Selection**
+### **Step 4: Select an Ubuntu Image**
 
-In the **Image and shape** section, click **Edit** next to the image details to change from the default Oracle Linux image to Ubuntu.
+In the **Image and shape** section, click **Edit** next to the image details. In the **Browse All Images** dialog, select **Ubuntu**, then choose **Canonical Ubuntu 24.04 Minimal**. Review the default username (`ubuntu`) and click **Select Image**.
 
 ![Edit Image](./images/lab2-task4-4.png "Click Edit to change the default image")
 
-### **Step 5: Browse Available Images**
-
-In the Browse All Images dialog:
-
-- Click on **Ubuntu** from the list of available operating systems
-- You'll see various Ubuntu versions available
-
 ![Browse Images](./images/lab2-task4-5.png "Select Ubuntu from available operating systems")
-
-### **Step 6: Select Ubuntu Image Version**
-
-- Choose **Canonical Ubuntu 24.04 Minimal** (recommended for minimal resource usage)
-- Review the image details including the default username (`ubuntu`)
-- Click **Select Image** to confirm your choice
 
 ![Select Ubuntu Version](./images/lab2-task4-6.png "Select Ubuntu 24.04 Minimal and click Select Image")
 
-### **Step 7: Access Shape Configuration**
+### **Step 5: Select a Compute Shape**
 
-Back on the main instance creation page, click **Change Shape** under the Shape to modify the compute resources.
+Click **Change Shape**. In **Specialty and previous generation**, select **VM.Standard.E2.1.Micro** (1 OCPU, 1 GB RAM, and 0.48 Gbps network bandwidth), then click **Select Shape**.
 
 ![Edit Shape](./images/lab2-task4-7.png "Click Edit to change the instance shape")
 
-### **Step 8: Choose Shape Series**
-
-In the Browse All Shapes dialog:
-
-- Click on **Specialty and previous generation** to access free-tier eligible shapes
-- This section contains shapes suitable for development and testing
-
 ![Browse Shapes](./images/lab2-task4-8.png "Click Specialty and previous generation")
-
-### **Step 9: Select Free Tier Shape**
-
-- Select **VM.Standard.E2.1.Micro** which provides:
- - **OCPUs**: 1 OCPU (Always Free eligible)
- - **Memory**: 1 GB RAM
- - **Network Bandwidth**: 0.48 Gbps
-- Click **Select Shape** to confirm
 
 ![Select Micro Shape](./images/lab2-task4-9.png "Select VM.Standard.E2.1.Micro for free tier")
 
 
-### **Step 10: Configure Cloud-Init Script**
+### **Step 6: Configure Cloud-Init Script**
 
 In the **Advanced options** tab under **Management**:
 
@@ -566,84 +508,71 @@ In the **Advanced options** tab under **Management**:
 
 ![Access Cloud-Init](./images/lab2-task4-13.png "Select Paste cloud-init script option")
 
-### **Step 11: Add Initialization Script**
+### **Step 7: Add Initialization Script**
 
-Paste the following cloud-init script that will:
+Paste the following cloud-init script. It will:
 
 - Update package lists
 - Install Podman container runtime
 - Pre-pull required container images in parallel for faster deployment
 
-```
-<copy>#!/bin/bash
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
+
 echo "Starting CloudBank environment setup..."
-start_time=$SECONDS
 
-# Update package lists only
 apt-get update -y
-
-# Install required packages
 apt-get install -y podman curl wget pipx
 
-# Configure podman for ubuntu user
-echo "Configuring Podman for ubuntu user..."
+systemctl enable --now podman.socket
 
-# Add ubuntu user to necessary groups
-usermod -aG podman ubuntu
-
-# Enable and start podman socket for system-wide access
-systemctl enable podman.socket
-systemctl start podman.socket
-
-# Configure podman-compose for ubuntu user
-sudo -u ubuntu bash << 'EOF'
-# Set up environment for ubuntu user
-export PATH=/home/ubuntu/.local/bin:$PATH
-pipx ensurepath
+sudo -u ubuntu env PATH="/home/ubuntu/.local/bin:$PATH" bash <<'EOF'
 pipx install podman-compose
 
-# Pre-pull required container images in parallel for faster setup
-echo "Pulling container images in parallel as ubuntu user..."
-podman pull ghcr.io/oracle/oraclelinux:8 &
-podman pull container-registry.oracle.com/database/sqlcl:latest &
-podman pull docker.io/swaggerapi/swagger-ui:v5.20.7 &
-podman pull docker.io/library/maven:3.8.6-openjdk-11 &
-podman pull ghcr.io/openzipkin/zipkin:latest &
-podman pull container-registry.oracle.com/database/free:latest &
+pull_image() {
+  podman pull "$1"
+}
 
-# Wait for all parallel downloads to complete
-echo "Waiting for all container downloads to complete..."
+pull_image ghcr.io/oracle/oraclelinux:8 &
+pull_image container-registry.oracle.com/database/sqlcl:latest &
+pull_image docker.io/swaggerapi/swagger-ui:v5.20.7 &
+pull_image docker.io/library/maven:3.8.6-openjdk-11 &
+pull_image ghcr.io/openzipkin/zipkin:latest &
+pull_image container-registry.oracle.com/database/free:latest &
 wait
 
-# Create directories for CloudBank
 mkdir -p /home/ubuntu/cloudbank
-
 EOF
 
-# Ensure proper ownership
-chown -R ubuntu:ubuntu /home/ubuntu/
-
-echo "CloudBank environment setup complete for ubuntu user!"
-end_time=$SECONDS
-elapsed_seconds=$((end_time - start_time))
-echo "Elapsed time: ${elapsed_seconds} seconds"</copy>
+chown -R ubuntu:ubuntu /home/ubuntu/cloudbank
+echo "CloudBank environment setup complete."
+</copy>
 ```
+
+**What the script does:**
+
+- **`apt-get`** updates package metadata and installs Podman and supporting tools.
+- **`systemctl enable --now podman.socket`** enables the Podman API socket immediately and on future boots.
+- **`pull_image`** pulls the required container images in parallel; **`wait`** finishes only after every pull succeeds.
+- **`mkdir`** creates the CloudBank working directory for the `ubuntu` user.
 
 Click next to move on to the security section.
 
 ![Add Cloud-Init Script](./images/lab2-task4-14.png "Paste cloud-init script for automated setup")
 
-### **Step 12: Configure Security Settings**
+### **Step 8: Configure Security Settings**
 
 In the Security section, keep all default boot volume encryption settings as they are and click **Next** to continue to networking configuration.
 
-### **Step 13: Configure Primary Network Interface**
+### **Step 9: Configure Primary Network Interface**
 
 In the **Primary VNIC Information** section, configure the networking:
 
 - **Primary VNIC Name**: `oracle-saga-vnic`
-- **Virtual Cloud Network in [Compartment]**: Under Primary network, choose Select existing Virtual cloud network floowed by appropriate compartment and Select **Oracle-Saga-VCN** fro Virtual cloud network
-- **Subnet in [Compartment]**: Under Subnet, choose Select existing subnet followed by choosing appropriate compartment foolowed by choosing the **public subnet** (should show as public-subnet-Oracle-Saga-VCN)
+- **Virtual Cloud Network in [Compartment]**: Under **Primary network**, select **Choose existing virtual cloud network**, choose the appropriate compartment, then select **Oracle-Saga-VCN**.
+- **Subnet in [Compartment]**: Under **Subnet**, select **Choose existing subnet**, choose the appropriate compartment, then select the public subnet (shown as `public-subnet-Oracle-Saga-VCN`).
 - **Assign a public IPv4 address**: Ensure this is **checked** for internet access
 
     ```
@@ -652,7 +581,7 @@ In the **Primary VNIC Information** section, configure the networking:
 
 ![Configure Primary VNIC](./images/lab2-task4-10.png "Configure VNIC name, VCN, and subnet settings")
 
-### **Step 14: Generate SSH Key Pair**
+### **Step 10: Generate SSH Key Pair**
 
 In the **Add SSH keys** section, set up SSH authentication for secure instance access:
 
@@ -668,12 +597,12 @@ In the **Add SSH keys** section, set up SSH authentication for secure instance a
 
 ![Generate SSH Keys](./images/lab2-task4-11.png "Generate SSH key pair and download both keys")
 
-### **Step 15: Configure Boot Volume Storage**
+### **Step 11: Configure Boot Volume Storage**
 
 Click **Next** to access the Boot volume section. Accept the default storage settings (boot volume size and performance tier) and click **Next** to proceed to the final review.
 
 
-### **Step 16: Review Instance Configuration**
+### **Step 12: Review Instance Configuration**
 
 Scroll up to review all your configuration settings:
 
@@ -686,13 +615,13 @@ Scroll up to review all your configuration settings:
 
 ![Review Configuration](./images/lab2-task4-15.png "Review all instance configuration settings")
 
-### **Step 17: Create the Instance**
+### **Step 13: Create the Instance**
 
 After reviewing all settings, click **Create** to start the instance provisioning process.
 
 ![Create Instance Final](./images/lab2-task4-16.png "Click Create to provision the instance")
 
-### **Step 18: Monitor Instance Provisioning**
+### **Step 14: Monitor Instance Provisioning**
 
 You'll be redirected to the instance details page. Click the details tab and monitor the **State**:
 
@@ -702,7 +631,7 @@ You'll be redirected to the instance details page. Click the details tab and mon
 
 ![Instance Provisioning](./images/lab2-task4-17.png "Monitor instance state during provisioning")
 
-### **Step 19: Record Instance Public IP**
+### **Step 15: Record Instance Public IP**
 
 Once the instance shows **Running** state, copy the public IP address from the instance details and enter it in the form below for use in subsequent tasks:
 
@@ -721,17 +650,6 @@ Once the instance shows **Running** state, copy the public IP address from the i
 The cloud-init status verification will be covered when we connect to the compute instance in the next task.
 
 ![Instance Running](./images/lab2-task4-18.png "Instance running with IP addresses assigned")
-
-**Expected Output**:
-
-- ✅ Ubuntu 24.04 compute instance successfully created and running
-- ✅ Instance named `oracle-saga-compute-instance` in your compartment
-- ✅ Public IP address assigned for internet connectivity
-- ✅ Private IP address for VCN internal communication
-- ✅ SSH key pair generated and downloaded for secure access
-- ✅ Podman container runtime installed and configured
-- ✅ Required container images pre-pulled for CloudBank deployment
-- ✅ Instance attached to Oracle-Saga-VCN public subnet
 
 ### Instance Environment Details
 
@@ -757,7 +675,7 @@ Your newly created instance includes:
 
 ---
 
-In this task, you'll use Oracle Cloud Infrastructure's **Cloud Shell** - a browser-based terminal service - to establish secure connections to both your Autonomous Database and Ubuntu compute instance. You'll download and prepare the CloudBank demo application, generate database connection credentials, verify connectivity, and prepare your cloud environment for the complete application deployment using interactive command builders and automated setup tools.
+Use Cloud Shell to prepare the CloudBank application, generate the database wallet, connect to Autonomous Database, and verify the compute instance.
 
 ### **Step 1: Access Cloud Shell**
 
@@ -778,7 +696,7 @@ The provisioning process takes 30-60 seconds. Once ready, you'll see a command p
 
 ### **Step 3: Download CloudBank Demo Application**
 
-Download the complete CloudBank application package to your local machine. This package contains:
+Download the CloudBank application package to your computer, then upload it to Cloud Shell. It contains:
 - Microservice source code and configuration files
 - Database setup scripts and schema definitions  
 - Docker compose files for container orchestration
@@ -805,19 +723,24 @@ Upload the CloudBank application package and your SSH keys to Cloud Shell. Note 
 
 ### **Step 5: Extract CloudBank Application**
 
-Unzip the CloudBank application package to access the source code and configuration files:
+Extract the CloudBank application package and inspect its contents:
 
-```
-<copy>unzip oracle-saga-cloudbank.zip
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
+
+unzip oracle-saga-cloudbank.zip
 cd oracle-saga-cloudbank
-ls -la</copy>
+ls -la
+</copy>
 ```
 
-This will extract:
-- **adbsSetup/**: Database setup scripts and wallet storage directory
-- **CloudBank/**: Microservice source code (banka, bankb, orchestrator, Website)
-- **swagger-ui-config/**: API documentation interface
-- **osagaAdbsSetup.yaml**: Configuration file for the setup
+**What the script does:**
+
+- **`unzip`** extracts the CloudBank application package.
+- **`cd`** moves into the extracted application directory.
+- **`ls -la`** lists the extracted files, including `adbsSetup/`, `CloudBank/`, `swagger-ui-config/`, and `osagaAdbsSetup.yaml`.
 
 ![Extract CloudBank Application](./images/lab2-task5-5.png "Extract and explore CloudBank files")
 
@@ -870,13 +793,13 @@ Extract the wallet files in the adb_wallet directory using the command below (up
 
 ### **Step 9: Set `TNS_ADMIN` Environment Variable**
 
-First, get your current directory path, then set the TNS_ADMIN variable:
+First, get your current directory path:
 
 ```
 <copy>pwd</copy>
 ```
 
-Then use the interactive form to set your TNS_ADMIN path:
+Use that path in the interactive form to set `TNS_ADMIN`:
 
 <div class="input-section">
 <strong>Current Directory Path:</strong> <input type="text" id="tns-path" placeholder="/home/username" class="input-field" oninput="updateTnsCommand()">
@@ -894,26 +817,12 @@ echo $TNS_ADMIN</span>
 
 ### **Step 10: Connect to ADB using Interactive Builder**
 
-First, get your database connection string from the Autonomous Database details page:
-- Click **Database Connection**
-- Copy the connection string for **&lt;DATABASE\_NAME&gt;_medium**
-
-Then use the form below to generate your database connection command:
+Use the fixed connection string and enter the ADMIN password created in Task 1:
 
 <div class="input-section">
-<strong>Connection String:</strong> 
-<div style="display: contents; align-items: center; gap: 10px; margin: 5px 0;">
-<input type="text" id="adb-connection-string" placeholder="oraclesagademo_medium" class="input-field" oninput="updateTask5ConnectionCommand()" style="flex: 1;">
-<button onclick="saveConnectionString()" class="save-btn-small">Save</button>
-<button onclick="deleteConnectionString()" class="delete-btn-small">Delete</button>
-<button onclick="clearConnectionString()" class="clear-btn-small">Clear</button>
-</div><br/>
+<strong>Connection String:</strong> <input type="text" id="adb-connection-string" value="oraclesagademo_medium" class="input-field" disabled><br/>
 <strong>Username:</strong> <input type="text" id="task5-db-username" value="ADMIN" class="input-field" disabled><br/>
-<strong>Password:</strong> <input type="text" id="task5-db-password" value="admin123#" class="input-field" disabled>
-</div>
-
-<div id="connection-string-save-status" style="display:none;" class="save-status">
-<span id="connection-string-save-message"></span>
+<strong>Password:</strong> <input type="password" id="task5-db-password" placeholder="Enter the ADMIN password from Task 1" class="input-field" oninput="updateTask5ConnectionCommand()">
 </div>
 
 **Generated Command:**
@@ -947,13 +856,24 @@ Exit SQLcl to return to Cloud Shell:
 
 ### **Step 13: Set SSH Key Permissions**
 
-Secure your uploaded SSH keys with proper permissions:
+Secure your uploaded SSH keys and verify their permissions:
 
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
+
+chmod 600 -- *.key
+chmod 644 -- *.pub
+ls -la -- *.key *.pub
+</copy>
 ```
-<copy>chmod 600 *.key
-chmod 644 *.pub
-ls -la *</copy>
-```
+
+**What the script does:**
+
+- **`chmod 600`** restricts private-key access to your user.
+- **`chmod 644`** makes public keys readable without exposing private-key contents.
+- **`ls -la`** verifies the key files and their permissions.
 
 ![Set Key Permissions](./images/lab2-task5-14.png "Set correct SSH key permissions")
 
@@ -987,25 +907,45 @@ Use the form below to generate your SSH command:
 
 ### **Step 15: Verify VM Environment**
 
-Once connected to your VM, verify the cloud-init setup completed:
+Once connected to your VM, verify that cloud-init setup completed:
 
-```
-<copy>podman --version
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
+
+podman --version
 podman images
-ls -la /home/ubuntu/cloudbank</copy>
+ls -la /home/ubuntu/cloudbank
+</copy>
 ```
+
+**What the script does:**
+
+- **`podman --version`** confirms that Podman is installed.
+- **`podman images`** shows the container images pulled during initialization.
+- **`ls -la`** confirms that the CloudBank working directory exists.
 
 ![Verify VM Setup](./images/lab2-task5-16.png "Verify Podman and CloudBank environment")
 
 ### **Step 16: Exit VM and Explore CloudBank Code**
 
-Exit the VM SSH session and explore the CloudBank application structure:
+Exit the VM SSH session with `exit`. Back in Cloud Shell, inspect the CloudBank application directory:
 
-```
-<copy>exit
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
+
 cd ~/oracle-saga-cloudbank
-ls -la</copy>
+ls -la
+</copy>
 ```
+
+**What the script does:**
+
+- **`cd`** moves to the CloudBank application directory in Cloud Shell.
+- **`ls -la`** lists the application files and directories.
 
 ![Explore CloudBank](./images/lab2-task5-17.png "Explore CloudBank application structure")
 
@@ -1028,12 +968,7 @@ In the editor, navigate through the CloudBank directory structure:
 
 ### **Step 19: Configure Tab Layout for Better Workflow**
 
-When using both CloudShell and Code Editor, it's helpful to have them in tabs for easy switching:
-
-- If your CloudShell and Code Editor are not already in tabs mode, click on **Actions** (to the left of Developer Tools section)
-- Choose **Tabs** from the dropdown menu  
-- You'll now see separate tabs for **CloudShell** and **Code Editor**
-- This makes it easy to switch between database operations and code editing in future labs
+Optionally select **Actions** → **Tabs** to switch easily between Cloud Shell and the editor.
 
 ![Configure Tabs](./images/configure-tabs.png "Configure tabs for better workflow")
 
@@ -2358,15 +2293,6 @@ function initializeCloudBank() {
        const task5PasswordField = document.getElementById('task5-db-password');
        const adbConnectionField = document.getElementById('adb-connection-string');
        const connectionStringMessageEl = document.getElementById('connection-string-save-message');
-       
-       if (savedConnectionString) {
-           if (task5ConnectionField) {
-               task5ConnectionField.value = savedConnectionString;
-           }
-           if (adbConnectionField) {
-               adbConnectionField.value = savedConnectionString;
-           }
-       }
        
        const isStep8Visible = adbConnectionField && adbConnectionField.offsetParent !== null;
        const hasConnectionStringData = savedConnectionString;

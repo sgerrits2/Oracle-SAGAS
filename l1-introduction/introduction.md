@@ -6,7 +6,7 @@ Modern software systems are increasingly composed of distributed microservices t
 
 Traditional approaches such as **Two-Phase Commit (2PC)** are often heavyweight and difficult to scale, particularly for long-running transactions. Moreover, they can introduce performance bottlenecks due to locks and tight coordination across services. To address these issues, the **Saga Pattern** has emerged as a reliable alternative for managing **long-running, distributed transactions (LRA)**.
 
-In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** make implementing this pattern seamless inside Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from one bank to another, such as from **Bank A to Bank B**, involving account debit, credit, validations, and failure handling.
+In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** make implementing this pattern seamless inside Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from **BankChicago to BankCDMX**, involving account debit, credit, validations, and failure handling.
 
 * Estimated Time: 20 minutes
 
@@ -28,15 +28,15 @@ Before starting this lab, ensure you have:
 
 ---
 
-Let us imagine the **CloudBank** application. A user initiates a transfer from **Bank A** to **Bank B**. Internally, the system must:
+Let us imagine the **CloudBank** application. A user initiates a transfer from **BankChicago** to **BankCDMX**. Internally, the system must:
 
 1. Validate that the source account has enough balance.
-2. Debit the amount from Bank A's account.
-3. Send a message or trigger to Bank B.
-4. Credit the destination account in Bank B.
+2. Debit the amount from the BankChicago account.
+3. Send a message or trigger to BankCDMX.
+4. Credit the destination account in BankCDMX.
 5. Log the transaction and notify the user.
 
-If any of these steps fail—say, the network between Bank A and Bank B goes down, or the credit to Bank B fails—**data inconsistency** could arise. For example, the amount could be debited from Bank A, but not credited to Bank B.
+If any of these steps fail—say, the network between BankChicago and BankCDMX goes down, or the credit to BankCDMX fails—**data inconsistency** could arise. For example, the amount could be debited from BankChicago, but not credited to BankCDMX.
 
 Traditional 2PC would try to lock both databases until the entire operation completes. This can:
 
@@ -353,11 +353,11 @@ const questions = [
     correct: 1
   },
   {
-    question: "Imagine a failure while crediting Bank B in CloudBank. What should ideally happen?",
+    question: "Imagine a failure while crediting BankCDMX in CloudBank. What should ideally happen?",
     options: [
       "Ignore the error",
       "Restart the whole database",
-      "Refund the amount by compensating the debit from Bank A",
+      "Refund the amount by compensating the debit from BankChicago",
       "Ask the user to retry after some time"
     ],
     correct: 2

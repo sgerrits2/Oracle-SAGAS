@@ -31,7 +31,13 @@ This LiveLab, **Oracle Sagas: Simplifying Distributed Application Development**,
     - Use Postman or Swagger to test APIs, simulate normal transactions, failure handling, and crash recovery.
     - Monitor and validate saga states and compensating actions in real time.
 
-6. **Advanced and Extended Labs (Optional)**
+6. **Terminate and/or Cleanup**
+    - Stop Podman services.
+    - Clean up configuration files.
+    - Terminate OCI compute and database resources (if applicable).
+    - Verify that your environment has been fully released.
+
+7. **Advanced and Extended Labs (Optional)**
     - Dive deeper into PL/SQL saga procedures, compensation mechanisms, and troubleshooting strategies.
     - Explore polyglot workflows combining Java initiators with PL/SQL participant logic.
     - Apply lessons learned to real-world distributed transaction requirements.

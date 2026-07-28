@@ -4,9 +4,9 @@
 
 Modern software systems are increasingly composed of distributed microservices that operate across multiple databases, modules, and services. Ensuring **data consistency** in such distributed systems is a significant challenge, especially when operations span multiple steps or services that can fail independently.
 
-Traditional approaches such as **Two-Phase Commit (2PC)** are often heavyweight and difficult to scale, particularly for long-running transactions. Moreover, they can introduce performance bottlenecks due to locks and tight coordination across services. To address these issues, the **Saga Pattern** has emerged as a reliable alternative for managing **long-running, distributed transactions (LRA)**.
+Traditional approaches such as **Two-Phase Commit (2PC)** are often heavyweight and difficult to scale, particularly for long-running transactions. Moreover, they can introduce performance bottlenecks due to locks and tight coordination across services. To address these issues, the **Saga Pattern** has emerged as a reliable alternative for managing **long-running, distributed transactions**.
 
-In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** make implementing this pattern seamless inside Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from **BankChicago to BankCDMX**, involving account debit, credit, validations, and failure handling.
+In this lab, we will explore the foundations of distributed transaction challenges, the Saga pattern, and how **Oracle Sagas** make implementing this pattern seamless inside Oracle Database. We’ll use the **CloudBank application** as our running example throughout the lab. This application models a simple yet realistic scenario: transferring money from one bank to another, such as from **BankChicago to BankMex**, involving account debit, credit, validations, and failure handling.
 
 * Estimated Time: 20 minutes
 
@@ -28,15 +28,15 @@ Before starting this lab, ensure you have:
 
 ---
 
-Let us imagine the **CloudBank** application. A user initiates a transfer from **BankChicago** to **BankCDMX**. Internally, the system must:
+Let us imagine the **CloudBank** application. A user initiates a transfer from **BankChicago** to **BankMex**. Internally, the system must:
 
 1. Validate that the source account has enough balance.
-2. Debit the amount from the BankChicago account.
-3. Send a message or trigger to BankCDMX.
-4. Credit the destination account in BankCDMX.
+2. Debit the amount from BankChicago's account.
+3. Send a message or trigger to BankMex.
+4. Credit the destination account in BankMex.
 5. Log the transaction and notify the user.
 
-If any of these steps fail—say, the network between BankChicago and BankCDMX goes down, or the credit to BankCDMX fails—**data inconsistency** could arise. For example, the amount could be debited from BankChicago, but not credited to BankCDMX.
+If any of these steps fail—say, the network between BankChicago and BankMex goes down, or the credit to BankMex fails—**data inconsistency** could arise. For example, the amount could be debited from BankChicago, but not credited to BankMex.
 
 Traditional 2PC would try to lock both databases until the entire operation completes. This can:
 
@@ -96,6 +96,29 @@ Oracle Sagas allow developers to:
 - Use declarative annotations in Java or the `DBMS_SAGA` PL/SQL package.
 - Monitor saga execution states.
 - Scale across PDBs or databases using TEQ and DB links.
+
+The diagram below illustrates this architecture: an Initiator Service starts the saga, the Saga Coordinator orchestrates execution, and each participant service can compensate independently if a step fails.
+
+![Oracle Saga Pattern](./images/OracleSagas.svg "Oracle Saga Pattern")
+
+<style>
+p:has(figure > img[alt="Oracle Saga Pattern"]),
+p:has(figure > img[alt="Oracle Saga Benefits"]) {
+  display: flex;
+  justify-content: center;
+}
+
+figure:has(> img[alt="Oracle Saga Pattern"]),
+figure:has(> img[alt="Oracle Saga Benefits"]) {
+  margin: 0;
+}
+
+img[alt="Oracle Saga Pattern"],
+img[alt="Oracle Saga Benefits"] {
+  width: 600px !important;
+  max-width: 100% !important;
+}
+</style>
 
 ### Key Features:
 
@@ -353,7 +376,7 @@ const questions = [
     correct: 1
   },
   {
-    question: "Imagine a failure while crediting BankCDMX in CloudBank. What should ideally happen?",
+    question: "Imagine a failure while crediting BankMex in CloudBank. What should ideally happen?",
     options: [
       "Ignore the error",
       "Restart the whole database",

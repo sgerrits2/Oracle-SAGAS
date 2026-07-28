@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1080" viewBox="0 0 900 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Oracle Sagas representative image</title>
+  <desc id="desc">A dark deck-friendly representative image for Oracle Sagas showing an initiator, Saga Coordinator, context propagation, participant services, local transactions, completion, and compensation.</desc>
+  <defs>
+    <radialGradient id="coreGlow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#c74634" stop-opacity="0.42"/>
+      <stop offset="58%" stop-color="#2dd4bf" stop-opacity="0.10"/>
+      <stop offset="100%" stop-color="#050608" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="coreFill" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#2a1411"/>
+      <stop offset="52%" stop-color="#121e27"/>
+      <stop offset="100%" stop-color="#0c1118"/>
+    </linearGradient>
+    <marker id="arrowWarm" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#f2e8d5"/>
+    </marker>
+    <marker id="arrowGreen" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#86efac"/>
+    </marker>
+    <marker id="arrowBlue" markerWidth="12" markerHeight="12" refX="10" refY="6" orient="auto" markerUnits="strokeWidth">
+      <path d="M2,2 L10,6 L2,10 Z" fill="#67a8ff"/>
+    </marker>
+    <filter id="softShadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="14" stdDeviation="17" flood-color="#000000" flood-opacity="0.34"/>
+    </filter>
+    <style>
+      .bg { fill: #050608; }
+      .title { font: 800 44px Arial, Helvetica, sans-serif; fill: #f7f2ea; letter-spacing: 0; }
+      .subtitle { font: 600 20px Arial, Helvetica, sans-serif; fill: #bbc3cf; letter-spacing: 0; }
+      .eyebrow { font: 800 14px Arial, Helvetica, sans-serif; fill: #ffb4a8; letter-spacing: .12em; }
+      .label { font: 800 25px Arial, Helvetica, sans-serif; fill: #f7f2ea; letter-spacing: 0; }
+      .small { font: 600 17px Arial, Helvetica, sans-serif; fill: #bbc3cf; letter-spacing: 0; }
+      .tiny { font: 800 13px Arial, Helvetica, sans-serif; fill: #99a6b7; letter-spacing: 0; }
+      .card { fill: #10151c; stroke: #384252; stroke-width: 2; rx: 18; filter: url(#softShadow); }
+      .participant { fill: #111722; stroke: #435066; stroke-width: 2; rx: 18; filter: url(#softShadow); }
+      .core { fill: url(#coreFill); stroke: #c74634; stroke-width: 3; filter: url(#softShadow); }
+      .core-ring { fill: none; stroke: #c74634; stroke-width: 3; opacity: .72; }
+      .green { fill: #86efac; }
+      .blue { fill: #67a8ff; }
+      .amber { fill: #ffd166; }
+      .chip { fill: #202938; stroke: #657083; stroke-width: 2; }
+      .chip-text { font: 800 19px Arial, Helvetica, sans-serif; fill: #f7f2ea; letter-spacing: 0; }
+      .pill { fill: #182332; stroke: #465366; stroke-width: 1.5; rx: 11; }
+      .pill-text { font: 800 13px Arial, Helvetica, sans-serif; fill: #d8e1ed; letter-spacing: 0; }
+      .flow { fill: none; stroke: #f2e8d5; stroke-width: 4; stroke-linecap: round; marker-end: url(#arrowWarm); }
+      .complete { fill: none; stroke: #86efac; stroke-width: 4; stroke-linecap: round; marker-end: url(#arrowGreen); }
+      .compensate { fill: none; stroke: #67a8ff; stroke-width: 4; stroke-linecap: round; stroke-dasharray: 13 11; marker-end: url(#arrowBlue); }
+      .divider { stroke: #334155; stroke-width: 2; }
+    </style>
+  </defs>
+
+  <rect class="bg" width="900" height="1080"/>
+  <circle cx="450" cy="520" r="340" fill="url(#coreGlow)"/>
+
+  <text class="eyebrow" x="70" y="72">DISTRIBUTED TRANSACTION PATTERN</text>
+  <text class="title" x="70" y="122">Oracle Sagas</text>
+  <text class="subtitle" x="72" y="154">Long-running workflow with complete-or-compensate outcomes</text>
+
+  <rect class="card" x="125" y="210" width="650" height="86"/>
+  <text class="label" x="166" y="262">Initiator Service</text>
+  <text class="small" x="480" y="252">starts and orchestrates Saga</text>
+  <text class="tiny" x="535" y="275">business request + context</text>
+
+  <g transform="translate(450 500)">
+    <circle r="118" class="core-ring"/>
+    <path class="core" d="M0,-118 L102,-59 L102,59 L0,118 L-102,59 L-102,-59 Z"/>
+    <text class="label" x="-36" y="-10">Saga</text>
+    <text class="label" x="-76" y="24">Coordinator</text>
+  </g>
+
+  <path class="flow" d="M450 296 V382"/>
+
+  <rect class="participant" x="70" y="390" width="238" height="116"/>
+  <circle cx="118" cy="448" r="25" class="chip"/>
+  <text class="chip-text" x="107" y="456">A</text>
+  <text class="label" x="158" y="438">Service A</text>
+  <text class="small" x="158" y="466">local transaction</text>
+  <rect class="pill" x="158" y="480" width="116" height="26"/>
+  <text class="pill-text" x="178" y="498">compensate</text>
+
+  <rect class="participant" x="592" y="390" width="238" height="116"/>
+  <circle cx="640" cy="448" r="25" class="chip"/>
+  <text class="chip-text" x="629" y="456">B</text>
+  <text class="label" x="680" y="438">Service B</text>
+  <text class="small" x="680" y="466">local transaction</text>
+  <rect class="pill" x="680" y="480" width="116" height="26"/>
+  <text class="pill-text" x="700" y="498">compensate</text>
+
+  <rect class="participant" x="70" y="610" width="238" height="116"/>
+  <circle cx="118" cy="668" r="25" class="chip"/>
+  <text class="chip-text" x="107" y="676">C</text>
+  <text class="label" x="158" y="658">Service C</text>
+  <text class="small" x="158" y="686">local transaction</text>
+  <rect class="pill" x="158" y="700" width="116" height="26"/>
+  <text class="pill-text" x="178" y="718">compensate</text>
+
+  <rect class="participant" x="592" y="610" width="238" height="116"/>
+  <circle cx="640" cy="668" r="25" class="chip"/>
+  <text class="chip-text" x="629" y="676">D</text>
+  <text class="label" x="680" y="658">Service D</text>
+  <text class="small" x="680" y="686">local transaction</text>
+  <rect class="pill" x="680" y="700" width="116" height="26"/>
+  <text class="pill-text" x="700" y="718">compensate</text>
+
+  <path class="flow" d="M308 448 H348"/>
+  <path class="flow" d="M592 448 H552"/>
+  <path class="flow" d="M308 668 C340 640, 366 610, 393 585"/>
+  <path class="flow" d="M592 668 C560 640, 534 610, 507 585"/>
+
+  <rect x="125" y="972" width="650" height="52" rx="16" fill="#0b1017" stroke="#2f3744" stroke-width="2"/>
+  <text class="small" x="156" y="1005">Coordinator tracks outcome; services own local data and undo actions.</text>
+</svg>

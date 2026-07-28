@@ -1,159 +1,113 @@
-# Lab 6: Terminate and/or Cleanup
+# Lab 6: Clean Up or Terminate Resources
 
-## **Introduction**
+## Introduction
 
-After completing the CloudBank application demonstration and testing Oracle Sagas, it is important to **terminate or clean up your resources**.  
-This prevents unnecessary costs and ensures your environment is ready for future exercises.  
+After demonstrating the CloudBank application and testing Oracle Sagas, clean up the resources created for the workshop. This helps avoid unnecessary charges and prepares your environment for future work.
 
-This lab guides you through:  
-- Stopping Podman services  
-- Cleaning up configuration files  
-- Terminating OCI compute and database resources (if applicable)  
-- Verifying that your environment has been fully released  
-
-</br>
-
-*Estimated Time: 20–30 minutes*
+*Estimated time: 20–30 minutes*
 
 ---
 
 ### Objectives
 
-In this lab, you will:  
-- Stop all running **CloudBank services**.  
-- Remove container images and network resources.  
-- Disconnect from the database wallet and remove credentials.  
-- Optionally terminate the Autonomous Database and/or VM instances.  
+In this lab, you will:
+
+- Stop CloudBank services and remove local container resources.
+- Remove local database credentials and wallets that are no longer needed.
+- Optionally terminate the OCI resources created for the workshop.
+- Verify that the environment has been cleaned up.
 
 ---
 
 ### Prerequisites
 
-- Completion of Lab 5 (CloudBank Application).  
-- Access to the OCI Console and Cloud Shell.  
-- Administrative privileges on the VM and Podman environment.  
+- Completion of Lab 5 (CloudBank Application).
+- Access to the OCI Console and Cloud Shell.
+- Permission to manage the VM and its Podman environment.
 
 ---
 
-## Task 1: Stop Podman Services
+## Task 1: Clean Up Local CloudBank Resources
 
----
+Run the following script on the VM. It stops CloudBank, removes unused Podman resources, and deletes the local `.env` file and any wallet directories in your home directory. Run it only when you no longer need these local resources.
 
-1. Navigate to the CloudBank deployment directory:
+```bash
+<copy>
+#!/usr/bin/env bash
+set -euo pipefail
 
-VVVbash
-cd ~/cloudbank
-VVV
+CLOUDBANK_DIR="$HOME/cloudbank"
 
-2. Stop all running services:
-
-VVVbash
+cd "$CLOUDBANK_DIR"
 podman-compose down
-VVV
-
-3. Verify containers are stopped:
-
-VVVbash
 podman ps -a
-VVV
-
-**Expected Output:** No containers should show as `Up`.  
-
-**Screenshot Placeholder:**  
-![Podman Down](./images/lab6-task1-down.png "All CloudBank services stopped")
-
----
-
-## Task 2: Remove Container Images and Volumes
-
----
-
-To reclaim space on your VM, you can remove CloudBank images and volumes.
-
-1. Remove unused containers, networks, and volumes:
-
-VVVbash
 podman system prune -a -f
-VVV
-
-2. Verify images have been deleted:
-
-VVVbash
 podman images
-VVV
+rm -f "$CLOUDBANK_DIR/.env"
+find "$HOME" -maxdepth 1 -type d -name 'Wallet_*' -exec rm -rf {} +
+</copy>
+```
+
+### What This Script Does
+
+- **#!/usr/bin/env bash** runs the script with Bash.
+- **set -euo pipefail** stops the script if a command fails, an unset variable is used, or a command in a pipeline fails.
+- **CLOUDBANK_DIR="$HOME/cloudbank"** stores the CloudBank deployment path.
+- **cd "$CLOUDBANK_DIR"** moves to the deployment directory.
+- **podman-compose down** stops and removes the CloudBank containers and network.
+- **podman ps -a** lists all containers so you can confirm that none are running.
+- **podman system prune -a -f** removes unused containers, networks, images, and volumes without prompting.
+- **podman images** lists the remaining container images.
+- **rm -f "$CLOUDBANK_DIR/.env"** removes the local environment file, including any stored database credentials.
+- **find "$HOME" -maxdepth 1 -type d -name 'Wallet_*' -exec rm -rf {} +** removes Autonomous Database wallet directories directly under your home directory.
 
 ---
 
-## Task 3: Cleanup Credentials and Wallets
+## Task 2: Terminate OCI Resources (Optional)
 
----
-
-1. If you stored database credentials in an **.env file**, remove it:  
-
-VVVbash
-rm ~/cloudbank/.env
-VVV
-
-2. If you downloaded an **ADB wallet**, remove it if no longer required:  
-
-VVVbash
-rm -rf ~/Wallet_*
-VVV
-
----
-
-## Task 4: Terminate OCI Resources (Optional)
-
----
-
-If you used **Autonomous Database (ADB-S)** and a **VM instance** specifically for this workshop, you may terminate them to stop billing.  
+If you created an Autonomous Database and a compute VM only for this workshop, terminate them to stop billing.
 
 ### Step 1: Terminate the Autonomous Database
-1. Log in to the **OCI Console**.  
-2. Navigate to **Autonomous Database** → Select your instance.  
-3. Click **Terminate**.  
 
-**Screenshot Placeholder:**  
-![Terminate ADB](./images/lab6-task4-adb.png "Terminate Autonomous Database")
+1. Sign in to the **OCI Console**.
+2. Go to **Autonomous Database** and select your database.
+3. Select **Terminate** and confirm the operation.
 
----
+**Screenshot Placeholder:**
+![Terminate Autonomous Database](./images/lab6-task4-adb.png "Terminate Autonomous Database")
 
 ### Step 2: Terminate the Compute VM
-1. Log in to the **OCI Console**.  
-2. Navigate to **Compute Instances** → Select your VM.  
-3. Click **Terminate**.  
 
-**Screenshot Placeholder:**  
-![Terminate VM](./images/lab6-task4-vm.png "Terminate VM")
+1. In the **OCI Console**, go to **Compute** → **Instances**.
+2. Select the VM created for this workshop.
+3. Select **Terminate** and confirm the operation.
 
----
-
-## Task 5: Verify Environment Cleanup
+**Screenshot Placeholder:**
+![Terminate Compute VM](./images/lab6-task4-vm.png "Terminate Compute VM")
 
 ---
 
-1. Check that no compute or database resources are running in your compartment:  
-   - **OCI Console → Instances** = 0 running  
-   - **OCI Console → Autonomous Databases** = 0 running  
+## Task 3: Verify Cleanup
 
-2. Ensure your Cloud Shell is clear of leftover credentials and container images.  
+1. Confirm that no workshop compute instances or Autonomous Databases are running in your compartment.
+2. Confirm that the local CloudBank directory no longer contains credentials, wallets, or unneeded container images.
 
 ---
 
-✅ **End of Lab 6.**  
-You have successfully stopped and cleaned up all resources used in this workshop. This ensures that you avoid unwanted charges and keeps your environment clean for future work.  
+✅ **End of Lab 6.** You have cleaned up the resources used for this workshop. This helps prevent unwanted charges and keeps your environment ready for future work.
 
-Next: **Lab 7 — Extended Labs**, where you will explore developing Oracle Sagas with PL/SQL and polyglot transactions.  
+Next: **Lab 7 — Extended Labs**, where you will explore Oracle Sagas with PL/SQL and polyglot transactions.
 
 ---
 
 ## Learn More
 
-- [OCI Resource Management](https://docs.oracle.com/en-us/iaas/Content/home.htm)  
-- [Podman Cleanup Reference](https://docs.podman.io/en/latest/markdown/podman-system-prune.1.html)  
+- [OCI Resource Management](https://docs.oracle.com/en-us/iaas/Content/home.htm)
+- [Podman system prune reference](https://docs.podman.io/en/latest/markdown/podman-system-prune.1.html)
 
 ## Acknowledgements
 
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney  
-* **Created By/Date** — Vinay Pandhariwal, August 2025  
+* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney,
+Luis Cruz, Sebastian Gerritsen
+* **Created By/Date** — Vinay Pandhariwal, August 2025
 * **Last Updated By/Date** — Vinay Pandhariwal, August 2025

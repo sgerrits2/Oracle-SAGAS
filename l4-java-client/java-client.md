@@ -260,56 +260,14 @@ saga.rollbackSaga();
 | Success | Calls `commitSaga()` | `@Complete` finalizes work. |
 | Failure | Calls `rollbackSaga()` | `@Compensate` restores consistency. |
 
-#### Key Takeaways
-
 - `BankChicago` and `BankMex` must match in Lab 3 registration, `@Participant`, `sendRequest()`, and `@Response`.
 - `beginSaga()` starts the flow; `sendRequest()` involves participants; responses determine the outcome.
 - `@Request` processes work, `@Complete` finalizes it, and `@Compensate` reverses it safely.
 
-![Complete Analysis](./images/lab4-task2-summary.png "Oracle Saga annotation analysis in CloudBank application")
+<details>
+<summary>CloudBank architecture and workflow reference</summary>
 
-### CloudBank Architecture and Workflow Reference
-
----
-
-CloudBank is a demo application that illustrates saga coordination and compensation rather than production banking rules.
-
-### Step 1: Schema & Architecture
-
-CloudBank runs in a single Oracle Database 23ai PDB with separate schemas for the orchestrator, BankA, and BankB services.
-
-[![CloudBank Architecture Screenshot](https://img.shields.io/badge/🏛️%20CloudBank-Architecture%20Demo-blue?style=for-the-badge&logo=database&logoColor=white)](images/Arch.mp4)
-
-The schemas contain customer and saga-audit data in the orchestrator, plus account and operation-log data in each bank. Bank account balances use Oracle `RESERVABLE` columns for lock-free fund reservations.
-
-| Component | Role |
-|-----------|------|
-| CloudBank Orchestrator | Starts sagas, routes requests, and records status. |
-| BankA and BankB | Process account operations as saga participants. |
-| Coordinator and Broker | Coordinate lifecycle events and route saga messages. |
-
-The demo creates its own test accounts. Do not enter or configure shared credentials for this lab.
-
-### Step 2: Saga Workflows
-
-#### Workflow 1: New Bank Account Creation
-
-1. The orchestrator starts a saga and determines the selected bank.
-2. It sends an account-creation request to BankA or BankB.
-3. The bank creates the account and returns a response.
-4. The orchestrator commits on success or compensates on failure.
-
-#### Workflow 2: Inter-Bank Money Transfer
-
-1. The orchestrator starts a saga and sends withdrawal and deposit requests.
-2. The source bank reserves funds; the target bank prepares the deposit.
-3. The orchestrator commits after successful responses from both participants.
-4. Any failure invokes compensation, which restores reserved funds as needed.
-
-**`RESERVABLE` columns** support lock-free fund reservation while a saga is in progress.
-
-**Compensation** returns the system to a consistent state when an account operation, transfer, or participant response fails.
-
+CloudBank coordinates account creation and inter-bank transfers. Bank balances use Oracle `RESERVABLE` columns to support lock-free fund reservations while a saga is in progress.
 
 ![CloudBank Schema](./images/lab4-task3-1.png "CloudBank database schema and architecture")
 

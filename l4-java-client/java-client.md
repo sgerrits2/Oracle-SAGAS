@@ -68,7 +68,7 @@ Add this dependency to each CloudBank service that participates in a saga:
 ### Step 3: Repository Information
 
 - [Oracle Saga artifacts on Maven Repository](https://mvnrepository.com/artifact/com.oracle.database.saga)
-- [`saga-core` artifact](https://mvnrepository.com/artifact/com.oracle.database.saga/saga-core)
+- [saga-core artifact](https://mvnrepository.com/artifact/com.oracle.database.saga/saga-core)
 
 The Maven environment is configured and verified in the next lab when you configure Podman containers.
 

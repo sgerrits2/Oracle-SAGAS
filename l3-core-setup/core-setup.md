@@ -37,6 +37,148 @@ Watch the video below for a quick walk-through of the lab.
 
 
 
+<style>
+.input-section {
+  background: #f8f9fa;
+  border: 1px solid #d9dee2;
+  padding: 14px 16px;
+  border-radius: 8px;
+  margin: 12px 0;
+}
+
+.input-field {
+  width: min(320px, 100%);
+  padding: 8px 10px;
+  margin: 6px 0;
+  border: 1px solid #c5cbd1;
+  border-radius: 6px;
+  font-size: 14px;
+}
+
+.interactive-command {
+  display: flex;
+  align-items: center;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  padding: 10px;
+  border-radius: 5px;
+  position: relative;
+  margin: 10px 0;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  overflow: visible;
+  transition: opacity 0.3s;
+}
+
+.command-text {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.4;
+}
+
+.copy-btn {
+  position: absolute;
+  right: -10px;
+  top: -10px;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 15px;
+  border-radius: 3px;
+  transition: background 0.2s, color 0.2s;
+  color: black;
+  z-index: 2;
+}
+
+.copy-btn:hover {
+  background: grey;
+  color: white;
+}
+</style>
+
+<script>
+function getSharedConnectionString() {
+  const connectionFieldIds = ['tns-name', 'coord-tns-name', 'participants-tns-name', 't4-tns-name', 't5-tns-name'];
+  for (const fieldId of connectionFieldIds) {
+    const value = document.getElementById(fieldId)?.value;
+    if (value) return value;
+  }
+  return '<DATABASE_CONNECTION_TNS_NAME>';
+}
+
+function getSharedPassword() {
+  const passwordFieldIds = ['t4-admin-password', 't5-admin-password'];
+  for (const fieldId of passwordFieldIds) {
+    const value = document.getElementById(fieldId)?.value;
+    if (value) return value;
+  }
+  return 'Welcome_123#';
+}
+
+function syncSharedInputs(sourceEl) {
+  if (!sourceEl) return;
+
+  const connectionFieldIds = ['tns-name', 'coord-tns-name', 'participants-tns-name', 't4-tns-name', 't5-tns-name'];
+  const passwordFieldIds = ['t4-admin-password', 't5-admin-password'];
+
+  if (connectionFieldIds.includes(sourceEl.id)) {
+    const sharedValue = sourceEl.value || getSharedConnectionString();
+    connectionFieldIds.forEach((fieldId) => {
+      const field = document.getElementById(fieldId);
+      if (field && field.value !== sharedValue) {
+        field.value = sharedValue;
+      }
+    });
+  }
+
+  if (passwordFieldIds.includes(sourceEl.id)) {
+    const sharedValue = sourceEl.value || getSharedPassword();
+    passwordFieldIds.forEach((fieldId) => {
+      const field = document.getElementById(fieldId);
+      if (field && field.value !== sharedValue) {
+        field.value = sharedValue;
+      }
+    });
+  }
+}
+
+function updateGeneratedScripts(sourceEl) {
+  syncSharedInputs(sourceEl);
+
+  const sharedConnectionString = getSharedConnectionString();
+  const sharedPassword = getSharedPassword();
+
+  const updateBlock = (id, value) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let text = el.textContent || '';
+    text = text.replace(/DEFINE DATABASE_CONNECTION_TNS_NAME\s*=\s*'[^']*'/, `DEFINE DATABASE_CONNECTION_TNS_NAME = '${value}'`);
+    text = text.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, `DATABASE_CONNECTION_TNS_NAME = '${value}'`);
+    el.textContent = text;
+  };
+
+  const updatePassword = (id, value) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    let text = el.textContent || '';
+    text = text.replace(/DEFINE ADMIN_PASSWORD\s*=\s*'[^']*'/, `DEFINE ADMIN_PASSWORD = '${value}'`);
+    el.textContent = text;
+  };
+
+  updateBlock('broker-script', sharedConnectionString);
+  updateBlock('coordinator-script', sharedConnectionString);
+  updateBlock('participants-script', sharedConnectionString);
+  updateBlock('task4-script', sharedConnectionString);
+  updateBlock('task5-script', sharedConnectionString);
+  updatePassword('task4-script', sharedPassword);
+  updatePassword('task5-script', sharedPassword);
+}
+
+document.addEventListener('DOMContentLoaded', () => updateGeneratedScripts());
+window.addEventListener('load', () => updateGeneratedScripts());
+</script>
+
 ### Objectives
 
 In this lab, you will:
@@ -93,7 +235,7 @@ Since we were using the Code Editor in Lab 2, we need to switch back to the Clou
 The TNS connection string isn't something new — it's the same alias defined in the wallet's `tnsnames.ora` from the previous lab (`l2-provision/provision.md`, Step 10). Paste it below and the script will update automatically.
 
 <div class="input-section">
-<strong>Database Connection String:</strong> <input type="text" id="tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="saveConnectionString(this.value); updateBrokerScript(); updateCoordinatorScript(); updateParticipantsScript(); updateTask4Script(); updateTask5Script(); updateSharedConnectionReferences()">
+<strong>Database Connection String:</strong> <input type="text" id="tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateGeneratedScripts(this)">
 </div>
 
 ![Enter Connection String](./images/lab3-task1-step2.png "Enter the database connection string from Lab 2")
@@ -104,6 +246,7 @@ The command below is auto-generated based on your configuration:
 
 **Generated Script:**
 <pre id="broker-script-container" class="interactive-command">
+<button class="copy-btn">Copy</button>
 <span id="broker-script" class="command-text">-- =========================================================
 -- CONFIG
 -- =========================================================
@@ -138,84 +281,7 @@ EXEC DBMS_SAGA_ADM.ADD_BROKER(
 SELECT broker_name, owner, queue_partitions, version, created_date
 FROM   user_saga_brokers
 WHERE  broker_name = '&BROKER_NAME';</span>
-<button class="copy-btn" onclick="copyToClipboard('broker-script', 'broker-script-container')">Copy</button>
 </pre>
-
-<script>
-function saveConnectionString(value) {
-  if (!value) return;
-  sessionStorage.setItem('adbConnectionString', value);
-  const sharedField = document.getElementById('tns-name');
-  if (sharedField && !sharedField.value) {
-    sharedField.value = value;
-  }
-}
-
-function getSharedConnectionString() {
-  const sharedField = document.getElementById('tns-name');
-  return (sharedField && sharedField.value) || sessionStorage.getItem('adbConnectionString') || '<DATABASE_CONNECTION_TNS_NAME>';
-}
-
-function updateSharedConnectionReferences() {
-  const value = getSharedConnectionString();
-  const referenceIds = ['coord-tns-reference', 'participants-tns-reference', 'task4-tns-reference', 'task5-tns-reference'];
-  referenceIds.forEach((id) => {
-    const el = document.getElementById(id);
-    if (el) {
-      el.textContent = value;
-    }
-  });
-}
-
-function restoreConnectionString() {
-  const savedValue = sessionStorage.getItem('adbConnectionString');
-  const sharedField = document.getElementById('tns-name');
-  if (savedValue && sharedField) {
-    sharedField.value = savedValue;
-  }
-}
-
-function updateBrokerScript() {
-  const tns = getSharedConnectionString();
-  const el = document.getElementById('broker-script');
-  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-
-function updateCoordinatorScript() {
-  const tns = getSharedConnectionString();
-  const el = document.getElementById('coordinator-script');
-  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-
-function updateParticipantsScript() {
-  const tns = getSharedConnectionString();
-  const el = document.getElementById('participants-script');
-  const text = el.innerText;
-  el.innerText = text.replace(/DEFINE DATABASE_CONNECTION_TNS_NAME\s*=\s*'[^']*'/, "DEFINE DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-
-function updateTask4Script() {
-  const tns = getSharedConnectionString();
-  const el = document.getElementById('task4-script');
-  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-
-function updateTask5Script() {
-  const tns = getSharedConnectionString();
-  const el = document.getElementById('task5-script');
-  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-  restoreConnectionString();
-  updateSharedConnectionReferences();
-  updateBrokerScript();
-  updateCoordinatorScript();
-  updateParticipantsScript();
-  updateTask4Script();
-  updateTask5Script();
-});
-</script>
 
 **Expected Output:**
 ```text
@@ -256,7 +322,7 @@ Ensure you're still in the CloudShell tab from Task 1:
 Connect to your orchestrator schema. This reuses the same connection string you entered in Task 1 — only the schema and password change.
 
 <div class="input-section">
-<strong>Database Connection String:</strong> <input type="text" id="coord-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateCoordinatorScript()">
+<strong>Database Connection String:</strong> <input type="text" id="coord-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateGeneratedScripts(this)">
 </div>
 
 ![Enter Connection String](./images/lab3-task2-step2.png "Enter the database connection string from Lab 2")
@@ -267,6 +333,7 @@ The command below is auto-generated based on your configuration and Task 1's bro
 
 **Generated Script:**
 <pre id="coordinator-script-container" class="interactive-command">
+<button class="copy-btn">Copy</button>
 <span id="coordinator-script" class="command-text">-- =========================================================
 -- CONFIG
 -- =========================================================
@@ -307,16 +374,7 @@ EXEC DBMS_SAGA_ADM.ADD_COORDINATOR(
 SELECT coordinator_name, coordinator_schema, broker_name, queue_partitions, listener_count
 FROM   user_saga_coordinators
 WHERE  coordinator_name = '&COORDINATOR_NAME';</span>
-<button class="copy-btn" onclick="copyToClipboard('coordinator-script', 'coordinator-script-container')">Copy</button>
 </pre>
-
-<script>
-function updateCoordinatorScript() {
-  const tns = document.getElementById('coord-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
-  const el = document.getElementById('coordinator-script');
-  el.innerText = el.innerText.replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-</script>
 
 **Expected Output:**
 ```text
@@ -343,7 +401,7 @@ In Oracle's saga architecture, participants can be implemented either as databas
 SQLcl lets a single script hop between schemas with multiple `CONNECT` commands, so CloudBank, BankChicago, BankMex, and the final verification all run as **one script** below.
 
 <div class="input-section">
-<strong>Database Connection String:</strong> <input type="text" id="participants-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateParticipantsScript()">
+<strong>Database Connection String:</strong> <input type="text" id="participants-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateGeneratedScripts(this)">
 </div>
 
 > 💡 `CloudBank`, `BankChicago`, and `BankMex` use the fixed workshop names required by the demo flow, so only the connection string is editable here.
@@ -352,6 +410,7 @@ SQLcl lets a single script hop between schemas with multiple `CONNECT` commands,
 
 **Generated Script:**
 <pre id="participants-script-container" class="interactive-command">
+<button class="copy-btn">Copy</button>
 <span id="participants-script" class="command-text">-- =========================================================
 -- CONFIG
 -- =========================================================
@@ -425,17 +484,7 @@ WHERE  owner IN (
   FROM   user_saga_participants
   WHERE  coordinator_name = '&COORDINATOR_NAME'
 );</span>
-<button class="copy-btn" onclick="copyToClipboard('participants-script', 'participants-script-container')">Copy</button>
 </pre>
-
-<script>
-function updateParticipantsScript() {
-  const tns = document.getElementById('participants-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
-  const el = document.getElementById('participants-script');
-  const text = el.innerText;
-  el.innerText = text.replace(/DEFINE DATABASE_CONNECTION_TNS_NAME\s*=\s*'[^']*'/, "DEFINE DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-</script>
 
 **Expected Output:**
 ```text
@@ -475,12 +524,13 @@ Oracle Database 23ai secures the Saga framework with three roles. **`SAGA_ADM_RO
 Schema names are already fixed from Tasks 1–3, so only the admin password and connection string are needed.
 
 <div class="input-section">
-<strong>Admin Password:</strong> <input type="text" id="t4-admin-password" placeholder="Welcome_123#" class="input-field" oninput="updateTask4Script()"><br/>
-<strong>Database Connection String:</strong> <input type="text" id="t4-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateTask4Script()">
+<strong>Admin Password:</strong> <input type="text" id="t4-admin-password" placeholder="Welcome_123#" class="input-field" oninput="updateGeneratedScripts(this)"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="t4-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateGeneratedScripts(this)">
 </div>
 
 **Generated Script:**
 <pre id="task4-script-container" class="interactive-command">
+<button class="copy-btn">Copy</button>
 <span id="task4-script" class="command-text">-- =========================================================
 -- CONFIG
 -- =========================================================
@@ -500,19 +550,7 @@ FROM   dba_role_privs
 WHERE  grantee IN ('BROKERCHICAGO','ORCHESTRATORCHICAGO','BANKCHICAGO','BANKMEX')
 AND    granted_role LIKE '%SAGA%'
 ORDER  BY grantee, granted_role;</span>
-<button class="copy-btn" onclick="copyToClipboard('task4-script', 'task4-script-container')">Copy</button>
 </pre>
-
-<script>
-function updateTask4Script() {
-  const pw = document.getElementById('t4-admin-password').value || '<DATABASE_ADMIN_PASSWORD>';
-  const tns = document.getElementById('t4-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
-  const el = document.getElementById('task4-script');
-  el.innerText = el.innerText
-    .replace(/ADMIN_PASSWORD = '.*'/, "ADMIN_PASSWORD = '" + pw + "'")
-    .replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-</script>
 
 **Expected Output:**
 ```text
@@ -543,12 +581,13 @@ Oracle Database 23ai exposes the Saga framework through dictionary views at thre
 If you're still connected as `ADMIN` from Task 4, you can skip straight to the query. Otherwise, fill in your credentials again.
 
 <div class="input-section">
-<strong>Admin Password:</strong> <input type="text" id="t5-admin-password" placeholder="Welcome_123#" class="input-field" oninput="updateTask5Script()"><br/>
-<strong>Database Connection String:</strong> <input type="text" id="t5-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateTask5Script()">
+<strong>Admin Password:</strong> <input type="text" id="t5-admin-password" placeholder="Welcome_123#" class="input-field" oninput="updateGeneratedScripts(this)"><br/>
+<strong>Database Connection String:</strong> <input type="text" id="t5-tns-name" placeholder="oraclesagademo_medium" class="input-field" oninput="updateGeneratedScripts(this)">
 </div>
 
 **Generated Script:**
 <pre id="task5-script-container" class="interactive-command">
+<button class="copy-btn">Copy</button>
 <span id="task5-script" class="command-text">-- =========================================================
 -- CONFIG
 -- =========================================================
@@ -564,19 +603,7 @@ CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 -- 2. View all registered Saga participants
 -- =========================================================
 SELECT * FROM DBA_SAGA_PARTICIPANTS;</span>
-<button class="copy-btn" onclick="copyToClipboard('task5-script', 'task5-script-container')">Copy</button>
 </pre>
-
-<script>
-function updateTask5Script() {
-  const pw = document.getElementById('t5-admin-password').value || '<DATABASE_ADMIN_PASSWORD>';
-  const tns = document.getElementById('t5-tns-name').value || '<DATABASE_CONNECTION_TNS_NAME>';
-  const el = document.getElementById('task5-script');
-  el.innerText = el.innerText
-    .replace(/ADMIN_PASSWORD = '.*'/, "ADMIN_PASSWORD = '" + pw + "'")
-    .replace(/DATABASE_CONNECTION_TNS_NAME = '.*'/, "DATABASE_CONNECTION_TNS_NAME = '" + tns + "'");
-}
-</script>
 
 **Expected Output:**
 ```text
@@ -944,1066 +971,3 @@ Your Oracle Sagas foundation is now ready for implementing actual business logic
 * **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney  
 * **Created By/Date** — Vinay Pandhariwal, August 2025  
 * **Last Updated By/Date** — Vinay Pandhariwal, August 2025
-
-<script>
-function initializeCoreSetup() {
-    try {
-        const savedConnectionString = sessionStorage.getItem('adbConnectionString');
-        if (savedConnectionString) {
-            const brokerConnField = document.getElementById('broker-connection-string');
-            const coordConnField = document.getElementById('coordinator-connection-string');
-            const partConnField = document.getElementById('participant-connection-string');
-            
-            if (brokerConnField) brokerConnField.value = savedConnectionString;
-            if (coordConnField) coordConnField.value = savedConnectionString;
-            if (partConnField) partConnField.value = savedConnectionString;
-        }
-        
-        const savedBroker1User = sessionStorage.getItem('cloudbank_USER_BROKER1');
-        const savedBroker1Pass = sessionStorage.getItem('cloudbank_PASSWORD_BROKER1');
-        const broker1UserField = document.getElementById('brokerchicago-user');
-        const broker1PassField = document.getElementById('brokerchicago-password');
-        
-        if (savedBroker1User && broker1UserField) broker1UserField.value = savedBroker1User;
-        if (savedBroker1Pass && broker1PassField) broker1PassField.value = savedBroker1Pass;
-        
-        const savedBrokerDbName = sessionStorage.getItem('saga_broker_db_name');
-        const brokerDbNameField = document.getElementById('broker-db-name');
-        if (savedBrokerDbName && brokerDbNameField) brokerDbNameField.value = savedBrokerDbName;
-        
-        const savedCoordinatorName = sessionStorage.getItem('saga_coordinator_name');
-        const coordinatorNameField = document.getElementById('coordinator-name');
-        if (savedCoordinatorName && coordinatorNameField) coordinatorNameField.value = savedCoordinatorName;
-        
-        const savedCloudbankName = sessionStorage.getItem('saga_cloudbank_participant_name');
-        const savedBankaName = sessionStorage.getItem('saga_banka_participant_name');
-        const savedBankbName = sessionStorage.getItem('saga_bankb_participant_name');
-        
-        const cloudbankNameField = document.getElementById('cloudbank-participant-name');
-        const bankaNameField = document.getElementById('bankchicago-participant-name');
-        const bankbNameField = document.getElementById('bankmex-participant-name');
-        
-        if (savedCloudbankName && cloudbankNameField) {
-            cloudbankNameField.value = savedCloudbankName;
-        }
-        if (savedBankaName && bankaNameField) bankaNameField.value = savedBankaName;
-        if (savedBankbName && bankbNameField) bankbNameField.value = savedBankbName;
-        
-        const brokerSaveStatusEl = document.getElementById('broker-save-status');
-        const brokerSaveMessageEl = document.getElementById('broker-save-message');
-        const isBrokerVisible = brokerDbNameField && brokerDbNameField.offsetParent !== null;
-        const hasBrokerData = savedBrokerDbName;
-        
-        if (brokerSaveStatusEl) {
-            if (hasBrokerData && brokerSaveMessageEl && isBrokerVisible) {
-                let message = '📋 <strong>Previously Saved Broker Configuration Found:</strong><br/>';
-                message += `Broker Name: ${savedBrokerDbName}<br/>`;
-                message += '<small>Broker name has been pre-populated. You can modify and save again if needed.</small>';
-                
-                brokerSaveMessageEl.innerHTML = message;
-                brokerSaveStatusEl.style.display = 'block';
-                brokerSaveStatusEl.style.background = '#cce7ff';
-                brokerSaveStatusEl.style.color = '#004085';
-            } else {
-                brokerSaveStatusEl.style.display = 'none';
-            }
-        }
-        
-        const coordinatorSaveStatusEl = document.getElementById('coordinator-save-status');
-        const coordinatorSaveMessageEl = document.getElementById('coordinator-save-message');
-        const isCoordinatorVisible = coordinatorNameField && coordinatorNameField.offsetParent !== null;
-        const hasCoordinatorData = savedCoordinatorName;
-        
-        if (coordinatorSaveStatusEl) {
-            if (hasCoordinatorData && coordinatorSaveMessageEl && isCoordinatorVisible) {
-                let message = '📋 <strong>Previously Saved Coordinator Configuration Found:</strong><br/>';
-                message += `Coordinator Name: ${savedCoordinatorName}<br/>`;
-                message += '<small>Coordinator name has been pre-populated. You can modify and save again if needed.</small>';
-                
-                coordinatorSaveMessageEl.innerHTML = message;
-                coordinatorSaveStatusEl.style.display = 'block';
-                coordinatorSaveStatusEl.style.background = '#cce7ff';
-                coordinatorSaveStatusEl.style.color = '#004085';
-            } else {
-                coordinatorSaveStatusEl.style.display = 'none';
-            }
-        }
-
-        const cloudbankSaveStatusEl = document.getElementById('cloudbank-save-status');
-        const cloudbankSaveMessageEl = document.getElementById('cloudbank-save-message');
-        const isCloudbankVisible = cloudbankNameField && cloudbankNameField.offsetParent !== null;
-        const hasCloudbankData = savedCloudbankName;
-        
-        if (cloudbankSaveStatusEl) {
-            if (hasCloudbankData && cloudbankSaveMessageEl && isCloudbankVisible) {
-                let message = '📋 <strong>Previously Saved CloudBank Configuration Found:</strong><br/>';
-                message += `Participant Name: ${savedCloudbankName}<br/>`;
-                message += '<small>Participant name has been pre-populated. You can modify and save again if needed.</small>';
-                
-                cloudbankSaveMessageEl.innerHTML = message;
-                cloudbankSaveStatusEl.style.display = 'block';
-                cloudbankSaveStatusEl.style.background = '#cce7ff';
-                cloudbankSaveStatusEl.style.color = '#004085';
-            } else {
-                hideElement(cloudbankSaveStatusEl);
-            }
-        }
-        const bankaSaveStatusEl = document.getElementById('bankchicago-save-status');
-        const bankaSaveMessageEl = document.getElementById('bankchicago-save-message');
-        const isBankaVisible = bankaNameField && bankaNameField.offsetParent !== null;
-        const hasBankaData = savedBankaName;
-        
-        if (bankaSaveStatusEl) {
-            if (hasBankaData && bankaSaveMessageEl && isBankaVisible) {
-                let message = '📋 <strong>Previously Saved BankChicago Configuration Found:</strong><br/>';
-                message += `Participant Name: ${savedBankaName}<br/>`;
-                message += '<small>Participant name has been pre-populated. You can modify and save again if needed.</small>';
-                
-                bankaSaveMessageEl.innerHTML = message;
-                bankaSaveStatusEl.style.display = 'block';
-                bankaSaveStatusEl.style.background = '#cce7ff';
-                bankaSaveStatusEl.style.color = '#004085';
-            } else {
-                hideElement(bankaSaveStatusEl);
-            }
-        }
-        const bankbSaveStatusEl = document.getElementById('bankmex-save-status');
-        const bankbSaveMessageEl = document.getElementById('bankmex-save-message');
-        const isBankbVisible = bankbNameField && bankbNameField.offsetParent !== null;
-        const hasBankbData = savedBankbName;
-        
-        if (bankbSaveStatusEl) {
-            if (hasBankbData && bankbSaveMessageEl && isBankbVisible) {
-                let message = '📋 <strong>Previously Saved BankMex Configuration Found:</strong><br/>';
-                message += `Participant Name: ${savedBankbName}<br/>`;
-                message += '<small>Participant name has been pre-populated. You can modify and save again if needed.</small>';
-                
-                bankbSaveMessageEl.innerHTML = message;
-                bankbSaveStatusEl.style.display = 'block';
-                bankbSaveStatusEl.style.background = '#cce7ff';
-                bankbSaveStatusEl.style.color = '#004085';
-            } else {
-                hideElement(bankbSaveStatusEl);
-            }
-        }
-        
-        const savedOrchUser = sessionStorage.getItem('cloudbank_USER_ORCHESTRATOR1');
-        const savedOrchPass = sessionStorage.getItem('cloudbank_PASSWORD_ORCHESTRATOR1');
-        const orchUserField = document.getElementById('orchestratorchicago-user');
-        const orchPassField = document.getElementById('orchestratorchicago-password');
-        
-        if (savedOrchUser && orchUserField) orchUserField.value = savedOrchUser;
-        if (savedOrchPass && orchPassField) orchPassField.value = savedOrchPass;
-        
-        const savedBankaUser = sessionStorage.getItem('cloudbank_USER_BANKA');
-        const savedBankaPass = sessionStorage.getItem('cloudbank_PASSWORD_BANKA');
-        const savedBankbUser = sessionStorage.getItem('cloudbank_USER_BANKB');
-        const savedBankbPass = sessionStorage.getItem('cloudbank_PASSWORD_BANKB');
-        
-        const cloudbankUserField = document.getElementById('cloudbank-user');
-        const cloudbankPassField = document.getElementById('cloudbank-password');
-        const bankaUserField = document.getElementById('bankchicago-user');
-        const bankaPassField = document.getElementById('bankchicago-password');
-        const bankbUserField = document.getElementById('bankmex-user');
-        const bankbPassField = document.getElementById('bankmex-password');
-        
-        const cloudbankConnField = document.getElementById('cloudbank-connection-string');
-        const bankaConnField = document.getElementById('bankchicago-connection-string');
-        const bankbConnField = document.getElementById('bankmex-connection-string');
-        const adminConnField = document.getElementById('admin-connection-string');
-        
-        if (savedConnectionString && cloudbankConnField) cloudbankConnField.value = savedConnectionString;
-        if (savedConnectionString && bankaConnField) bankaConnField.value = savedConnectionString;
-        if (savedConnectionString && bankbConnField) bankbConnField.value = savedConnectionString;
-        if (savedConnectionString && adminConnField) adminConnField.value = savedConnectionString;
-        
-        if (savedBankaUser && cloudbankUserField) cloudbankUserField.value = savedBankaUser;
-        if (savedBankaPass && cloudbankPassField) cloudbankPassField.value = savedBankaPass;
-        if (savedBankaUser && bankaUserField) bankaUserField.value = savedBankaUser;
-        if (savedBankaPass && bankaPassField) bankaPassField.value = savedBankaPass;
-        if (savedBankbUser && bankbUserField) bankbUserField.value = savedBankbUser;
-        if (savedBankbPass && bankbPassField) bankbPassField.value = savedBankbPass;
-        
-        const savedAdminUser = sessionStorage.getItem('cloudbank_USER_ADMIN') || sessionStorage.getItem('admin');
-        const savedAdminPass = sessionStorage.getItem('cloudbank_ADB_DATABASE_PASSWORD') || sessionStorage.getItem('adbPassword') || sessionStorage.getItem('admin_password');
-        const adminUserField = document.getElementById('admin-user');
-        const adminPassField = document.getElementById('admin-password');
-        if (savedAdminUser && adminUserField) adminUserField.value = savedAdminUser;
-        if (savedAdminPass && adminPassField) adminPassField.value = savedAdminPass;
-        
-        const task4AdminField = document.getElementById('task4-admin-schema');
-        const task4BrokerField = document.getElementById('task4-broker-schema');
-        const task4OrchestratorField = document.getElementById('task4-orchestrator-schema');
-        const task4BankaField = document.getElementById('task4-bankchicago-schema');
-        const task4BankbField = document.getElementById('task4-bankmex-schema');
-        const task4ConnectionField = document.getElementById('task4-connection-string');
-        
-        if (savedAdminUser && task4AdminField) task4AdminField.value = savedAdminUser;
-        if (savedBroker1User && task4BrokerField) task4BrokerField.value = savedBroker1User;
-        if (savedOrchUser && task4OrchestratorField) task4OrchestratorField.value = savedOrchUser;
-        if (savedBankaUser && task4BankaField) task4BankaField.value = savedBankaUser;
-        if (savedBankbUser && task4BankbField) task4BankbField.value = savedBankbUser;
-        if (savedConnectionString && task4ConnectionField) task4ConnectionField.value = savedConnectionString;
-        
-        const task5AdminUserField = document.getElementById('task5-admin-user');
-        const task5AdminPassField = document.getElementById('task5-admin-password');
-        const task5AdminConnField = document.getElementById('task5-admin-connection-string');
-        
-        if (savedAdminUser && task5AdminUserField) task5AdminUserField.value = savedAdminUser;
-        if (savedAdminPass && task5AdminPassField) task5AdminPassField.value = savedAdminPass;
-        if (savedConnectionString && task5AdminConnField) task5AdminConnField.value = savedConnectionString;
-        
-        updateBrokerConnectionCommand();
-        updateBrokerCommand();
-        updateVerificationCommands();
-        updateCoordinatorConnectionCommand();
-        updateCoordinatorCommand();
-        updateCoordinatorVerificationCommands();
-        updateCloudbankCommand();
-        updateBankaConnectionCommand();
-        updateBankaCommand();
-        updateBankbConnectionCommand();
-        updateBankbCommand();
-        updateAdminConnectionCommand();
-        updateVerifyAllParticipantsCommand();
-        
-        updateTask4SchemaQuery();
-        updateTask5AdminConnectionCommand();
-        
-        setTimeout(() => {
-            updateCloudbankCommand();
-        }, 100);
-        
-    } catch (error) {
-        console.error('Error loading core setup configuration:', error);
-    }
-}
-
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeCoreSetup);
-} else {
-    initializeCoreSetup();
-}
-
-window.addEventListener('load', initializeCoreSetup);
-setTimeout(initializeCoreSetup, 500);  
-setTimeout(initializeCoreSetup, 1500); 
-setTimeout(initializeCoreSetup, 3000);
-
-function updateBrokerConnectionCommand() {
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const brokerPass = document.getElementById('brokerchicago-password').value || '<BROKER_SCHEMA_PASSWORD>';
-    const connectionString = document.getElementById('broker-connection-string').value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `sql ${brokerUser}/${brokerPass}@'${connectionString}'`;
-    
-    document.getElementById('broker-connection-command').textContent = command;
-    updateBrokerCommand();
-    updateCoordinatorCommand();
-    updateCloudbankCommand();
-    updateBankaCommand();
-    updateBankbCommand();
-    updateAdminConnectionCommand();
-}
-
-function updateBrokerCommand() {
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    
-    let quotedBrokerName;
-    if (((brokerDbName.startsWith('"') && brokerDbName.endsWith('"')) || 
-        (brokerDbName.startsWith("'") && brokerDbName.endsWith("'"))) && 
-        brokerDbName.length > 2) {
-        quotedBrokerName = brokerDbName;
-    } else {
-        quotedBrokerName = `'${brokerDbName}'`;
-    }
-    
-    const command = `-- Execute from brokerchicago schema
-EXEC DBMS_SAGA_ADM.ADD_BROKER(
-  broker_name   => ${quotedBrokerName},
-  broker_schema => '${brokerUser.toUpperCase()}'
-);`;
-    
-    document.getElementById('broker-command').textContent = command;
-    updateVerificationCommands();
-}
-
-function updateVerificationCommands() {
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    
-    let quotedBrokerName;
-    if (((brokerDbName.startsWith('"') && brokerDbName.endsWith('"')) || 
-        (brokerDbName.startsWith("'") && brokerDbName.endsWith("'"))) && 
-        brokerDbName.length > 2) {
-        quotedBrokerName = brokerDbName;
-    } else {
-        quotedBrokerName = `'${brokerDbName}'`;
-    }
-    
-    const verifyBrokerCommand = `-- Check the new broker
-SELECT broker_name, owner, queue_partitions, version, created_date
-FROM USER_SAGA_BROKERS
-WHERE broker_name = ${quotedBrokerName};`;
-    
-    const verifyBrokerElement = document.getElementById('verify-broker-command');
-    if (verifyBrokerElement) {
-        verifyBrokerElement.textContent = verifyBrokerCommand;
-    }
-    
-    const verifyQueueCommand = `-- Examine the underlying topic infrastructure
-SELECT queue_name, queue_table, owner 
-FROM DBA_QUEUES 
-WHERE owner = USER 
-AND queue_name LIKE '%SAGA$_${brokerDbName.replace(/['"]/g, '')}_%';`;
-    
-    const verifyQueueElement = document.getElementById('verify-queue-command');
-    if (verifyQueueElement) {
-        verifyQueueElement.textContent = verifyQueueCommand;
-    }
-}
-
-function saveBrokerDbName() {
-    const brokerDbName = document.getElementById('broker-db-name').value;
-    if (brokerDbName) {
-        sessionStorage.setItem('saga_broker_db_name', brokerDbName);
-    }
-}
-
-function saveBrokerConfig() {
-    const brokerDbName = document.getElementById('broker-db-name').value;
-    
-    if (brokerDbName) {
-        sessionStorage.setItem('saga_broker_db_name', brokerDbName);
-        
-        document.getElementById('broker-save-message').innerHTML = `
-            ✅ <strong>Broker Configuration Saved Successfully!</strong><br/>
-            Broker Name: ${brokerDbName}<br/>
-            <small>Configuration will persist until you close the browser tab.</small>
-        `;
-        document.getElementById('broker-save-status').style.display = 'block';
-        document.getElementById('broker-save-status').style.background = '#d4edda';
-        document.getElementById('broker-save-status').style.color = '#155724';
-        
-        const button = document.querySelector('button[onclick="saveBrokerConfig()"]');
-        const originalText = button.textContent;
-        button.textContent = 'Saved!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-        
-    } else {
-        document.getElementById('broker-save-message').innerHTML = `
-            ⚠️ <strong>Please Enter Broker Name</strong><br/>
-            Enter a valid broker name before saving.
-        `;
-        document.getElementById('broker-save-status').style.display = 'block';
-        document.getElementById('broker-save-status').style.background = '#fff3cd';
-        document.getElementById('broker-save-status').style.color = '#856404';
-    }
-}
-
-function deleteBrokerConfig() {
-    sessionStorage.removeItem('saga_broker_db_name');
-    document.getElementById('broker-db-name').value = '';
-    
-    document.getElementById('broker-save-message').innerHTML = `
-        🗑️ <strong>Broker Configuration Deleted</strong><br/>
-        Broker configuration has been removed from browser session.
-    `;
-    document.getElementById('broker-save-status').style.display = 'block';
-    document.getElementById('broker-save-status').style.background = '#f8d7da';
-    document.getElementById('broker-save-status').style.color = '#721c24';
-    
-    updateBrokerCommand();
-}
-
-function clearBrokerConfig() {
-    document.getElementById('broker-db-name').value = '';
-    hideElement(document.getElementById('broker-save-status'));
-    updateBrokerCommand();
-}
-
-function hideElement(element) {
-    if (element) {
-        element.style.setProperty('display', 'none', 'important');
-    }
-}
-
-function updateCoordinatorConnectionCommand() {
-    const orchUser = document.getElementById('orchestratorchicago-user').value || '<ORCHESTRATOR_SCHEMA>';
-    const orchPass = document.getElementById('orchestratorchicago-password').value || '<ORCHESTRATOR_SCHEMA_PASSWORD>';
-    const connectionString = document.getElementById('coordinator-connection-string').value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `connect ${orchUser}/${orchPass}@'${connectionString}'`;
-    
-    document.getElementById('coordinator-connection-command').textContent = command;
-    updateCoordinatorCommand();
-}
-
-function updateCoordinatorCommand() {
-    const orchUser = document.getElementById('orchestratorchicago-user').value || '<ORCHESTRATOR_SCHEMA>';
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    
-    let quotedBrokerName;
-    if (((brokerDbName.startsWith('"') && brokerDbName.endsWith('"')) || 
-        (brokerDbName.startsWith("'") && brokerDbName.endsWith("'"))) && 
-        brokerDbName.length > 2) {
-        quotedBrokerName = brokerDbName;
-    } else {
-        quotedBrokerName = `'${brokerDbName}'`;
-    }
-
-    let quotedCoordinatorName;
-    if (((coordinatorName.startsWith('"') && coordinatorName.endsWith('"')) || 
-        (coordinatorName.startsWith("'") && coordinatorName.endsWith("'"))) && 
-        coordinatorName.length > 2) {
-        quotedCoordinatorName = coordinatorName;
-    } else {
-        quotedCoordinatorName = `'${coordinatorName}'`;
-    }
-    
-    const command = `-- Execute from orchestratorchicago schema
-EXEC DBMS_SAGA_ADM.ADD_COORDINATOR(
-  coordinator_name => ${quotedCoordinatorName},
-  mailbox_schema   => '${brokerUser.toUpperCase()}',
-  broker_name      => ${quotedBrokerName}
-);`;
-    
-    document.getElementById('coordinator-command').textContent = command;
-    updateCoordinatorVerificationCommands();
-}
-
-function updateCoordinatorVerificationCommands() {
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    
-    let quotedCoordinatorName;
-    if (((coordinatorName.startsWith('"') && coordinatorName.endsWith('"')) || 
-        (coordinatorName.startsWith("'") && coordinatorName.endsWith("'"))) && 
-        coordinatorName.length > 2) {
-        quotedCoordinatorName = coordinatorName;
-    } else {
-        quotedCoordinatorName = `'${coordinatorName}'`;
-    }
-    
-    const verifyCoordinatorCommand = `-- Check the new coordinator
-SELECT coordinator_name, coordinator_schema, broker_name, queue_partitions, listener_count
-FROM USER_SAGA_COORDINATORS
-WHERE coordinator_name = ${quotedCoordinatorName};`;
-    
-    const verifyCoordinatorElement = document.getElementById('verify-coordinator-command');
-    if (verifyCoordinatorElement) {
-        verifyCoordinatorElement.textContent = verifyCoordinatorCommand;
-    }
-    const verifyCoordinatorQueueCommand = `-- Examine the coordinator queue infrastructure
-SELECT queue_name, queue_table, owner 
-FROM DBA_QUEUES 
-WHERE owner = USER 
-AND queue_name LIKE '%${coordinatorName.replace(/["']/g, '')}%';`;
-    
-    const verifyCoordinatorQueueElement = document.getElementById('verify-coordinator-queue-command');
-    if (verifyCoordinatorQueueElement) {
-        verifyCoordinatorQueueElement.textContent = verifyCoordinatorQueueCommand;
-    }
-}
-
-function saveCoordinatorName() {
-    const coordinatorName = document.getElementById('coordinator-name').value;
-    if (coordinatorName) {
-        sessionStorage.setItem('saga_coordinator_name', coordinatorName);
-    }
-}
-
-function saveCoordinatorConfig() {
-    const coordinatorName = document.getElementById('coordinator-name').value;
-    
-    if (coordinatorName) {
-        sessionStorage.setItem('saga_coordinator_name', coordinatorName);
-        
-        document.getElementById('coordinator-save-message').innerHTML = `
-            ✅ <strong>Coordinator Configuration Saved Successfully!</strong><br/>
-            Coordinator Name: ${coordinatorName}<br/>
-            <small>Configuration will persist until you close the browser tab.</small>
-        `;
-        document.getElementById('coordinator-save-status').style.display = 'block';
-        document.getElementById('coordinator-save-status').style.background = '#d4edda';
-        document.getElementById('coordinator-save-status').style.color = '#155724';
-        
-        const button = document.querySelector('button[onclick="saveCoordinatorConfig()"]');
-        const originalText = button.textContent;
-        button.textContent = 'Saved!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-        
-    } else {
-        document.getElementById('coordinator-save-message').innerHTML = `
-            ⚠️ <strong>Please Enter Coordinator Name</strong><br/>
-            Enter a valid coordinator name before saving.
-        `;
-        document.getElementById('coordinator-save-status').style.display = 'block';
-        document.getElementById('coordinator-save-status').style.background = '#fff3cd';
-        document.getElementById('coordinator-save-status').style.color = '#856404';
-    }
-}
-
-function deleteCoordinatorConfig() {
-    sessionStorage.removeItem('saga_coordinator_name');
-    document.getElementById('coordinator-name').value = '';
-    
-    document.getElementById('coordinator-save-message').innerHTML = `
-        🗑️ <strong>Coordinator Configuration Deleted</strong><br/>
-        Coordinator configuration has been removed from browser session.
-    `;
-    document.getElementById('coordinator-save-status').style.display = 'block';
-    document.getElementById('coordinator-save-status').style.background = '#f8d7da';
-    document.getElementById('coordinator-save-status').style.color = '#721c24';
-    
-    updateCoordinatorCommand();
-}
-
-function clearCoordinatorConfig() {
-    document.getElementById('coordinator-name').value = '';
-    hideElement(document.getElementById('coordinator-save-status'));
-    updateCoordinatorCommand();
-}
-
-function updateCloudbankConnectionCommand() {
-    updateCloudbankCommand();
-}
-
-function updateBankaConnectionCommand() {
-    const bankaUser = document.getElementById('bankchicago-user').value || '<BANKA_SCHEMA>';
-    const bankaPass = document.getElementById('bankchicago-password').value || '<BANKA_SCHEMA_PASSWORD>';
-    const connectionString = document.getElementById('bankchicago-connection-string').value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `connect ${bankaUser}/${bankaPass}@'${connectionString}'`;
-    document.getElementById('bankchicago-connection-command').textContent = command;
-    updateBankaCommand();
-}
-
-function updateBankbConnectionCommand() {
-    const bankbUser = document.getElementById('bankmex-user').value || '<BANKB_SCHEMA>';
-    const bankbPass = document.getElementById('bankmex-password').value || '<BANKB_SCHEMA_PASSWORD>';
-    const connectionString = document.getElementById('bankmex-connection-string').value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `connect ${bankbUser}/${bankbPass}@'${connectionString}'`;
-    document.getElementById('bankmex-connection-command').textContent = command;
-    updateBankbCommand();
-}
-
-function updateAdminConnectionCommand() {
-    const adminUser = document.getElementById('admin-user').value || '<ADMIN_SCHEMA>';
-    const adminPass = document.getElementById('admin-password').value || '<DATABASE_ADMIN_PASSWORD>';
-    const connectionString = document.getElementById('admin-connection-string').value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `connect ${adminUser}/${adminPass}@'${connectionString}'`;
-    document.getElementById('admin-connection-command').textContent = command;
-    updateVerifyAllParticipantsCommand();
-}
-
-function updateCloudbankCommand() {
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    const participantName = 'CloudBank'; // Fixed value for CloudBank demo consistency
-    
-    let quotedBrokerName = getQuotedName(brokerDbName);
-    let quotedCoordinatorName = getQuotedName(coordinatorName);
-    let quotedParticipantName = getQuotedName(participantName);
-    
-    const command = `-- Execute from orchestrator schema (CloudBank participant)
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => ${quotedParticipantName},
-  coordinator_name => ${quotedCoordinatorName}, 
-  mailbox_schema   => '${brokerUser.toUpperCase()}',
-  broker_name      => ${quotedBrokerName}
-);`;
-    
-    document.getElementById('cloudbank-command').textContent = command;
-}
-
-function updateBankaCommand() {
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    const participantName = 'BankChicago'; // Fixed value for CloudBank demo consistency
-    
-    let quotedBrokerName = getQuotedName(brokerDbName);
-    let quotedCoordinatorName = getQuotedName(coordinatorName);
-    let quotedParticipantName = getQuotedName(participantName);
-    
-    const command = `-- Execute from bankchicago schema
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => ${quotedParticipantName},
-  coordinator_name => ${quotedCoordinatorName}, 
-  mailbox_schema   => '${brokerUser.toUpperCase()}',
-  broker_name      => ${quotedBrokerName}
-);`;
-    
-    document.getElementById('bankchicago-command').textContent = command;
-}
-
-function updateBankbCommand() {
-    const brokerUser = document.getElementById('brokerchicago-user').value || '<BROKER_SCHEMA>';
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    const brokerDbName = document.getElementById('broker-db-name').value || '<BROKER_PARTICIPANT_NAME>';
-    const participantName = document.getElementById('bankmex-participant-name').value || '<BANKB_PARTICIPANT_NAME>';
-    
-    let quotedBrokerName = getQuotedName(brokerDbName);
-    let quotedCoordinatorName = getQuotedName(coordinatorName);
-    let quotedParticipantName = getQuotedName(participantName);
-    
-    const command = `-- Execute from bankmex schema
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => ${quotedParticipantName},
-  coordinator_name => ${quotedCoordinatorName}, 
-  mailbox_schema   => '${brokerUser.toUpperCase()}',
-  broker_name      => ${quotedBrokerName}
-);`;
-    
-    document.getElementById('bankmex-command').textContent = command;
-}
-
-function getQuotedName(name) {
-    if (((name.startsWith('"') && name.endsWith('"')) || 
-        (name.startsWith("'") && name.endsWith("'"))) && 
-        name.length > 2) {
-        return name;
-    } else {
-        return `'${name}'`;
-    }
-}
-
-function updateVerifyAllParticipantsCommand() {
-    const coordinatorName = document.getElementById('coordinator-name').value || '<COORDINATOR_PARTICIPANT_NAME>';
-    
-    let quotedCoordinatorName = getQuotedName(coordinatorName);
-    
-    const verifyCommand = `-- List all participants
-SELECT participant_name, participant_schema, coordinator_name, 
-       broker_name, mailbox_schema, callback_schema, callback_package
-FROM DBA_SAGA_PARTICIPANTS
-WHERE coordinator_name = ${quotedCoordinatorName};
-
--- Check participant queues
-SELECT queue_name, queue_table, owner 
-FROM DBA_QUEUES 
-WHERE owner IN ('CLOUDBANK', 'BANKCHICAGO', 'BANKMEX')
-AND queue_name LIKE '%_IN_Q';`;
-    
-    const verifyElement = document.getElementById('verify-all-participants-command');
-    if (verifyElement) {
-        verifyElement.textContent = verifyCommand;
-    }
-}
-
-function saveCloudbankParticipantName() {
-    const participantName = document.getElementById('cloudbank-participant-name').value;
-    if (participantName) {
-        sessionStorage.setItem('saga_cloudbank_participant_name', participantName);
-    }
-}
-
-function saveCloudbankConfig() {
-    const participantName = document.getElementById('cloudbank-participant-name').value;
-    
-    if (participantName) {
-        sessionStorage.setItem('saga_cloudbank_participant_name', participantName);
-        
-        document.getElementById('cloudbank-save-message').innerHTML = `
-            ✅ <strong>CloudBank Configuration Saved Successfully!</strong><br/>
-            Participant Name: ${participantName}<br/>
-            <small>Configuration will persist until you close the browser tab.</small>
-        `;
-        document.getElementById('cloudbank-save-status').style.display = 'block';
-        document.getElementById('cloudbank-save-status').style.background = '#d4edda';
-        document.getElementById('cloudbank-save-status').style.color = '#155724';
-        
-        const button = document.querySelector('button[onclick="saveCloudbankConfig()"]');
-        const originalText = button.textContent;
-        button.textContent = 'Saved!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-        
-    } else {
-        document.getElementById('cloudbank-save-message').innerHTML = `
-            ⚠️ <strong>Please Enter CloudBank Participant Name</strong><br/>
-            Enter a valid participant name before saving.
-        `;
-        document.getElementById('cloudbank-save-status').style.display = 'block';
-        document.getElementById('cloudbank-save-status').style.background = '#fff3cd';
-        document.getElementById('cloudbank-save-status').style.color = '#856404';
-    }
-}
-
-function deleteCloudbankConfig() {
-    sessionStorage.removeItem('saga_cloudbank_participant_name');
-    document.getElementById('cloudbank-participant-name').value = '';
-    
-    document.getElementById('cloudbank-save-message').innerHTML = `
-        🗑️ <strong>CloudBank Configuration Deleted</strong><br/>
-        Participant configuration has been removed from browser session.
-    `;
-    document.getElementById('cloudbank-save-status').style.display = 'block';
-    document.getElementById('cloudbank-save-status').style.background = '#f8d7da';
-    document.getElementById('cloudbank-save-status').style.color = '#721c24';
-    
-    updateCloudbankCommand();
-}
-
-function clearCloudbankConfig() {
-    document.getElementById('cloudbank-participant-name').value = '';
-    hideElement(document.getElementById('cloudbank-save-status'));
-    updateCloudbankCommand();
-}
-
-function saveBankaParticipantName() {
-    const participantName = document.getElementById('bankchicago-participant-name').value;
-    if (participantName) {
-        sessionStorage.setItem('saga_banka_participant_name', participantName);
-    }
-}
-
-function saveBankaConfig() {
-    const participantName = document.getElementById('bankchicago-participant-name').value;
-    
-    if (participantName) {
-        sessionStorage.setItem('saga_banka_participant_name', participantName);
-        
-        document.getElementById('bankchicago-save-message').innerHTML = `
-            ✅ <strong>BankChicago Configuration Saved Successfully!</strong><br/>
-            Participant Name: ${participantName}<br/>
-            <small>Configuration will persist until you close the browser tab.</small>
-        `;
-        document.getElementById('bankchicago-save-status').style.display = 'block';
-        document.getElementById('bankchicago-save-status').style.background = '#d4edda';
-        document.getElementById('bankchicago-save-status').style.color = '#155724';
-        
-        const button = document.querySelector('button[onclick="saveBankaConfig()"]');
-        const originalText = button.textContent;
-        button.textContent = 'Saved!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-        
-    } else {
-        document.getElementById('bankchicago-save-message').innerHTML = `
-            ⚠️ <strong>Please Enter BankChicago Participant Name</strong><br/>
-            Enter a valid participant name before saving.
-        `;
-        document.getElementById('bankchicago-save-status').style.display = 'block';
-        document.getElementById('bankchicago-save-status').style.background = '#fff3cd';
-        document.getElementById('bankchicago-save-status').style.color = '#856404';
-    }
-}
-
-function deleteBankaConfig() {
-    sessionStorage.removeItem('saga_banka_participant_name');
-    document.getElementById('bankchicago-participant-name').value = '';
-    
-    document.getElementById('bankchicago-save-message').innerHTML = `
-        🗑️ <strong>BankChicago Configuration Deleted</strong><br/>
-        Participant configuration has been removed from browser session.
-    `;
-    document.getElementById('bankchicago-save-status').style.display = 'block';
-    document.getElementById('bankchicago-save-status').style.background = '#f8d7da';
-    document.getElementById('bankchicago-save-status').style.color = '#721c24';
-    
-    updateBankaCommand();
-}
-
-function clearBankaConfig() {
-    document.getElementById('bankchicago-participant-name').value = '';
-    hideElement(document.getElementById('bankchicago-save-status'));
-    updateBankaCommand();
-}
-
-function saveBankbParticipantName() {
-    const participantName = document.getElementById('bankmex-participant-name').value;
-    if (participantName) {
-        sessionStorage.setItem('saga_bankb_participant_name', participantName);
-    }
-}
-
-function saveBankbConfig() {
-    const participantName = document.getElementById('bankmex-participant-name').value;
-    
-    if (participantName) {
-        sessionStorage.setItem('saga_bankb_participant_name', participantName);
-        
-        document.getElementById('bankmex-save-message').innerHTML = `
-            ✅ <strong>BankMex Configuration Saved Successfully!</strong><br/>
-            Participant Name: ${participantName}<br/>
-            <small>Configuration will persist until you close the browser tab.</small>
-        `;
-        document.getElementById('bankmex-save-status').style.display = 'block';
-        document.getElementById('bankmex-save-status').style.background = '#d4edda';
-        document.getElementById('bankmex-save-status').style.color = '#155724';
-        
-        const button = document.querySelector('button[onclick="saveBankbConfig()"]');
-        const originalText = button.textContent;
-        button.textContent = 'Saved!';
-        button.style.background = '#28a745';
-        
-        setTimeout(() => {
-            button.textContent = originalText;
-            button.style.background = '';
-        }, 2000);
-        
-    } else {
-        document.getElementById('bankmex-save-message').innerHTML = `
-            ⚠️ <strong>Please Enter BankMex Participant Name</strong><br/>
-            Enter a valid participant name before saving.
-        `;
-        document.getElementById('bankmex-save-status').style.display = 'block';
-        document.getElementById('bankmex-save-status').style.background = '#fff3cd';
-        document.getElementById('bankmex-save-status').style.color = '#856404';
-    }
-}
-
-function deleteBankbConfig() {
-    sessionStorage.removeItem('saga_bankb_participant_name');
-    document.getElementById('bankmex-participant-name').value = '';
-    
-    document.getElementById('bankmex-save-message').innerHTML = `
-        🗑️ <strong>BankMex Configuration Deleted</strong><br/>
-        Participant configuration has been removed from browser session.
-    `;
-    document.getElementById('bankmex-save-status').style.display = 'block';
-    document.getElementById('bankmex-save-status').style.background = '#f8d7da';
-    document.getElementById('bankmex-save-status').style.color = '#721c24';
-    
-    updateBankbCommand();
-}
-
-function clearBankbConfig() {
-    document.getElementById('bankmex-participant-name').value = '';
-    hideElement(document.getElementById('bankmex-save-status'));
-    updateBankbCommand();
-}
-
-
-function copyToClipboard(elementId, containerId) {
-    const text = document.getElementById(elementId).textContent;
-    navigator.clipboard.writeText(text).then(() => {
-        const container = document.getElementById(containerId);
-        container.style.opacity = "0.5";
-        setTimeout(() => container.style.opacity = "1", 200);
-    });
-}
-
-function updateTask4SchemaQuery() {
-    const brokerSchema = document.getElementById('task4-broker-schema')?.value || '<BROKER_SCHEMA>';
-    const coordinatorSchema = document.getElementById('task4-orchestrator-schema')?.value || '<COORDINATOR_SCHEMA>';
-    const bankaSchema = document.getElementById('task4-bankchicago-schema')?.value || '<BANKA_SCHEMA>';
-    const bankbSchema = document.getElementById('task4-bankmex-schema')?.value || '<BANKB_SCHEMA>';
-    
-    const query = `-- Check saga role assignments for all schemas
-SELECT grantee, granted_role, admin_option, default_role
-FROM DBA_ROLE_PRIVS 
-WHERE grantee IN ('${brokerSchema.toUpperCase()}', '${coordinatorSchema.toUpperCase()}', '${bankaSchema.toUpperCase()}', '${bankbSchema.toUpperCase()}')
-  AND granted_role LIKE 'SAGA%'
-ORDER BY grantee, granted_role;
-
--- Check system privileges for saga schemas
-SELECT grantee, privilege, admin_option
-FROM DBA_SYS_PRIVS
-WHERE grantee IN ('${brokerSchema.toUpperCase()}', '${coordinatorSchema.toUpperCase()}', '${bankaSchema.toUpperCase()}', '${bankbSchema.toUpperCase()}')
-  AND (privilege LIKE '%SAGA%' OR privilege LIKE '%AQ%' OR privilege = 'CREATE SESSION')
-ORDER BY grantee, privilege;`;
-
-    const queryElement = document.getElementById('task4-schema-query');
-    if (queryElement) {
-        queryElement.textContent = query;
-    }
-}
-
-function updateTask5AdminConnectionCommand() {
-    const adminUser = document.getElementById('task5-admin-user')?.value || '<ADMIN_SCHEMA>';
-    const adminPass = document.getElementById('task5-admin-password')?.value || '<DATABASE_ADMIN_PASSWORD>';
-    const connectionString = document.getElementById('task5-admin-connection-string')?.value || '<DATABASE_CONNECTION_TNS_NAME>';
-    
-    const command = `connect ${adminUser}/${adminPass}@'${connectionString}'`;
-    
-    const commandElement = document.getElementById('task5-admin-connection-command');
-    if (commandElement) {
-        commandElement.textContent = command;
-    }
-}
-
-document.addEventListener('DOMContentLoaded', function() {
-    setTimeout(updateTask4SchemaQuery, 100);
-    setTimeout(updateTask5AdminConnectionCommand, 100);
-    
-    // Initialize fixed participant names and update their commands
-    setTimeout(function() {
-        // Set fixed values for CloudBank and BankChicago participants
-        const cloudbankInput = document.getElementById('cloudbank-participant-name');
-        const bankaInput = document.getElementById('bankchicago-participant-name');
-        
-        if (cloudbankInput) {
-            cloudbankInput.value = 'CloudBank';
-            updateCloudbankCommand();
-        }
-        
-        if (bankaInput) {
-            bankaInput.value = 'BankChicago';
-            updateBankaCommand();
-        }
-    }, 200);
-});
-</script>
-
-<style>
-.input-section {
-    background: #f9f9f9;
-    border: 1px solid #ddd;
-    padding: 15px;
-    border-radius: 5px;
-    margin: 10px 0;
-}
-
-.input-field {
-    width: 300px;
-    padding: 8px;
-    margin: 5px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-}
-
-.input-field-fixed {
-    width: 300px;
-    padding: 8px;
-    margin: 5px 0;
-    border: 1px solid #ccc;
-    border-radius: 4px;
-    font-size: 14px;
-    background-color: #f5f5f5;
-    cursor: not-allowed;
-    color: #666;
-}
-
-.save-btn-small, .clear-btn-small, .delete-btn-small {
-    padding: 6px 12px;
-    margin: 5px 5px 5px 0;
-    border: none;
-    border-radius: 4px;
-    cursor: pointer;
-    font-size: 12px;
-    font-weight: bold;
-    transition: background 0.2s;
-}
-
-.save-btn-small {
-    background: #28a745;
-    color: white;
-}
-
-.save-btn-small:hover {
-    background: #1e7e34;
-}
-
-.clear-btn-small {
-    background: #6c757d;
-    color: white;
-}
-
-.clear-btn-small:hover {
-    background: #545b62;
-}
-
-.delete-btn-small {
-    background: #dc3545;
-    color: white;
-}
-
-.delete-btn-small:hover {
-    background: #c82333;
-}
-
-.save-status {
-    padding: 15px;
-    border-radius: 5px;
-    margin: 10px 0;
-    border: 1px solid #ddd;
-    min-height: 60px;
-    font-size: 14px;
-    background-color: #d4edda;
-    color: #155724;
-}
-
-.interactive-command {
-    display: flex;
-    align-items: center;
-    background: #f5f5f5;
-    border: 1px solid #ccc;
-    padding: 10px;
-    border-radius: 5px;
-    position: relative;
-    transition: opacity 0.3s;
-    margin: 10px 0;
-    font-family: 'Courier New', monospace;
-}
-
-.command-text {
-    white-space: pre-wrap;
-    font-size: 14px;
-    line-height: 1.4;
-}
-
-.copy-btn {
-    background: #28a745;
-    color: black;
-    border: none;
-    padding: 10px 20px;
-    cursor: pointer;
-    border-radius: 5px;
-    font-weight: bold;
-    font-size: 14px;
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.copy-btn:hover {
-    background: #100f0e;
-    color: white;
-}
-
-.interactive-command .copy-btn {
-    position: absolute;
-    right: -10px;
-    top: -10px;
-    background: white;
-    border: 1px solid #ccc;
-    padding: 3px 8px;
-    cursor: pointer;
-    font-size: 15px;
-    border-radius: 3px;
-    transition: background 0.2s, color 0.2s;
-    min-width: auto;
-    height: auto;
-}
-
-.interactive-command .copy-btn:hover {
-    background: #100f0e;
-    color: white;
-}
-</style>

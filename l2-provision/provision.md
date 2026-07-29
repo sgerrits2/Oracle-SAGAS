@@ -25,6 +25,14 @@ By completing this lab, you will be able to:
 - A Free-Tier or LiveLabs Oracle Cloud account.
 - Familiarity with OCI Console and basic Linux command line.
 
+### Download CloudBank Demo Application Package
+
+<div style="margin: 24px 0;">
+  <a href="files/oracle-saga-cloudbank.zip?download=1" style="display: inline-block; padding: 16px 28px; background: #2e7d32; color: #ffffff !important; font-size: 18px; font-weight: 700; border-radius: 6px; text-decoration: none;">
+    CloudBank Demo Application
+  </a>
+</div>
+
 ## Task 1: Provision an Autonomous Database
 
 ---
@@ -694,15 +702,13 @@ The provisioning process takes 30-60 seconds. Once ready, you'll see a command p
 
 ![Cloud Shell Ready](./images/lab2-task5-2.png "Cloud Shell provisioned and ready with command prompt")
 
-### **Step 3: Download CloudBank Demo Application**
+### **Step 3: Review the CloudBank Demo Application Package**
 
-Download the CloudBank application package to your computer, then upload it to Cloud Shell. It contains:
+Download the CloudBank application package using the button near the prerequisites. It contains:
 - Microservice source code and configuration files
 - Database setup scripts and schema definitions  
 - Docker compose files for container orchestration
 - Configuration templates for OCI integration
-
-Click to download: [CloudBank Demo Application Package](files/oracle-saga-cloudbank.zip?download=1)
 
 ![Download CloudBank Package](./images/lab2-task5-3.png "Download CloudBank application files")
 

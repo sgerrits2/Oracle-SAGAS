@@ -203,7 +203,7 @@ In this lab, you will:
 
 - Oracle **Autonomous Database (ADB-S)** provisioned in Lab 2  
 - **CloudShell** access with SQLcl installed  
-- User credentials saved from Lab 2 (Broker1, Orchestrator1, Bank users)  
+- User credentials saved from Lab 2 (Brokers, Orchestrators, Bank users)  
 - Connected to your ADB instance with appropriate saga roles
 - Familiar with basic SQL and PL/SQL concepts  
 - Completed Lab 2: Environment Setup

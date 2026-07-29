@@ -18,7 +18,7 @@ The CloudBank demo application runs in one Oracle Database 23ai PDB with separat
 
 - **CloudBank Orchestrator**: initiates and coordinates saga workflows.
 - **CloudBank Coordinator**: manages saga completion and compensation.
-- **BankChicago and BankCDMX Services**: process account operations and transfers.
+- **BankChicago and BankMex Services**: process account operations and transfers.
 
 > **⚠️ Important:** CloudBank is a learning example. Its business rules are simplified so that the focus remains on saga patterns and compensation.
 
@@ -95,7 +95,7 @@ Add the following dependency to each CloudBank service that participates in a sa
 Review the `saga-core` dependency in these files:
 
 1. **BankChicago Service:** `oracle-saga-cloudbank/Cloudbank/banka/pom.xml` (source directory retained)
-2. **BankCDMX Service:** `oracle-saga-cloudbank/Cloudbank/bankb/pom.xml` (source directory retained)
+2. **BankMex Service:** `oracle-saga-cloudbank/Cloudbank/bankb/pom.xml` (source directory retained)
 3. **Orchestrator Service:** `oracle-saga-cloudbank/Cloudbank/orchestrator/pom.xml`
 
 ### Step 3: Repository Information
@@ -167,16 +167,16 @@ CloudBank uses this programmatic approach instead of `@LRA` for explicit lifecyc
 
 ### Step 5: Review `sendRequest()`
 
-Find the requests sent to `BankChicago` and `BankCDMX` in the controller:
+Find the requests sent to `BankChicago` and `BankMex` in the controller:
 
 ```java
 saga.sendRequest("BankChicago", payload.toString());
-saga.sendRequest("BankCDMX", payload.toString());
+saga.sendRequest("BankMex", payload.toString());
 ```
 
 **`sendRequest()`** enrolls the target participant and sends it the JSON request payload.
 
-The fixed participant names `BankChicago` and `BankCDMX` must match the names registered in Lab 3.
+The fixed participant names `BankChicago` and `BankMex` must match the names registered in Lab 3.
 
 ### Step 6: Add Completion and Compensation Annotations
 
@@ -212,13 +212,13 @@ public void onResponseBankChicago(SagaMessageContext info) {
 **`@oracle.saga.annotation.Response`** routes responses from `BankChicago` to `onResponseBankChicago`.
 
 ```java
-@oracle.saga.annotation.Response(sender = "BankCDMX.*")
-public void onResponseBankCDMX(SagaMessageContext info) {
+@oracle.saga.annotation.Response(sender = "BankMex.*")
+public void onResponseBankMex(SagaMessageContext info) {
     handleResponse(info);
 }
 ```
 
-**`@oracle.saga.annotation.Response`** routes responses from `BankCDMX` to `onResponseBankCDMX`.
+**`@oracle.saga.annotation.Response`** routes responses from `BankMex` to `onResponseBankMex`.
 
 ### Step 8: Review Saga Completion
 
@@ -273,7 +273,7 @@ CloudBank is a demo application that illustrates saga coordination and compensat
 
 ### Step 1: Schema & Architecture
 
-CloudBank runs in a single Oracle Database 23ai PDB with separate schemas for the orchestrator, BankChicago, and BankCDMX services.
+CloudBank runs in a single Oracle Database 23ai PDB with separate schemas for the orchestrator, BankChicago, and BankMex services.
 
 [![CloudBank Architecture Screenshot](https://img.shields.io/badge/🏛️%20CloudBank-Architecture%20Demo-blue?style=for-the-badge&logo=database&logoColor=white)](images/Arch.mp4)
 
@@ -282,7 +282,7 @@ The schemas contain customer and saga-audit data in the orchestrator, plus accou
 | Component | Role |
 |-----------|------|
 | CloudBank Orchestrator | Starts sagas, routes requests, and records status. |
-| BankChicago and BankCDMX | Process account operations as saga participants. |
+| BankChicago and BankMex | Process account operations as saga participants. |
 | Coordinator and Broker | Coordinate lifecycle events and route saga messages. |
 
 The demo creates its own test accounts. Do not enter or configure shared credentials for this lab.
@@ -292,7 +292,7 @@ The demo creates its own test accounts. Do not enter or configure shared credent
 #### Workflow 1: New Bank Account Creation
 
 1. The orchestrator starts a saga and determines the selected bank.
-2. It sends an account-creation request to BankChicago or BankCDMX.
+2. It sends an account-creation request to BankChicago or BankMex.
 3. The bank creates the account and returns a response.
 4. The orchestrator commits on success or compensates on failure.
 

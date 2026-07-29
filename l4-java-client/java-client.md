@@ -2,7 +2,7 @@
 
 ## **Introduction**
 
-In this lab, you will review the Java client used by the CloudBank demo application. The client provides an application-layer interface to the `DBMS_SAGA` package in PL/SQL.
+In this lab, you will examine a Java-based saga client that provides an application-layer interface to the `DBMS_SAGA` package in PL/SQL. You will use the CloudBank demo application, a Jersey-based Spring application that demonstrates distributed transaction management with Oracle Sagas.
 
 ### What You Will Do in This Lab
 
@@ -16,17 +16,17 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 
 - **CloudBank Orchestrator**: starts and coordinates sagas.
 - **CloudBank Coordinator**: manages completion and compensation.
-- **BankChicago and BankMex**: process account operations as saga participants.
+- **BankChicago and BankMex Services**: process account operations and transfers.
 
-> **⚠️ Important:** CloudBank is a learning example. Its business rules are simplified so the focus remains on saga patterns and compensation.
+> **⚠️ Important:** CloudBank is a demo application designed for learning. Its business logic is simplified and may not cover all production cases; focus on the saga patterns and compensation workflow.
 
 *Estimated Time: 45–60 minutes*
 
 ### Objectives
 
-- Configure the Oracle Saga Maven dependency.
-- Identify the annotations used by an initiator and a participant.
-- Trace a CloudBank saga from request through completion or compensation.
+- **Review Maven dependencies** for Oracle Saga integration.
+- **Add and verify annotations** in the supplied CloudBank files.
+- **Understand** the CloudBank architecture and saga workflows.
 
 ### Prerequisites
 
@@ -37,6 +37,8 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 ## Task 1: Maven Dependency
 
 ---
+
+### Step 1: Core Saga Dependency
 
 Add this dependency to each CloudBank service that participates in a saga:
 
@@ -52,6 +54,8 @@ Add this dependency to each CloudBank service that participates in a saga:
 
 **`saga-core`** provides the Java client, `Saga` API, and the annotations used in this lab.
 
+### Step 2: CloudBank Project Structure
+
 <details>
 <summary>CloudBank service POM files</summary>
 
@@ -61,7 +65,16 @@ Add this dependency to each CloudBank service that participates in a saga:
 
 </details>
 
-## Task 2: Follow the CloudBank Saga Flow
+### Step 3: Repository Information
+
+- [Oracle Saga artifacts on Maven Repository](https://mvnrepository.com/artifact/com.oracle.database.saga)
+- [`saga-core` artifact](https://mvnrepository.com/artifact/com.oracle.database.saga/saga-core)
+
+The Maven environment is configured and verified in the next lab when you configure Podman containers.
+
+![Maven Dependencies](./images/lab4-task1-1.png "Oracle Saga core dependency in CloudBank project structure")
+
+## Task 2: Understanding Annotations in CloudBank Files
 
 ---
 
@@ -98,6 +111,8 @@ Open `/Cloudbank/orchestrator/src/java/.../controller/CloudBankController.java`.
 
 **`@Participant`** registers the initiator with the fixed `CloudBank` name.
 
+![Participant Annotation](./images/lab4-task2-participant.png "@Participant annotation in CloudBank controller")
+
 ### Step 3: Review the Connection Provider
 
 In the same class, review the supplied method:
@@ -110,6 +125,8 @@ public static Connection getCloudBankConnection() throws SQLException {
 ```
 
 **`@SagaConnection`** marks the method that supplies the JDBC connection for saga operations.
+
+![SagaConnection Annotation](./images/lab4-task2-sagaconnection.png "@SagaConnection annotation providing database connectivity")
 
 ### Step 4: Start the Saga
 
@@ -124,6 +141,8 @@ var sagaId = saga.getSagaId();
 
 **`getSagaId()`** returns the identifier used for logging and correlation.
 
+![beginSaga Method](./images/lab4-task2-beginsaga.png "beginSaga() method calls in CloudBank controller")
+
 ### Step 5: Send Participant Requests
 
 Find the requests sent from CloudBank:
@@ -136,6 +155,8 @@ saga.sendRequest(Stubs.BANK_B, payload.toString());
 **`sendRequest()`** enrolls the participant and sends its JSON request.
 
 **`Stubs.BANK_A` and `Stubs.BANK_B`** resolve to the fixed participant names `BankChicago` and `BankMex`.
+
+![sendRequest Method](./images/lab4-task2-sendrequest.png "saga.sendRequest() calls in CloudBank controller")
 
 ### Step 6: Receive Requests in a Participant
 
@@ -158,6 +179,8 @@ public class AccountsController extends SagaParticipant {
 ```
 
 **`@Request(sender = "CloudBank")`** accepts requests sent by the CloudBank initiator.
+
+![BankChicago Annotations](./images/lab4-task2-banka.png "Annotation set in the BankChicago participant")
 
 <details>
 <summary>BankMex equivalent</summary>
@@ -184,6 +207,8 @@ public void onResponseBankMex(SagaMessageContext info) {
 
 **`@Response`** routes each participant response to the matching handler.
 
+![Response Annotations](./images/lab4-task2-response.png "@Response annotations for participant responses")
+
 ### Step 8: Complete or Compensate
 
 Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
@@ -196,6 +221,8 @@ Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
 
 **`@Compensate`** marks the idempotent callback that runs when the saga rolls back.
 
+![Compensate Annotation](./images/lab4-task2-compensate.png "@Compensate annotation for saga rollback handling")
+
 ```java
 <copy>
 @Complete
@@ -203,6 +230,8 @@ Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
 ```
 
 **`@Complete`** marks the idempotent callback that runs after the saga completes successfully.
+
+![Complete Annotation](./images/lab4-task2-complete.png "@Complete annotation for successful saga completion")
 
 ### Step 9: Decide the Outcome
 
@@ -216,6 +245,8 @@ saga.rollbackSaga();
 **`commitSaga()`** completes a successful saga and invokes `@Complete` callbacks.
 
 **`rollbackSaga()`** compensates a failed saga and invokes `@Compensate` callbacks.
+
+![Saga Lifecycle Methods](./images/lab4-task2-lifecycle.png "saga.commitSaga() and saga.rollbackSaga() method calls")
 
 ### Step 10: CloudBank Flow at a Glance
 
@@ -233,16 +264,17 @@ saga.rollbackSaga();
 - `beginSaga()` starts the flow; `sendRequest()` involves participants; responses determine the outcome.
 - `@Request` processes work, `@Complete` finalizes it, and `@Compensate` reverses it safely.
 
-<details>
-<summary>CloudBank architecture and workflow reference</summary>
+![Complete Analysis](./images/lab4-task2-summary.png "Oracle Saga annotation analysis in CloudBank application")
+
+### CloudBank Architecture and Workflow Reference
 
 CloudBank coordinates account creation and inter-bank transfers. Bank balances use Oracle `RESERVABLE` columns to support lock-free fund reservations while a saga is in progress.
+
+View the [CloudBank architecture and workflow video](./images/Arch.mp4).
 
 ![CloudBank Schema](./images/lab4-task3-1.png "CloudBank database schema and architecture")
 
 ![CloudBank Workflows](./images/lab4-task3-2.png "CloudBank saga workflows: account creation and money transfer")
-
-</details>
 
 ## Learn More
 

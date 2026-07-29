@@ -304,7 +304,7 @@ As the control center of the saga pattern, the coordinator maintains detailed lo
 
 > **Important Architectural Limitation**: In Oracle Database 23ai's initial saga implementation, the **saga coordinator and the saga initiator (orchestrator) must be co-located in the same database schema and PDB**. This is a fundamental constraint that requires the orchestrating service to also act as a saga participant. While other participants can be distributed across different schemas or databases, the coordinator-initiator pair cannot be separated. This architectural decision optimizes performance by eliminating cross-schema communication overhead during saga initialization and coordination, but limits deployment flexibility compared to fully distributed saga frameworks.
 
-[FSyntax and parameter reference for Saga Coordinator.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-E1678F33-E49B-4F4A-BC14-2222D9703A42)
+[Syntax and parameter reference for Saga Coordinator.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-E1678F33-E49B-4F4A-BC14-2222D9703A42)
 <br/>
 
 ### Step 1: Switch to CloudShell
@@ -393,7 +393,7 @@ The **Oracle Saga Participants** are the business service endpoints that impleme
 
 In Oracle's saga architecture, participants can be implemented either as database-native PL/SQL packages with callback procedures or as external Java applications that interact with the saga framework through JDBC connections and queue operations. The Java client approach offers greater flexibility for microservices architectures, allowing business logic to reside outside the database while still benefiting from Oracle's transactional guarantees and message reliability. Each participant maintains its own input queue for receiving saga instructions and automatically handles message acknowledgment, retry logic, and error reporting back to the coordinator, enabling robust distributed transaction processing across heterogeneous application environments.
 
-[Syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-75EF00AD-BA50-4D12-995B-9475F2846E74)
+[Syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#ARPLS-GUID-F2E81F25-93AD-4DDB-A887-D325A1F8C84A)
 <br/>
 
 ### Step 1: Enter Connection Details

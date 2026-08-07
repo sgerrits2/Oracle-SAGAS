@@ -133,36 +133,134 @@ Before running the SQL script, let's configure the users we need to create. Rath
 <h5>SQL Script:</h5>
 <pre id="generated-script" class="script-display">
 -- Template Script (Click "Generate Script" to customize with your values)
--- 1) Create Broker & Orchestrator Schemas  
-CREATE USER brokerchicago IDENTIFIED BY Welcome_123#;
-CREATE USER orchestratorchicago IDENTIFIED BY Welcome_123#;
+-- ============================================================
+-- CloudBank Demo - User creation
+-- If a user already exists, it is simply skipped and execution continues.
+-- ============================================================
 
-CREATE USER brokercdmx IDENTIFIED BY Welcome_123#;
-CREATE USER orchestratorcdmx IDENTIFIED BY Welcome_123#;
+-- 1) Create Broker & Orchestrator Schemas
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER brokerchicago IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('brokerchicago already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
 
--- 2) Create Bank Participant Schemas  
-CREATE USER bankchicago IDENTIFIED BY Welcome_123#;
-CREATE USER bankmex IDENTIFIED BY Welcome_123#;
-CREATE USER banklondon IDENTIFIED BY Welcome_123#;
-CREATE USER banktokyo IDENTIFIED BY Welcome_123#;
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER orchestratorchicago IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('orchestratorchicago already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
 
--- 3) Grant Saga Roles  
-GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_CONNECT_ROLE  
-TO brokerchicago, brokercdmx;
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER brokermex IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('brokermex already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
 
-GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_PARTICIPANT_ROLE  
-TO orchestratorchicago, orchestratorcdmx,
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER orchestratormex IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('orchestratormex already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+-- 2) Create Bank Participant Schemas
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER bankchicago IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('bankchicago already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER bankmex IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('bankmex already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER banklondon IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('banklondon already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+BEGIN
+  EXECUTE IMMEDIATE 'CREATE USER banktokyo IDENTIFIED BY Welcome_123#';
+EXCEPTION
+  WHEN OTHERS THEN
+    IF SQLCODE = -1920 THEN
+      DBMS_OUTPUT.PUT_LINE('banktokyo already exists, skipping.');
+    ELSE
+      RAISE;
+    END IF;
+END;
+/
+
+-- 3) Grant Saga Roles (GRANT is safe to run multiple times; it does not fail if already granted)
+GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_CONNECT_ROLE
+TO brokerchicago, brokermex;
+
+GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_PARTICIPANT_ROLE
+TO orchestratorchicago, orchestratormex,
 bankchicago, bankmex, banklondon, banktokyo;
 
--- 4) Allocate Tablespace Quotas  
+-- 4) Allocate Tablespace Quotas (ALTER is also safe to run multiple times)
 ALTER USER brokerchicago QUOTA 500M ON DATA;
-ALTER USER brokercdmx QUOTA 500M ON DATA;
+ALTER USER brokermex QUOTA 500M ON DATA;
 ALTER USER orchestratorchicago QUOTA 500M ON DATA;
-ALTER USER orchestratorcdmx QUOTA 500M ON DATA;
+ALTER USER orchestratormex QUOTA 500M ON DATA;
 ALTER USER bankchicago QUOTA 500M ON DATA;
 ALTER USER bankmex QUOTA 500M ON DATA;
 ALTER USER banklondon QUOTA 500M ON DATA;
 ALTER USER banktokyo QUOTA 500M ON DATA;
+
+-- 5) Final verification
+SELECT username
+FROM dba_users
+WHERE username IN (
+'BROKERCHICAGO','ORCHESTRATORCHICAGO','BROKERMEX','ORCHESTRATORMEX',
+'BANKCHICAGO','BANKMEX','BANKLONDON','BANKTOKYO'
+);
 
 </pre>
 <div class="copy-script-section">
@@ -210,7 +308,7 @@ Run a quick `SELECT` to ensure all eight users exist:
 SELECT username
    FROM dba_users
    WHERE username IN (
-   'BROKERCHICAGO','ORCHESTRATORCHICAGO','BROKERCDMX','ORCHESTRATORCDMX',
+   'BROKERCHICAGO','ORCHESTRATORCHICAGO','BROKERMEX','ORCHESTRATORMEX',
    'BANKCHICAGO','BANKMEX','BANKLONDON','BANKTOKYO'
    );
 </copy>
@@ -1579,13 +1677,13 @@ function generateScript() {
            name: document.getElementById('orchestratorchicago-user').value.trim() || null,
            password: document.getElementById('orchestratorchicago-password').value.trim() || null
        },
-       brokercdmx: {
-           name: document.getElementById('brokercdmx-user').value.trim() || null,
-           password: document.getElementById('brokercdmx-password').value.trim() || null
+       brokermex: {
+           name: document.getElementById('brokermex-user').value.trim() || null,
+           password: document.getElementById('brokermex-password').value.trim() || null
        },
-       orchestratorcdmx: {
-           name: document.getElementById('orchestratorcdmx-user').value.trim() || null,
-           password: document.getElementById('orchestratorcdmx-password').value.trim() || null
+       orchestratormex: {
+           name: document.getElementById('orchestratormex-user').value.trim() || null,
+           password: document.getElementById('orchestratormex-password').value.trim() || null
        },
        bankchicago: {
            name: document.getElementById('bankchicago-user').value.trim() || null,
@@ -1607,8 +1705,8 @@ function generateScript() {
    
    let script = `-- Customized Script Generated from User Configuration\n`;
    
-   const brokers = [users.brokerchicago, users.brokercdmx].filter(u => u.name && u.password);
-   const others = [users.orchestratorchicago, users.orchestratorcdmx, users.bankchicago, users.bankmex, users.banklondon, users.banktokyo].filter(u => u.name && u.password);
+   const brokers = [users.brokerchicago, users.brokermex].filter(u => u.name && u.password);
+   const others = [users.orchestratorchicago, users.orchestratormex, users.bankchicago, users.bankmex, users.banklondon, users.banktokyo].filter(u => u.name && u.password);
    
    if (brokers.length === 0 && others.length === 0) {
        script = `-- No valid users configured (all fields are empty)\n-- Please fill in at least one complete user (username and password) to generate a script.`;
@@ -1685,8 +1783,8 @@ function resetToDefaults() {
    const defaults = {
        'brokerchicago-user': 'brokerchicago', 'brokerchicago-password': 'Welcome_123#',
        'orchestratorchicago-user': 'orchestratorchicago', 'orchestratorchicago-password': 'Welcome_123#',
-       'brokercdmx-user': 'brokercdmx', 'brokercdmx-password': 'Welcome_123#',
-       'orchestratorcdmx-user': 'orchestratorcdmx', 'orchestratorcdmx-password': 'Welcome_123#',
+       'brokermex-user': 'brokermex', 'brokermex-password': 'Welcome_123#',
+       'orchestratormex-user': 'orchestratormex', 'orchestratormex-password': 'Welcome_123#',
        'bankchicago-user': 'bankchicago', 'bankchicago-password': 'Welcome_123#',
        'bankmex-user': 'bankmex', 'bankmex-password': 'Welcome_123#',
        'banklondon-user': 'banklondon', 'banklondon-password': 'Welcome_123#',
@@ -1709,7 +1807,7 @@ function resetToDefaults() {
 }
 
 function saveUserConfig() {
-   ['BROKERCHICAGO', 'ORCHESTRATORCHICAGO', 'BROKERCDMX', 'ORCHESTRATORCDMX', 'BANKCHICAGO', 'BANKMEX', 'BANKLONDON', 'BANKTOKYO'].forEach(user => {
+   ['BROKERCHICAGO', 'ORCHESTRATORCHICAGO', 'BROKERMEX', 'ORCHESTRATORMEX', 'BANKCHICAGO', 'BANKMEX', 'BANKLONDON', 'BANKTOKYO'].forEach(user => {
        sessionStorage.removeItem(`cloudbank_USER_${user}`);
        sessionStorage.removeItem(`cloudbank_PASSWORD_${user}`);
    });
@@ -1717,8 +1815,8 @@ function saveUserConfig() {
    const users = {
        brokerchicago: document.getElementById('brokerchicago-user').value.trim() || null,
        orchestratorchicago: document.getElementById('orchestratorchicago-user').value.trim() || null,
-       brokercdmx: document.getElementById('brokercdmx-user').value.trim() || null,
-       orchestratorcdmx: document.getElementById('orchestratorcdmx-user').value.trim() || null,
+       brokermex: document.getElementById('brokermex-user').value.trim() || null,
+       orchestratormex: document.getElementById('orchestratormex-user').value.trim() || null,
        bankchicago: document.getElementById('bankchicago-user').value.trim() || null,
        bankmex: document.getElementById('bankmex-user').value.trim() || null,
        banklondon: document.getElementById('banklondon-user').value.trim() || null,
@@ -1728,8 +1826,8 @@ function saveUserConfig() {
    const passwords = {
        brokerchicago: document.getElementById('brokerchicago-password').value.trim() || null,
        orchestratorchicago: document.getElementById('orchestratorchicago-password').value.trim() || null,
-       brokercdmx: document.getElementById('brokercdmx-password').value.trim() || null,
-       orchestratorcdmx: document.getElementById('orchestratorcdmx-password').value.trim() || null,
+       brokermex: document.getElementById('brokermex-password').value.trim() || null,
+       orchestratormex: document.getElementById('orchestratormex-password').value.trim() || null,
        bankchicago: document.getElementById('bankchicago-password').value.trim() || null,
        bankmex: document.getElementById('bankmex-password').value.trim() || null,
        banklondon: document.getElementById('banklondon-password').value.trim() || null,
@@ -1785,7 +1883,7 @@ function saveUserConfig() {
 }
 
 function deleteUserConfig() {
-   ['BROKERCHICAGO', 'ORCHESTRATORCHICAGO', 'BROKERCDMX', 'ORCHESTRATORCDMX', 'BANKCHICAGO', 'BANKMEX', 'BANKLONDON', 'BANKTOKYO'].forEach(user => {
+   ['BROKERCHICAGO', 'ORCHESTRATORCHICAGO', 'BROKERMEX', 'ORCHESTRATORMEX', 'BANKCHICAGO', 'BANKMEX', 'BANKLONDON', 'BANKTOKYO'].forEach(user => {
        sessionStorage.removeItem(`cloudbank_USER_${user}`);
        sessionStorage.removeItem(`cloudbank_PASSWORD_${user}`);
    });
@@ -1806,8 +1904,8 @@ function updateUserConfig() {
    const users = {
        brokerchicago: document.getElementById('brokerchicago-user').value.trim(),
        orchestratorchicago: document.getElementById('orchestratorchicago-user').value.trim(),
-       brokercdmx: document.getElementById('brokercdmx-user').value.trim(),
-       orchestratorcdmx: document.getElementById('orchestratorcdmx-user').value.trim(),
+       brokermex: document.getElementById('brokermex-user').value.trim(),
+       orchestratormex: document.getElementById('orchestratormex-user').value.trim(),
        bankchicago: document.getElementById('bankchicago-user').value.trim(),
        bankmex: document.getElementById('bankmex-user').value.trim(),
        banklondon: document.getElementById('banklondon-user').value.trim(),
@@ -1817,8 +1915,8 @@ function updateUserConfig() {
    const passwords = {
        brokerchicago: document.getElementById('brokerchicago-password').value.trim(),
        orchestratorchicago: document.getElementById('orchestratorchicago-password').value.trim(),
-       brokercdmx: document.getElementById('brokercdmx-password').value.trim(),
-       orchestratorcdmx: document.getElementById('orchestratorcdmx-password').value.trim(),
+       brokermex: document.getElementById('brokermex-password').value.trim(),
+       orchestratormex: document.getElementById('orchestratormex-password').value.trim(),
        bankchicago: document.getElementById('bankchicago-password').value.trim(),
        bankmex: document.getElementById('bankmex-password').value.trim(),
        banklondon: document.getElementById('banklondon-password').value.trim(),
@@ -2098,8 +2196,8 @@ function loadSavedConfig() {
        const defaultUsers = {
            brokerchicago: 'brokerchicago',
            orchestratorchicago: 'orchestratorchicago',
-           brokercdmx: 'brokercdmx',
-           orchestratorcdmx: 'orchestratorcdmx',
+           brokermex: 'brokermex',
+           orchestratormex: 'orchestratormex',
            bankchicago: 'bankchicago',
            bankmex: 'bankmex',
            banklondon: 'banklondon',
@@ -2113,10 +2211,10 @@ function loadSavedConfig() {
                { formId: 'brokerchicago-password', sessionKey: 'cloudbank_PASSWORD_BROKERCHICAGO' },
                { formId: 'orchestratorchicago-user', sessionKey: 'cloudbank_USER_ORCHESTRATORCHICAGO' },
                { formId: 'orchestratorchicago-password', sessionKey: 'cloudbank_PASSWORD_ORCHESTRATORCHICAGO' },
-               { formId: 'brokercdmx-user', sessionKey: 'cloudbank_USER_BROKERCDMX' },
-               { formId: 'brokercdmx-password', sessionKey: 'cloudbank_PASSWORD_BROKERCDMX' },
-               { formId: 'orchestratorcdmx-user', sessionKey: 'cloudbank_USER_ORCHESTRATORCDMX' },
-               { formId: 'orchestratorcdmx-password', sessionKey: 'cloudbank_PASSWORD_ORCHESTRATORCDMX' },
+               { formId: 'brokermex-user', sessionKey: 'cloudbank_USER_BROKERMEX' },
+               { formId: 'brokermex-password', sessionKey: 'cloudbank_PASSWORD_BROKERMEX' },
+               { formId: 'orchestratormex-user', sessionKey: 'cloudbank_USER_ORCHESTRATORMEX' },
+               { formId: 'orchestratormex-password', sessionKey: 'cloudbank_PASSWORD_ORCHESTRATORMEX' },
                { formId: 'bankchicago-user', sessionKey: 'cloudbank_USER_BANKCHICAGO' },
                { formId: 'bankchicago-password', sessionKey: 'cloudbank_PASSWORD_BANKCHICAGO' },
                { formId: 'bankmex-user', sessionKey: 'cloudbank_USER_BANKMEX' },
@@ -2138,8 +2236,8 @@ function loadSavedConfig() {
            const displayMappings = [
                { displayId: 'saved-brokerchicago', userKey: 'cloudbank_USER_BROKERCHICAGO', passKey: 'cloudbank_PASSWORD_BROKERCHICAGO' },
                { displayId: 'saved-orchestratorchicago', userKey: 'cloudbank_USER_ORCHESTRATORCHICAGO', passKey: 'cloudbank_PASSWORD_ORCHESTRATORCHICAGO' },
-               { displayId: 'saved-brokercdmx', userKey: 'cloudbank_USER_BROKERCDMX', passKey: 'cloudbank_PASSWORD_BROKERCDMX' },
-               { displayId: 'saved-orchestratorcdmx', userKey: 'cloudbank_USER_ORCHESTRATORCDMX', passKey: 'cloudbank_PASSWORD_ORCHESTRATORCDMX' },
+               { displayId: 'saved-brokermex', userKey: 'cloudbank_USER_BROKERMEX', passKey: 'cloudbank_PASSWORD_BROKERMEX' },
+               { displayId: 'saved-orchestratormex', userKey: 'cloudbank_USER_ORCHESTRATORMEX', passKey: 'cloudbank_PASSWORD_ORCHESTRATORMEX' },
                { displayId: 'saved-bankchicago', userKey: 'cloudbank_USER_BANKCHICAGO', passKey: 'cloudbank_PASSWORD_BANKCHICAGO' },
                { displayId: 'saved-bankmex', userKey: 'cloudbank_USER_BANKMEX', passKey: 'cloudbank_PASSWORD_BANKMEX' },
                { displayId: 'saved-banklondon', userKey: 'cloudbank_USER_BANKLONDON', passKey: 'cloudbank_PASSWORD_BANKLONDON' },
@@ -2182,8 +2280,8 @@ function loadSavedConfig() {
            const displayDefaults = [
                { displayId: 'saved-brokerchicago', username: defaultUsers.brokerchicago },
                { displayId: 'saved-orchestratorchicago', username: defaultUsers.orchestratorchicago },
-               { displayId: 'saved-brokercdmx', username: defaultUsers.brokercdmx },
-               { displayId: 'saved-orchestratorcdmx', username: defaultUsers.orchestratorcdmx },
+               { displayId: 'saved-brokermex', username: defaultUsers.brokermex },
+               { displayId: 'saved-orchestratormex', username: defaultUsers.orchestratormex },
                { displayId: 'saved-bankchicago', username: defaultUsers.bankchicago },
                { displayId: 'saved-bankmex', username: defaultUsers.bankmex },
                { displayId: 'saved-banklondon', username: defaultUsers.banklondon },

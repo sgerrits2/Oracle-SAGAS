@@ -33,88 +33,33 @@ By completing this lab, you will be able to:
   </a>
 </div>
 
-## Task 1: Provision an Autonomous Database
+Download the CloudBank application source code, database setup files, and container configuration used in later labs.
+
+## Task 1: Provision Infrastructure with a Script
 
 ---
 
-**Note:** If you are using an Oracle-provided environment, skip Tasks 1–4.
+### **Step 1: Download and Run the Provisioning Script**
 
-### **Step 1: Access Oracle Cloud Infrastructure Console**
+Run the provisioning script in OCI Cloud Shell instead of completing the manual database, networking, and compute steps. It creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance. It also installs Podman and pulls the required container images.
 
-Log in to the Oracle Cloud Infrastructure Console.
+<div style="margin: 24px 0;">
+  <a href="files/provision.sh?download=1" style="display: inline-block; padding: 16px 28px; background: #2e7d32; color: #ffffff !important; font-size: 18px; font-weight: 700; border-radius: 6px; text-decoration: none;">
+    Provisioning Script
+  </a>
+</div>
 
-Once you are logged in, you are taken to the cloud services dashboard where you can see all the services available to you. Click the navigation menu in the upper left to show top level navigation choices.
+Download the script, update `COMPARTMENT_ID` and `ADMIN_PASSWORD` in its configuration section, upload it to Cloud Shell, then run:
 
-![Menu](./images/lab1-task1-1.png "In the top left corner, click the 3 lines menu to expand.")
+```bash
+<copy>
+chmod +x provision.sh
+./provision.sh
+</copy>
+```
 
-### **Step 2: Navigate to Autonomous Database Service**
 
-The following steps apply to Autonomous Databases. So please **click the Autonomous Database**.
-
-![Provision Autonomous Database](./images/lab1-task1-2.png "click the autonomous database.")
-
-### **Step 3: Initiate Database Creation**
-
-From the **Compartment** filter, select your compartment and click [**Create Autonomous Database**]
-
-![Check Compartment](./images/lab1-task1-3.png "Make sure you are in the correct compartment.")
-
-### **Step 4: Configure Basic Database Information**
-
-On the **Create Autonomous Database** page, provide basic information for your database:
-
-- **Display name** - Enter a memorable name for the database for display purposes, for this lab, use _`Oracle-Saga-Demo`_
-
-    ```
-    <copy>Oracle-Saga-Demo</copy>
-    ```
-
-- **Database Name** - Enter _`OracleSagaDemo`_. Names must begin with a letter, contain only letters and numbers, and be no longer than 14 characters.
-
-     ```
-     <copy>OracleSagaDemo</copy>
-     ```
-
- > **NOTE:** The database name must be unique across all Autonomous Databases and Autonomous Data Warehouses in your tenancy within the same region. If an existing database shares the same name, provisioning will fail. Use a unique name to ensure successful provisioning.
-
-- **Compartment** - If needed, select your compartment
-
-- **Workload Type** - Select the type of your Autonomous Database (here we select "Transaction Processing")
-
-### **Step 5: Configure Database Settings**
-
-Configure the database:
-
-- **Always Free** - Select this option by moving the slider to the right
-- **Database version** - Select _`23ai`_
-
-![Basic information](./images/lab1-task1-4.png "Select the appropriate display name, database name, compartment and workload.")
-
-### **Step 6: Set Administrator Credentials**
-
-Create administrator credentials:
-
-- **Password** and **Confirm Password** - Enter and save a password that meets the console requirements. For example : _`Welcome_123#`_
-
-### **Step 7: Configure Network Access**
-
-Choose the network access :
-
-- **Network Access** - Leave _`Secure access from everywhere`_ selected
-- **Provide Contacts** - You can leave this blank
-
-![password and network access types](./images/lab1-task1-5.png "choose the network type and provide contact info, if you want. ")
-
-### **Step 8: Create the Database**
-
-Click [**Create**]
-
-### **Step 9: Monitor Database Provisioning**
-
-Your instance will begin provisioning. In a few minutes, the state will turn from Provisioning to Available. At this point, your Autonomous Database is ready to use! Have a look at your instance's details here including its name, database version, OCID, Instance Type amd Mode.
-
-![provisioning the instance will take a few minutes ](./images/lab1-task1-6.png "provisioning the instance will take a few minutes")
-
+**The script does not create the CloudBank database users or prepare the application wallet. Complete Tasks 2 and 3 after it finishes.**
 
 ## Task 2: Create CloudBank Application–Specific Users via SQL Script
 
@@ -318,466 +263,7 @@ SELECT username
 
 </div>
 
-## Task 3: Configure Oracle Cloud Infrastructure Networking
-
----
-
-In this task, you'll establish a secure and comprehensive networking foundation for the CloudBank demo application. Oracle Cloud Infrastructure's Virtual Cloud Network (VCN) wizard will automatically provision the core networking infrastructure, including internet connectivity, subnets, and routing. Additionally, you'll configure specific security list rules to enable access to the CloudBank microservices, web interface, API documentation, and distributed tracing capabilities.
-
-### **Step 1: Navigate to Virtual Cloud Networks**
-
-From the OCI Console, click the **navigation menu (☰)** in the upper left, then navigate to **Networking** → **Virtual Cloud Networks**.
-
-![Navigate to VCN](./images/lab2-task3-1.png "Click navigation menu → Networking → Virtual Cloud Networks")
-
-### **Step 2: Start VCN Wizard**
-
-Under the **Actions** drop down list, click **Start VCN Wizard**.
-
-![Click Start VCN Wizard](./images/lab2-task3-2.png "Click Actions → Start VCN Wizard")
-
-### **Step 3: Select VCN Creation Option**
-
-Select **Create VCN with Internet Connectivity**, then click **Start VCN Wizard**.
-
-![Select VCN Type](./images/lab2-task3-3.png "Choose VCN with Internet Connectivity option")
-
-### **Step 4: Configure VCN Basic Information**
-
-Fill in the following details:
-
-- **VCN Name**: `Oracle-Saga-VCN`
-- **Compartment**: Select your compartment
-- **VCN IPv4 CIDR Block**: `10.0.0.0/16`
-- **Use DNS Hostnames**: Keep this **checked** (enabled by default)
-
-    ```
-    <copy>Oracle-Saga-VCN</copy>
-    ```
-
-![Configure VCN Details](./images/lab2-task3-4.png "Enter VCN name, compartment, and CIDR block")
-
-### **Step 5: Review Subnet Configuration**
-
-The wizard will automatically configure:
-
-- **Public Subnet CIDR**: `10.0.0.0/24`
-- **Private Subnet CIDR**: `10.0.1.0/24`
-
-
-![Review Subnet Configuration](./images/lab2-task3-5.png "Verify public and private subnet CIDR blocks")
-
-### **Step 6: Create the VCN**
-
-Click **Next** to review your configuration, then click **Create** to provision the VCN and all related networking components.
-
-![Create VCN](./images/lab2-task3-6.png "Click Create to provision VCN and networking resources")
-
-### **Step 7: Monitor Provisioning Progress**
-
-The wizard automatically creates and configures:
-
-- **VCN** with specified CIDR
-- **Internet Gateway** for public internet access
-- **NAT Gateway** for private subnet internet access
-- **Public and Private Subnets**
-- **Route Tables** with proper routing (0.0.0.0/0 → Internet Gateway for public subnet)
-- **Default Security Lists** with SSH (port 22) already open
-
-Wait until all resources show **DONE** status.
-
-![Provisioning Complete](./images/lab2-task3-7.png "Wait for all networking components to become AVAILABLE")
-
-### **Step 8: View Your VCN**
-
-Click **View Virtual Cloud Network** to see your newly created VCN details.
-
-![VCN Overview](./images/lab2-task3-8.png "Review VCN components")
-
-### **Step 9: Navigate to Security Lists**
-
-In the VCN details page, click on the **Security** tab.
-
-![Navigate to Security Lists](./images/lab2-task3-9.png "Click Security Lists under Resources")
-
-### **Step 10: Open Default Security List**
-
-Click on **Default Security List for Oracle-Saga-VCN** to view and modify the security rules.
-
-![Open Default Security List](./images/lab2-task3-10.png "Click on Default Security List")
-
-### **Step 11: Add CloudBank Application Ports**
-
-Click on Security rules tab followed by **Add Ingress Rules** button to add new rules for CloudBank application ports.
-
-![Add Ingress Rules](./images/lab2-task3-11.png "Click Add Ingress Rules button")
-
-### **Step 12: Configure CloudBank and Zipkin Ingress Rules**
-
-Add the following rules one by one. For each rule, fill in the details and click **+ Another Ingress Rule** to add the next rule:
-
-**Rule 1: Orchestrator API (Backend)**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>8081</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `CloudBank Orchestrator API`
-    </copy>
-    ```
-
-**Rule 2: BankChicago Service**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>8082</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `BankChicago Microservice API`
-    </copy>
-    ```
-
-**Rule 3: BankMex Service**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>8083</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `BankMex Microservice API`
-    </copy>
-    ```
-
-**Rule 4: Flask Frontend UI**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>8084</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `CloudBank Web Frontend`
-    </copy>
-    ```
-
-**Rule 5: Swagger UI**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>8085</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `API Documentation Interface`
-    </copy>
-    ```
-
-**Rule 6: Zipkin Tracing Server**
-
-- **Source Type**: CIDR
-- **Source CIDR**:
-    ```
-    <copy>0.0.0.0/0</copy>
-    ```
-- **IP Protocol**: TCP
-- **Destination Port Range**:
-    ```
-    <copy>9411</copy>
-    ```
-- **Description**: 
-    ```
-    <copy>
-    `Zipkin Distributed Tracing UI`
-    </copy>
-    ```
-    
-
-![Configure Ingress Rules](./images/lab2-task3-12.png "Add all CloudBank application and Zipkin port rules")
-
-### **Step 13: Save Ingress Rules**
-
-After adding all six rules, click **Add Ingress Rules** to save the configuration.
-
-![Save Ingress Rules](./images/lab2-task3-13.png "Click Add Ingress Rules to save")
-
-### CloudBank Application and Monitoring Port Usage
-
-- **Port 22 (SSH)**: Automatically opened by VCN wizard for server management
-- **Port 8081**: Orchestrator API backend - required for all CloudBank operations
-- **Port 8082**: BankChicago microservice - optional, for direct API access to BankChicago
-- **Port 8083**: BankMex microservice - optional, for direct API access to BankMex
-- **Port 8084**: Flask Frontend UI - required for web interface access
-- **Port 8085**: Swagger UI - required for API documentation and testing
-- **Port 9411**: Zipkin UI - for distributed tracing and monitoring of demo application
-
-> **Note:** Ports 8082, 8083, and 9411 are optional for direct service testing and Zipkin observability.
-
-## Task 4: Provision a Compute Instance for CloudBank
-
----
-
-In this task, you'll create a Linux compute instance to host the CloudBank demo application. You'll select an Ubuntu image, configure the compute shape, set up networking, generate SSH keys for secure access, and use a cloud-init script to automatically install Podman and pull required container images. This instance will serve as the foundation for running the CloudBank microservices containers.
-
-### **Step 1: Navigate to Compute Instances**
-
-From the OCI Console, click the navigation menu (☰) in the top-left corner and navigate to **Compute** → **Instances**.
-
-![Navigate to Compute](./images/lab2-task4-1.png "Click navigation menu → Compute → Instances")
-
-### **Step 2: Initiate Instance Creation**
-
-On the Instances page, click **Create Instance** to start the instance creation wizard.
-
-![Create Instance](./images/lab2-task4-2.png "Click Create Instance button")
-
-### **Step 3: Configure Basic Instance Information**
-
-Enter the basic instance details:
-
-- **Name**: `oracle-saga-compute-instance`
-- **Create in Compartment**: Select your compartment from the dropdown
-- **Placement Configuration**:
-   - **Availability Domain**: Select any available domain (e.g., AD-1, AD-2, or AD-3)
-
-    ```
-    <copy>oracle-saga-compute-instance</copy>
-    ```
-
-![Instance Basic Details](./images/lab2-task4-3.png "Enter instance name, compartment, and placement details")
-
-### **Step 4: Select an Ubuntu Image**
-
-In the **Image and shape** section, click **Edit** next to the image details. In the **Browse All Images** dialog, select **Ubuntu**, then choose **Canonical Ubuntu 24.04 Minimal**. Review the default username (`ubuntu`) and click **Select Image**.
-
-![Edit Image](./images/lab2-task4-4.png "Click Edit to change the default image")
-
-![Browse Images](./images/lab2-task4-5.png "Select Ubuntu from available operating systems")
-
-![Select Ubuntu Version](./images/lab2-task4-6.png "Select Ubuntu 24.04 Minimal and click Select Image")
-
-### **Step 5: Select a Compute Shape**
-
-Click **Change Shape**. In **Specialty and previous generation**, select **VM.Standard.E2.1.Micro** (1 OCPU, 1 GB RAM, and 0.48 Gbps network bandwidth), then click **Select Shape**.
-
-![Edit Shape](./images/lab2-task4-7.png "Click Edit to change the instance shape")
-
-![Browse Shapes](./images/lab2-task4-8.png "Click Specialty and previous generation")
-
-![Select Micro Shape](./images/lab2-task4-9.png "Select VM.Standard.E2.1.Micro for free tier")
-
-
-### **Step 6: Configure Cloud-Init Script**
-
-In the **Advanced options** tab under **Management**:
-
-- In the **Cloud-init script** section, select **Paste cloud-init script**
-- This script will run during the first boot to set up the environment automatically
-
-![Access Cloud-Init](./images/lab2-task4-13.png "Select Paste cloud-init script option")
-
-### **Step 7: Add Initialization Script**
-
-Paste the following cloud-init script. It will:
-
-- Update package lists
-- Install Podman container runtime
-- Pre-pull required container images in parallel for faster deployment
-
-```bash
-<copy>
-#!/usr/bin/env bash
-set -euo pipefail
-
-echo "Starting CloudBank environment setup..."
-
-apt-get update -y
-apt-get install -y podman curl wget pipx
-
-systemctl enable --now podman.socket
-
-sudo -u ubuntu env PATH="/home/ubuntu/.local/bin:$PATH" bash <<'EOF'
-pipx install podman-compose
-
-pull_image() {
-  podman pull "$1"
-}
-
-pull_image ghcr.io/oracle/oraclelinux:8 &
-pull_image container-registry.oracle.com/database/sqlcl:latest &
-pull_image docker.io/swaggerapi/swagger-ui:v5.20.7 &
-pull_image docker.io/library/maven:3.8.6-openjdk-11 &
-pull_image ghcr.io/openzipkin/zipkin:latest &
-pull_image container-registry.oracle.com/database/free:latest &
-wait
-
-mkdir -p /home/ubuntu/cloudbank
-EOF
-
-chown -R ubuntu:ubuntu /home/ubuntu/cloudbank
-echo "CloudBank environment setup complete."
-</copy>
-```
-
-**What the script does:**
-
-- **`apt-get`** updates package metadata and installs Podman and supporting tools.
-- **`systemctl enable --now podman.socket`** enables the Podman API socket immediately and on future boots.
-- **`pull_image`** pulls the required container images in parallel; **`wait`** finishes only after every pull succeeds.
-- **`mkdir`** creates the CloudBank working directory for the `ubuntu` user.
-
-Click next to move on to the security section.
-
-![Add Cloud-Init Script](./images/lab2-task4-14.png "Paste cloud-init script for automated setup")
-
-### **Step 8: Configure Security Settings**
-
-In the Security section, keep all default boot volume encryption settings as they are and click **Next** to continue to networking configuration.
-
-### **Step 9: Configure Primary Network Interface**
-
-In the **Primary VNIC Information** section, configure the networking:
-
-- **Primary VNIC Name**: `oracle-saga-vnic`
-- **Virtual Cloud Network in [Compartment]**: Under **Primary network**, select **Choose existing virtual cloud network**, choose the appropriate compartment, then select **Oracle-Saga-VCN**.
-- **Subnet in [Compartment]**: Under **Subnet**, select **Choose existing subnet**, choose the appropriate compartment, then select the public subnet (shown as `public-subnet-Oracle-Saga-VCN`).
-- **Assign a public IPv4 address**: Ensure this is **checked** for internet access
-
-    ```
-    <copy>oracle-saga-vnic</copy>
-    ```
-
-![Configure Primary VNIC](./images/lab2-task4-10.png "Configure VNIC name, VCN, and subnet settings")
-
-### **Step 10: Generate SSH Key Pair**
-
-In the **Add SSH keys** section, set up SSH authentication for secure instance access:
-
-**Option 1: Generate new keys (recommended)**
-- Select **Generate a key pair for me**
-- Click **Download Private Key** and save the `.key` file securely
-- Click **Download Public Key** and save the `.pub` file
-- Store both files safely - you need the private key to connect to your instance
-
-**Option 2: Use existing public key**
-- Select **Upload public key files (.pub)** if you already have SSH keys
-- Browse and select your existing public key file
-
-![Generate SSH Keys](./images/lab2-task4-11.png "Generate SSH key pair and download both keys")
-
-### **Step 11: Configure Boot Volume Storage**
-
-Click **Next** to access the Boot volume section. Accept the default storage settings (boot volume size and performance tier) and click **Next** to proceed to the final review.
-
-
-### **Step 12: Review Instance Configuration**
-
-Scroll up to review all your configuration settings:
-
-- **Name**: oracle-saga-compute-instance
-- **Image**: Ubuntu 24.04 Minimal
-- **Shape**: VM.Standard.E2.1.Micro
-- **Cloud-init**: Configured for Podman and CloudBank setup
-- **VCN**: Oracle-Saga-VCN (public subnet)
-- **SSH Keys**: Generated key pair
-
-![Review Configuration](./images/lab2-task4-15.png "Review all instance configuration settings")
-
-### **Step 13: Create the Instance**
-
-After reviewing all settings, click **Create** to start the instance provisioning process.
-
-![Create Instance Final](./images/lab2-task4-16.png "Click Create to provision the instance")
-
-### **Step 14: Monitor Instance Provisioning**
-
-You'll be redirected to the instance details page. Click the details tab and monitor the **State**:
-
-- **Provisioning**: Instance is being created (1-2 minutes)
-- **Running**: Instance is ready for use
-- The **Public IP Address** will appear once the instance is running
-
-![Instance Provisioning](./images/lab2-task4-17.png "Monitor instance state during provisioning")
-
-### **Step 15: Record Instance Public IP**
-
-Once the instance shows **Running** state, copy the public IP address from the instance details and enter it in the form below for use in subsequent tasks:
-
-<div class="input-section">
-<strong>VM Public IP:</strong> <input type="text" id="compute-public-ip" placeholder="xxx.xxx.xxx.xxx" class="input-field">
-
-<button onclick="saveComputeIP()" class="save-btn">Save Public IP</button>
-<button onclick="deleteComputeIP()" class="delete-btn">Delete Saved IP</button>
-<button onclick="clearComputeIP()" class="clear-btn">Clear IP</button>
-</div>
-
-<div id="compute-ip-save-status" style="display:none;" class="save-status">
-<span id="compute-ip-save-message"></span>
-</div>
-
-The cloud-init status verification will be covered when we connect to the compute instance in the next task.
-
-![Instance Running](./images/lab2-task4-18.png "Instance running with IP addresses assigned")
-
-### Instance Environment Details
-
-Your newly created instance includes:
-
-- **Operating System**: Ubuntu 24.04 Minimal
-- **Compute Resources**: 1 OCPU, 1 GB RAM (free tier eligible)
-- **Container Runtime**: Podman (Docker alternative)
-- **Development Tools**: curl, wget
-- **Network Access**: Public internet via Internet Gateway
-- **Security**: SSH key-based authentication only
-
-### Troubleshooting Tips
-
-- **No Public IP**: Ensure you selected the public subnet and VCN has Internet Gateway
-- **SSH Connection Issues**: Verify security list allows port 22 and you're using correct private key
-- **Cloud-init Status**: Check `/var/log/cloud-init-output.log` on the instance for script execution logs
-- **Container Images**: If images fail to pull, they can be manually pulled after SSH login
-
-> **Note**: The cloud-init script runs automatically during first boot and may take few minutes to complete. You can SSH into the instance and monitor progress with `tail -f /var/log/cloud-init-output.log`.
-
-## Task 5: Connect to ADB & VM via Cloud Shell
+## Task 3: Connect to ADB & VM via Cloud Shell
 
 ---
 
@@ -816,10 +302,7 @@ Upload the CloudBank application package and your SSH keys to Cloud Shell. Note 
 
 1. In Cloud Shell, click the **Settings** icon (⚙️) in the top-right corner
 2. Select **Upload** from the dropdown menu
-3. Upload each file individually by selecting **"Choose from your computer"** or drag-and-drop:
- - First: `oracle-saga-cloudbank.zip` (downloaded in Step 3) → Click **Upload**
- - Second: Your SSH private key file (`*.key` from Task 4) → Click **Upload**
- - Third: Your SSH public key file (`*.pub` from Task 4) → Click **Upload**
+3. Upload `oracle-saga-cloudbank.zip` (downloaded in Step 3) by selecting **"Choose from your computer"** or by drag-and-drop.
 
 *Note: You must upload each file separately and click Upload for each one.*
 
@@ -958,32 +441,27 @@ Exit SQLcl to return to Cloud Shell:
 <copy>exit</copy>
 ```
 
-### **Step 13: Set SSH Key Permissions**
+### **Step 13: Verify SSH Key Permissions**
 
 Secure your uploaded SSH keys and verify their permissions:
 
 ```bash
 <copy>
-#!/usr/bin/env bash
-set -euo pipefail
-
-chmod 600 -- *.key
-chmod 644 -- *.pub
-ls -la -- *.key *.pub
+chmod 600 ~/.ssh/cloudbank_key
+ls -la ~/.ssh/cloudbank_key ~/.ssh/cloudbank_key.pub
 </copy>
 ```
 
 **What the script does:**
 
 - **`chmod 600`** restricts private-key access to your user.
-- **`chmod 644`** makes public keys readable without exposing private-key contents.
-- **`ls -la`** verifies the key files and their permissions.
+- **`ls -la`** verifies the key pair created by the provisioning script.
 
 ![Set Key Permissions](./images/lab2-task5-14.png "Set correct SSH key permissions")
 
 ### **Step 14: SSH to VM using Interactive Builder**
 
-Use the form below to generate your SSH command:
+Use the `cloudbank_key` created by the provisioning script and the VM public IP printed at the end of Task 1 to generate your SSH command:
 
 <div class="input-section">
 <strong>VM Public IP:</strong> <input type="text" id="vm-ip" placeholder="xxx.xxx.xxx.xxx" class="input-field" oninput="updateSshCommand()"><br/>
@@ -1503,9 +981,9 @@ You may now [proceed to the next lab](#next).
    font-weight: bold;
 }
 
-/* Task 4 SSH config section removed as it was premature */
+/* Task 3 SSH configuration */
 
-/* Task 5 Interactive Command Styles */
+/* Task 3 interactive command styles */
 .interactive-command {
    display: content;
    align-items: center;
@@ -1957,7 +1435,7 @@ function updateUserConfig() {
    }, 2000);
 }
 
-// Task 4 Functions
+// Task 3 functions
 function saveComputeIP() {
    let publicIP = document.getElementById('compute-public-ip').value;
    if (publicIP) {
@@ -2386,7 +1864,7 @@ function initializeCloudBank() {
                console.log('Loaded saved compute IP:', savedComputeIP);
            } else {
                computeIpSaveStatusEl.style.display = 'none';
-               console.log('No saved compute IP found or task 4 is not visible.');
+               console.log('No saved compute IP found or task 3 is not visible.');
            }
        }
 

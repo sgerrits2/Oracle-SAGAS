@@ -20,7 +20,7 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 
 > **⚠️ Important:** CloudBank is a demo application designed for learning. Its business logic is simplified and may not cover all production cases; focus on the saga patterns and compensation workflow.
 
-*Estimated Time: 45–60 minutes*
+*Estimated Time: 40 minutes*
 
 ### Objectives
 

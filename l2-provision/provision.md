@@ -4,7 +4,7 @@
 
 This lab prepares an Autonomous Database, OCI network, compute instance, and Cloud Shell for the CloudBank demo application.
 
-- Estimated time: XX minutes
+- Estimated time: 90 minutes
 
 Watch the video below for a quick walk-through of the lab.
 

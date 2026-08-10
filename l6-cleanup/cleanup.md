@@ -4,7 +4,7 @@
 
 After demonstrating the CloudBank application and testing Oracle Sagas, clean up the resources created for the workshop. This helps avoid unnecessary charges and prepares your environment for future work.
 
-*Estimated time: 20–30 minutes*
+*Estimated time: 20 minutes*
 
 ---
 

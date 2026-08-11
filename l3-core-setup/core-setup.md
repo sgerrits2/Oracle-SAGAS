@@ -27,7 +27,7 @@ At their core, sagas address challenges of **distributed transactions** in micro
 
 In this lab, we will use **SQLcl** to configure the **Broker, Coordinator, and Participants** using the `DBMS_SAGA_ADM` package. These components establish the foundation for Java and PL/SQL saga clients in future labs.
 
-- Estimated time: 30 minutes
+- Estimated time: 15 minutes
 <!-- 
 Watch the video below for a quick walk-through of the lab.
 
@@ -139,9 +139,31 @@ In this lab, you will:
 
 > **Note**: This lab uses the user credentials configured in Lab 2. If you saved user configurations there, they will be auto-populated in the forms below. Otherwise, you can enter them manually and we'll generate the commands for you.
 
-## Full Setup Script
+---
 
-This is the complete setup for the Saga foundation. Run it once to create the broker, coordinator, and all required participants in the correct order. After this script, the rest of the lab gives a short explanation of each part and links for deeper learning.
+## Task 1: Understand the Saga Topology
+
+Before configuring the Saga environment, review the topology used in this lab. The diagram below shows how the Initiator, Coordinator, Broker, and Participants are connected, along with the entity names and schemas used throughout the lab.
+
+![Sagas Entities](./images/sagaentities.png "Oracle Sagas - Entities")
+
+In the next task, you will run the Saga Core Setup script to create and register the Broker, Coordinator, and Participants shown above. After the setup is complete, the following tasks provide a closer look at each entity and its role in the Saga workflow.
+
+## Task 2: Setup Saga Entities
+
+### Step 1: Switch to CloudShell
+
+Since we were using the Code Editor in Lab 2, we need to switch back to the CloudShell tab:
+
+1. **Select CloudShell Tab**: Click on the **CloudShell** tab in your browser.
+
+   > **Note**: If you don't see tabs, click on **Actions** (to the left of Developer Tools) and choose **Tabs**, then select the CloudShell tab.
+
+![Switch to CloudShell](./images/lab3-task1-step1.png "Switch to CloudShell tab")
+
+### Step 2: Run the Saga Core Setup
+
+Run the following script once to create the Saga foundation shown in the topology above. The script creates the Broker and Coordinator, registers the required Participants, and verifies the resulting configuration.
 
 <pre id="full-setup-script-container" class="interactive-command">
 <button class="copy-btn" type="button" onclick="copyToClipboard('full-setup-script', 'full-setup-script-container')">Copy</button>
@@ -227,76 +249,59 @@ This setup creates the saga infrastructure that lets the broker route messages, 
 - [Oracle Saga docs](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)
 - [DBMS_SAGA_ADM reference](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html)
 
----
-
-## Task 1: Saga Broker
+## Task 3: Understand Saga Broker
 
 The broker is the message hub for the saga topology. It provides the communication channel through which the coordinator and participants exchange event-driven requests and responses.
+
+You can see the key code lines in Task 2:
+
+- `EXEC DBMS_SAGA_ADM.ADD_BROKER(...)` — creates the broker.
+- `SELECT ... FROM user_saga_brokers` — verifies that the broker exists.
 
 [Syntax and parameter reference for Saga Broker.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-75EF00AD-BA50-4D12-995B-9475F2846E74)
 <br/>
 
-### Step 1: Switch to CloudShell
-
-Since we were using the Code Editor in Lab 2, we need to switch back to the CloudShell tab:
-
-1. **Select CloudShell Tab**: Click on the **CloudShell** tab in your browser.
-
-   > **Note**: If you don't see tabs, click on **Actions** (to the left of Developer Tools) and choose **Tabs**, then select the CloudShell tab.
-
-![Switch to CloudShell](./images/lab3-task1-step1.png "Switch to CloudShell tab")
-
-### Step 2: Use the full setup script above
-
 The broker creation and verification logic is already included in the full setup script at the top of this lab. Use that script in CloudShell, then continue with the summary below for the conceptual explanation.
-
-![Verify Broker Creation](./images/lab3-task1-step3.png "Broker created and verified successfully")
 
 ---
 
-## Task 2: Saga Coordinator
+## Task 4: Understand Saga Coordinator
 
 The coordinator owns the operation state and decides if the saga succeeds, fails, or rolls back. In Oracle 23ai, the coordinator and initiator must live in the same schema and PDB.
+
+You can see the key code lines in Task 2:
+
+- `EXEC DBMS_SAGA_ADM.ADD_COORDINATOR(...)` — creates the coordinator.
+- `SELECT ... FROM user_saga_coordinators` — confirms the coordinator was registered.
 
 > **Important**: The coordinator and orchestrator must be co-located in the same schema and PDB.
 
 [Syntax and parameter reference for Saga Coordinator.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#GUID-E1678F33-E49B-4F4A-BC14-2222D9703A42)
 <br/>
 
-### Step 1: Switch to CloudShell
-
-Ensure you're still in the CloudShell tab from Task 1:
-
-1. **Verify CloudShell Tab**: Make sure you're still in the **CloudShell** tab in your browser.
-
-   > **Note**: If you need to switch tabs, click on the **CloudShell** tab or use the Actions menu to configure tabs.
-
-![Continue in CloudShell](./images/lab3-task2-step1.png "Continue using CloudShell tab")
-
-### Step 2: Use the full setup script above
-
 The coordinator creation and verification are already included in the single setup script at the top of the lab. Run it from CloudShell and then continue with the summary below.
 
 ---
 
-## Task 3: Saga Participants
+## Task 5: Understand Saga Participants
 
 Each participant represents one business unit in the workflow: `CloudBank`, `BankChicago`, and `BankMex`. They receive requests from the coordinator, execute their local work, and participate in commit or rollback decisions.
 
+You can see the key code lines in Task 2:
+
+- `EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(...)` — registers each participant.
+- `SELECT ... FROM user_saga_participants` — shows the registered participants.
+
 [Syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#ARPLS-GUID-F2E81F25-93AD-4DDB-A887-D325A1F8C84A)
 <br/>
-
-### Step 1: Use the full setup script above
 
 The participant registration is already included in the single script at the top of the lab. Run that script in CloudShell and use the summary below to understand the role of each participant.
 
 > **Note**: All participants are registered for Java client implementation, so `CALLBACK_SCHEMA` and `CALLBACK_PACKAGE` remain null in this setup.
 
-![Verify All Participants](./images/lab3-task3-verify-all.png "Successful registration of all three participants")
-
 ---
 
-## Task 4: Roles & Permissions
+## Task 6: Roles & Permissions
 
 The saga setup uses the minimum role needed per schema:
 
@@ -314,7 +319,7 @@ The role assignments are already defined in the setup model and are summarized a
 
 ---
 
-## Task 5: Dictionary Views & Monitoring
+## Task 7: Dictionary Views & Monitoring
 
 Once the setup is complete, you can inspect the registered components and confirm the topology with the Saga dictionary views. This is useful for validation and troubleshooting before running a real saga.
 
@@ -328,7 +333,7 @@ The final validation step is to inspect the registered participants and the Saga
 
 ---
 
-## Task 6: Optional Information (Not Mandatory)
+## Task 8: Optional Information (Not Mandatory)
 
 ---
 

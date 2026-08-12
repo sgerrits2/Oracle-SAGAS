@@ -21,9 +21,9 @@ The application uses **Podman containers** for seamless deployment and orchestra
 **CloudBank** implements a **multi-bank distributed architecture** with the following components:
 
 - **Frontend (Python Flask):** Web-based interface for initiating transfers and viewing transaction history
-- **Backend Microservices:** SpringBoot-Jersey services implementing saga participants (BankA, BankB, Orchestrator)
+- **Backend Microservices:** SpringBoot-Jersey services implementing saga participants (BankChicago, BankMex, CloudBank)
 - **Saga Coordinator & Broker:** Oracle Database 23ai Saga framework ensuring ACID properties
-- **Database Layer:** Single PDB with multiple schemas (ORDSYS, BANKA, BANKB) using RESERVABLE columns
+- **Database Layer:** Single PDB with multiple schemas (ORDSYS, bankchicago, bankmex) using RESERVABLE columns
 - **Monitoring & Tracing:** OpenTelemetry integration for distributed tracing and saga lifecycle visibility
 - **Configuration Management:** YAML-based Kubernetes/Podman orchestration with ADB wallet integration
 
@@ -36,7 +36,7 @@ The application uses **Podman containers** for seamless deployment and orchestra
 
 </details>
 
-*Estimated Time: 60–75 minutes*
+*Estimated Time: 45–60 minutes*
 
 ---
 
@@ -44,7 +44,7 @@ The application uses **Podman containers** for seamless deployment and orchestra
 
 In this lab, you will:
 
-- **Deploy CloudBank** to compute instance and configure environment variables
+- **Deploy CloudBank** to the compute instance using configuration from the previous labs
 - **Verify database setup** and initialization script completion  
 - **Start containerized services** using Podman with proper profiles
 - **Access endpoints** for frontend UI, Swagger APIs, and monitoring tools
@@ -70,13 +70,8 @@ Before deploying CloudBank, we need to transfer the complete application codebas
 
 ### Step 1: Prepare the CloudBank Package
 
-In your **Cloud Shell**, navigate to the parent directory of oracle-saga-cloudbank:
+In your **Cloud Shell**, navigate to the parent directory of oracle-saga-cloudbank. This path may vary based on your setup - ensure you're in the directory that contains oracle-saga-cloudbank/.
 
-```bash
-# Navigate to the parent directory containing oracle-saga-cloudbank
-# This path may vary based on your setup - ensure you're in the directory that contains oracle-saga-cloudbank/
-ls -la oracle-saga-cloudbank/
-```
   ```
     <copy>
     ls -la oracle-saga-cloudbank/
@@ -92,11 +87,11 @@ oracle-saga-cloudbank/
 │   │   ├── requirements.txt
 │   │   ├── static/        # CSS, images, and assets
 │   │   └── templates/     # HTML templates
-│   ├── banka/            # BankA SpringBoot microservice
+│   ├── banka/            # BankChicago SpringBoot microservice
 │   │   ├── pom.xml
 │   │   ├── src/main/java/ # Java source code
 │   │   └── target/        # Compiled artifacts
-│   ├── bankb/            # BankB SpringBoot microservice
+│   ├── bankb/            # BankMex SpringBoot microservice
 │   │   ├── pom.xml
 │   │   ├── src/main/java/ # Java source code
 │   │   └── target/        # Compiled artifacts
@@ -112,98 +107,100 @@ oracle-saga-cloudbank/
 └── swagger-ui-config/    # API documentation configuration
 ```
 
-### Step 2: Configure Environment Variables
+### Step 2: Enter Your Environment Information
 
-Before transfer, update the `.env` file with your database connection details. Enter your values below to auto-generate the configuration:
+Enter the values specific to your environment to generate the scripts below. The Saga schemas, usernames, passwords, Broker name, Coordinator name, and compute username are fixed by the previous setup labs.
 
-**Database Connection Details:**
 <div class="input-section">
 <strong>ADB TNS Alias:</strong> 
-<input type="text" id="tnsDatabaseName" placeholder="Enter TNS alias (e.g., alpha1234_high)" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>ADBS Username:</strong> 
-<input type="text" id="adbsUsername" placeholder="Enter ADBS username" value="adbs" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>ADBS Password:</strong> 
-<input type="text" id="adbsPassword" placeholder="Enter ADBS password" class="input-field" oninput="updateEnvConfig()"><br/>
+<input type="text" id="tnsDatabaseName" placeholder="Enter TNS alias (e.g., alpha1234_high)" class="input-field" oninput="updateLabValues()"><br/>
+<strong>SSH Key Filename:</strong> 
+<input type="text" id="sshKeyName" placeholder="Enter SSH key filename (e.g., ssh-key-2025-01-01.key)" class="input-field" oninput="updateLabValues()"><br/>
+<strong>Compute Instance IP:</strong> 
+<input type="text" id="computeInstanceIP" placeholder="Enter compute instance IP (e.g., 195.168.2.124)" class="input-field" oninput="updateLabValues()"><br/>
+<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
+💡 <em>The generated commands use the fixed CloudBank schemas from the previous labs and <strong>ubuntu</strong> as the compute instance username.</em>
+</div>
 </div>
 
-**CloudBank Service Credentials:**
-<div class="input-section">
-<strong>BankA Username:</strong> 
-<input type="text" id="bankaUser" placeholder="Enter BankA username" value="banka" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>BankA Password:</strong> 
-<input type="text" id="bankaPassword" placeholder="Enter BankA password" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>BankB Username:</strong> 
-<input type="text" id="bankbUser" placeholder="Enter BankB username" value="bankb" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>BankB Password:</strong> 
-<input type="text" id="bankbPassword" placeholder="Enter BankB password" class="input-field" oninput="updateEnvConfig()"><br/>
+> **Note:** If these values were saved in an earlier lab, they are populated automatically. Review them and change only the values that are different in your environment.
+
+<div id="configWarning" style="display:none; background:#fff4e5; border:1px solid #f0ad4e; padding:12px 14px; border-radius:8px; margin:12px 0; color:#7a4b00;">
+<strong>Required environment information is missing.</strong> Enter the ADB TNS Alias, SSH Key Filename, and Compute Instance IP before copying the deployment script.
 </div>
 
-**Orchestrator and Broker Credentials:**
-<div class="input-section">
-<strong>Orchestrator Username:</strong> 
-<input type="text" id="orchestratorUser" placeholder="Enter Orchestrator username" value="orchestrator1" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>Orchestrator Password:</strong> 
-<input type="text" id="orchestratorPassword" placeholder="Enter Orchestrator password" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>Broker Username:</strong> 
-<input type="text" id="brokerUser" placeholder="Enter Broker username" value="broker1" class="input-field" oninput="updateEnvConfig()"><br/>
-<strong>Broker Password:</strong> 
-<input type="text" id="brokerPassword" placeholder="Enter Broker password" class="input-field" oninput="updateEnvConfig()"><br/>
-</div>
+### Step 3: Configure and Transfer CloudBank
 
-**Generated .env Configuration:**
+The following script performs the complete deployment from **Cloud Shell**. It creates the `.env` file using your TNS Alias together with the fixed CloudBank users and passwords established in the previous labs, packages the application, transfers it to the compute instance, extracts it, and verifies the result.
 
-<pre id="envConfigContainer">
-<code id="envConfigOutput"># Database Connection Settings
-TNS_ALIAS_CONTAINER=<span id="envTnsAlias">your_adb_alias</span>
-ADBS_USER=<span id="envAdbsUser">adbs</span>
-ADBS_PASSWORD=<span id="envAdbsPassword">your_adbs_password</span>
+<pre id="deployCloudBank" class="interactive-command"><code># Run this complete block from the directory that contains oracle-saga-cloudbank/
+# Enter the TNS Alias, SSH Key Filename, and Compute Instance IP above before copying this script.
+set -e
 
-# Bank Service Credentials  
-BANKA_USER=<span id="envBankaUser">banka</span>
-BANKA_PASSWORD=<span id="envBankaPassword">your_banka_password</span>
-BANKB_USER=<span id="envBankbUser">bankb</span>
-BANKB_PASSWORD=<span id="envBankbPassword">your_bankb_password</span>
+PROJECT_DIR="$(pwd)/oracle-saga-cloudbank"
+if [ ! -d "$PROJECT_DIR" ]; then
+  echo "ERROR: oracle-saga-cloudbank/ was not found in $(pwd)"
+  exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+# Use the environment-specific TNS Alias and the fixed CloudBank values from the previous labs
+cat > .env &lt;&lt;'EOF'
+# Database Connection Settings
+TNS_ALIAS_CONTAINER=<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>
+ADBS_USER=ADMIN
+ADBS_PASSWORD=Welcome_123#
+
+# Bank Service Credentials
+BANKA_USER=bankchicago
+BANKA_PASSWORD=Welcome_123#
+BANKB_USER=bankmex
+BANKB_PASSWORD=Welcome_123#
 
 # Orchestrator and Broker
-ORCHESTRATOR_USER=<span id="envOrchestratorUser">orchestrator1</span>
-ORCHESTRATOR_PASSWORD=<span id="envOrchestratorPassword">your_orchestrator_password</span>
-BROKER_USER=<span id="envBrokerUser">broker1</span>
-BROKER_PASSWORD=<span id="envBrokerPassword">your_broker_password</span>
+ORCHESTRATOR_USER=orchestratorchicago
+ORCHESTRATOR_PASSWORD=Welcome_123#
+BROKER_USER=brokerchicago
+BROKER_PASSWORD=Welcome_123#
 
-# Container and Monitoring Configuration (Do not change these values)
+# Container and Monitoring Configuration
 TNS_ADMIN_CONTAINER=/opt/adb_wallet
 ENABLE_ZIPKIN="true"
-ZIPKIN_URL="http://zipkin:9411/api/v2/spans"</code>
-</pre>
+ZIPKIN_URL="http://zipkin:9411/api/v2/spans"
+EOF
+
+# Package the complete project
+cd ..
+tar -czf oracle-saga-cloudbank.tar.gz oracle-saga-cloudbank/
+
+# Transfer to the compute instance
+scp -i <span class="ssh-key-value">your-key.pem</span> oracle-saga-cloudbank.tar.gz ubuntu@<span class="instance-ip-value">INSTANCE_IP</span>:~/
+
+# Connect, extract, and verify
+ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+set -e
+cd ~
+rm -rf oracle-saga-cloudbank
+tar -xzf oracle-saga-cloudbank.tar.gz
+cd oracle-saga-cloudbank
+
+echo "CloudBank application deployed successfully."
+echo "Project directory: $(pwd)"
+ls -la
+REMOTE</code></pre>
 
 <div class="button-center">
-<button onclick="copyEnvConfig()" class="copy-btn-pastel">📋 Copy .env Contents</button>
+<button onclick="copyBlock('deployCloudBank', this)" class="copy-btn-pastel">📋 Copy Deployment Script</button>
 </div>
 
-**Apply Configuration to Cloud Shell:**
+**Expected Result:**
+- The `.env` configuration is created without manual editing
+- `oracle-saga-cloudbank.tar.gz` is transferred to the compute instance
+- The application is extracted under `~/oracle-saga-cloudbank/`
+- The project files and ADB wallet are available on the compute instance
 
-Once you've filled out the form above and copied the generated .env configuration:
-
-1. **Navigate to CloudBank Directory in Cloud Shell:**
-   ```bash
-   cd oracle-saga-cloudbank
-   ```
-
-2. **Edit the existing .env file:**
-   ```bash
-   nano .env
-   ```
-
-3. **Replace the contents** with your copied configuration from the form above
-
-4. **Save and exit** (Ctrl+X, then Y, then Enter in nano)
-
-5. **Verify the configuration:**
-   ```bash
-   cat .env
-   ```
-
-6. **Continue to Step 3** to transfer the configured application to your compute instance
+> **Why this is automated:** The CloudBank schemas and passwords are fixed by the previous setup labs (`brokerchicago`, `orchestratorchicago`, `bankchicago`, `bankmex`, and `Welcome_123#`). Only the TNS Alias and compute-instance information are environment-specific, so those are the only values requested here.
 
 <style>
 .input-section {
@@ -311,672 +308,247 @@ Once you've filled out the form above and copied the generated .env configuratio
 </style>
 
 <script>
-function updateEnvConfig() {
+function getFirstSessionValue(keys, fallback = '') {
+    for (const key of keys) {
+        const value = sessionStorage.getItem(key);
+        if (value && value.trim() !== '') return value.trim();
+    }
+    return fallback;
+}
+
+function setTextForClass(className, value) {
+    document.querySelectorAll('.' + className).forEach(function(element) {
+        element.textContent = value;
+    });
+}
+
+function updateLabValues() {
+    const tnsElement = document.getElementById('tnsDatabaseName');
+    const sshKeyElement = document.getElementById('sshKeyName');
+    const instanceIPElement = document.getElementById('computeInstanceIP');
+
+    const tnsAlias = (tnsElement ? tnsElement.value : '').trim() || 'DATABASE_CONNECTION_TNS_NAME';
+    const sshKey = (sshKeyElement ? sshKeyElement.value : '').trim() || 'your-key.pem';
+    const instanceIP = (instanceIPElement ? instanceIPElement.value : '').trim() || 'INSTANCE_IP';
+
+    setTextForClass('tns-value', tnsAlias);
+    setTextForClass('ssh-key-value', sshKey);
+    setTextForClass('instance-ip-value', instanceIP);
+
+    if (tnsElement && tnsElement.value.trim()) sessionStorage.setItem('adbConnectionString', tnsElement.value.trim());
+    if (sshKeyElement && sshKeyElement.value.trim()) sessionStorage.setItem('sshKeyName', sshKeyElement.value.trim());
+    if (instanceIPElement && instanceIPElement.value.trim()) sessionStorage.setItem('computePublicIP', instanceIPElement.value.trim());
+
+    const warning = document.getElementById('configWarning');
+    const missing = !tnsElement || !tnsElement.value.trim() || !sshKeyElement || !sshKeyElement.value.trim() || !instanceIPElement || !instanceIPElement.value.trim();
+    if (warning) warning.style.display = missing ? 'block' : 'none';
+}
+
+function loadPreviousLabValues() {
     try {
-        // Get input elements first
+        const savedTns = getFirstSessionValue([
+            'adbConnectionString',
+            'DATABASE_CONNECTION_TNS_NAME',
+            'cloudbank_DATABASE_CONNECTION_TNS_NAME',
+            'tnsDatabaseName'
+        ]);
+        const savedKey = getFirstSessionValue(['sshKeyName']);
+        const savedIP = getFirstSessionValue(['computePublicIP', 'computeInstanceIP']);
+
         const tnsElement = document.getElementById('tnsDatabaseName');
-        const adbsUserElement = document.getElementById('adbsUsername');
-        const adbsPasswordElement = document.getElementById('adbsPassword');
-        const bankaUserElement = document.getElementById('bankaUser');
-        const bankaPasswordElement = document.getElementById('bankaPassword');
-        const bankbUserElement = document.getElementById('bankbUser');
-        const bankbPasswordElement = document.getElementById('bankbPassword');
-        const orchestratorUserElement = document.getElementById('orchestratorUser');
-        const orchestratorPasswordElement = document.getElementById('orchestratorPassword');
-        const brokerUserElement = document.getElementById('brokerUser');
-        const brokerPasswordElement = document.getElementById('brokerPassword');
-
-        // Check if input elements exist
-        if (!tnsElement || !adbsUserElement || !adbsPasswordElement || !bankaUserElement || 
-            !bankaPasswordElement || !bankbUserElement || !bankbPasswordElement || 
-            !orchestratorUserElement || !orchestratorPasswordElement || !brokerUserElement || !brokerPasswordElement) {
-            console.log('Input elements not ready, skipping updateEnvConfig');
-            return;
-        }
-
-        // Get input values
-        const tnsAlias = tnsElement.value || '<DATABASE_CONNECTION_TNS_NAME>';
-        const adbsUser = adbsUserElement.value || '<ADMIN_SCHEMA>';
-        const adbsPassword = adbsPasswordElement.value || '<DATABASE_ADMIN_PASSWORD>';
-        const bankaUser = bankaUserElement.value || '<BANKA_SCHEMA>';
-        const bankaPassword = bankaPasswordElement.value || '<BANKA_SCHEMA_PASSWORD>';
-        const bankbUser = bankbUserElement.value || '<BANKB_SCHEMA>';
-        const bankbPassword = bankbPasswordElement.value || '<BANKB_SCHEMA_PASSWORD>';
-        const orchestratorUser = orchestratorUserElement.value || '<ORCHESTRATOR_SCHEMA>';
-        const orchestratorPassword = orchestratorPasswordElement.value || '<ORCHESTRATOR_SCHEMA_PASSWORD>';
-        const brokerUser = brokerUserElement.value || '<BROKER_SCHEMA>';
-        const brokerPassword = brokerPasswordElement.value || '<BROKER_SCHEMA_PASSWORD>';
-
-        // Update display spans (check if they exist)
-        const displayElements = [
-            { id: 'envTnsAlias', value: tnsAlias },
-            { id: 'envAdbsUser', value: adbsUser },
-            { id: 'envAdbsPassword', value: adbsPassword },
-            { id: 'envBankaUser', value: bankaUser },
-            { id: 'envBankaPassword', value: bankaPassword },
-            { id: 'envBankbUser', value: bankbUser },
-            { id: 'envBankbPassword', value: bankbPassword },
-            { id: 'envOrchestratorUser', value: orchestratorUser },
-            { id: 'envOrchestratorPassword', value: orchestratorPassword },
-            { id: 'envBrokerUser', value: brokerUser },
-            { id: 'envBrokerPassword', value: brokerPassword }
-        ];
-
-        displayElements.forEach(item => {
-            const element = document.getElementById(item.id);
-            if (element) {
-                element.textContent = item.value;
-            }
-        });
-
-        console.log('Successfully updated .env configuration display');
-    } catch (error) {
-        console.error('Error in updateEnvConfig:', error);
-    }
-}
-
-// Copy .env configuration to clipboard
-function copyEnvConfig() {
-    const envConfig = document.getElementById('envConfigOutput').textContent;
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(envConfig).then(function() {
-            // Visual feedback
-            const button = document.querySelector('.copy-btn-pastel');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }).catch(function(err) {
-            console.error('Could not copy text: ', err);
-            fallbackCopyTextToClipboard(envConfig);
-        });
-    } else {
-        fallbackCopyTextToClipboard(envConfig);
-    }
-}
-
-// Fallback copy function for older browsers
-function fallbackCopyTextToClipboard(text) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    textArea.style.top = "-999999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            const button = document.querySelector('.copy-btn-pastel');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }
-    } catch (err) {
-        console.error('Fallback: Could not copy text: ', err);
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-// Update transfer commands based on input fields
-function updateTransferCommands() {
-    try {
         const sshKeyElement = document.getElementById('sshKeyName');
         const instanceIPElement = document.getElementById('computeInstanceIP');
-        const usernameElement = document.getElementById('computeUsername');
-        
-        const sshKeyDisplayElement = document.getElementById('sshKeyDisplay');
-        const ipDisplayElement = document.getElementById('ipDisplay');
-        const usernameDisplayElement = document.getElementById('usernameDisplay');
-        
-        // Check if all elements exist
-        if (!sshKeyElement || !instanceIPElement || !usernameElement || 
-            !sshKeyDisplayElement || !ipDisplayElement || !usernameDisplayElement) {
-            console.log('Transfer command elements not yet ready, skipping update');
-            return;
-        }
-        
-        const sshKey = sshKeyElement.value || 'your-key.pem';
-        const instanceIP = instanceIPElement.value || 'INSTANCE_IP';
-        const username = usernameElement.value || 'ubuntu';
-        
-        // Update display spans for transfer commands
-        sshKeyDisplayElement.textContent = sshKey;
-        ipDisplayElement.textContent = instanceIP;
-        usernameDisplayElement.textContent = username;
-        
-        // Also update extract command spans if they exist
-        const sshKeyExtractElement = document.getElementById('sshKeyDisplayExtract');
-        const ipExtractElement = document.getElementById('ipDisplayExtract');
-        const usernameExtractElement = document.getElementById('usernameDisplayExtract');
-        
-        if (sshKeyExtractElement) sshKeyExtractElement.textContent = sshKey;
-        if (ipExtractElement) ipExtractElement.textContent = instanceIP;
-        if (usernameExtractElement) usernameExtractElement.textContent = username;
-        
-        console.log('Updated transfer and extract commands:', { sshKey, instanceIP, username });
+
+        if (savedTns && tnsElement) tnsElement.value = savedTns;
+        if (savedKey && sshKeyElement) sshKeyElement.value = savedKey;
+        if (savedIP && instanceIPElement) instanceIPElement.value = savedIP;
+
+        updateLabValues();
     } catch (error) {
-        console.error('Error updating transfer commands:', error);
+        console.error('Error loading environment values:', error);
     }
 }
 
-// Copy transfer commands to clipboard
-function copyTransferCommands() {
-    const transferCommands = document.getElementById('transferCommandOutput').textContent;
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(transferCommands).then(function() {
-            // Visual feedback
-            const button = document.querySelector('button[onclick="copyTransferCommands()"]');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }).catch(function(err) {
-            console.error('Could not copy text: ', err);
-            fallbackCopyTransferCommands(transferCommands);
-        });
-    } else {
-        fallbackCopyTransferCommands(transferCommands);
-    }
-}
-
-// Fallback copy function for transfer commands
-function fallbackCopyTransferCommands(text) {
-    const textArea = document.createElement("textarea");
+function fallbackCopyTextToClipboard(text, callback) {
+    const textArea = document.createElement('textarea');
     textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    textArea.style.top = "-999999px";
+    textArea.style.position = 'fixed';
+    textArea.style.left = '-999999px';
+    textArea.style.top = '-999999px';
     document.body.appendChild(textArea);
     textArea.focus();
     textArea.select();
-    
     try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            const button = document.querySelector('button[onclick="copyTransferCommands()"]');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }
-    } catch (err) {
-        console.error('Fallback: Could not copy text: ', err);
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-// Copy extract commands to clipboard
-function copyExtractCommands() {
-    const extractCommands = document.getElementById('extractCommandOutput').textContent;
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(extractCommands).then(function() {
-            // Visual feedback
-            const button = document.querySelector('button[onclick="copyExtractCommands()"]');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }).catch(function(err) {
-            console.error('Could not copy text: ', err);
-            fallbackCopyExtractCommands(extractCommands);
-        });
-    } else {
-        fallbackCopyExtractCommands(extractCommands);
-    }
-}
-
-// Fallback copy function for extract commands
-function fallbackCopyExtractCommands(text) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    textArea.style.top = "-999999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            const button = document.querySelector('button[onclick="copyExtractCommands()"]');
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }
-    } catch (err) {
-        console.error('Fallback: Could not copy text: ', err);
-    }
-    
-    document.body.removeChild(textArea);
-}
-
-// Initialize CloudBank configuration similar to l2-provision pattern
-function initializeCloudBankEnv() {
-    try {
-        // Debug: Log all session storage items to console
-        console.log('All session storage items:');
-        for (let i = 0; i < sessionStorage.length; i++) {
-            let key = sessionStorage.key(i);
-            console.log(key + ': ' + sessionStorage.getItem(key));
-        }
-        
-        // Auto-populate from session storage if available
-        if (typeof(Storage) !== "undefined" && sessionStorage) {
-            // Database connection
-            document.getElementById('tnsDatabaseName').value = sessionStorage.getItem('adbConnectionString') || '';
-            document.getElementById('adbsPassword').value = sessionStorage.getItem('cloudbank_ADB_DATABASE_PASSWORD') || 'Welcome_123#' ; // Default admin password
-            
-            // CloudBank service credentials - mapping to actual session variables
-            document.getElementById('bankaUser').value = sessionStorage.getItem('cloudbank_USER_BANKA') || 'banka';
-            document.getElementById('bankaPassword').value = sessionStorage.getItem('cloudbank_PASSWORD_BANKC') || 'Welcome_123#';
-            
-            document.getElementById('bankbUser').value = sessionStorage.getItem('cloudbank_USER_BANKB') || 'bankb';
-            document.getElementById('bankbPassword').value = sessionStorage.getItem('cloudbank_PASSWORD_BANKD') || 'Welcome_123#';
-            
-            // Orchestrator and Broker credentials
-            document.getElementById('orchestratorUser').value = sessionStorage.getItem('cloudbank_USER_ORCHESTRATOR1') || 'orchestrator1';
-            document.getElementById('orchestratorPassword').value = sessionStorage.getItem('cloudbank_PASSWORD_ORCHESTRATOR1') || 'Welcome_123#';
-            
-            document.getElementById('brokerUser').value = sessionStorage.getItem('cloudbank_USER_BROKER1') || 'broker1';
-            document.getElementById('brokerPassword').value = sessionStorage.getItem('cloudbank_PASSWORD_BROKER1') || 'Welcome_123#';
-            
-        }
-        
-        // Auto-populate transfer command fields
-        document.getElementById('sshKeyName').value = sessionStorage.getItem('sshKeyName') || '';
-        document.getElementById('computeInstanceIP').value = sessionStorage.getItem('computePublicIP') || '';
-        
-        // Update the .env configuration display
-        updateEnvConfig();
-        
-        // Update transfer commands display with multiple retry attempts
-        setTimeout(updateTransferCommands, 100);
-        setTimeout(updateTransferCommands, 500);
-        setTimeout(updateTransferCommands, 1000);
+        document.execCommand('copy');
     } catch (error) {
-        console.error('Error loading CloudBank configuration:', error);
+        console.error('Fallback copy failed:', error);
     }
+    document.body.removeChild(textArea);
+    if (callback) callback();
 }
 
-// Initialize using multiple methods like l2-provision
-if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeCloudBankEnv);
-} else {
-    initializeCloudBankEnv();
-}
-window.addEventListener('load', initializeCloudBankEnv);
-setTimeout(initializeCloudBankEnv, 500);  
-setTimeout(initializeCloudBankEnv, 1500); 
-setTimeout(initializeCloudBankEnv, 3000);
+function copyBlock(elementId, button) {
+    const element = document.getElementById(elementId);
+    if (!element) return;
 
-// Update access URLs based on instance IP input
-function updateAccessURLs() {
-    try {
-        const instanceIPElement = document.getElementById('accessInstanceIP');
-        
-        if (!instanceIPElement) {
-            console.log('Access instance IP element not ready, skipping update');
+    const text = element.innerText;
+    if (elementId === 'deployCloudBank') {
+        const tnsElement = document.getElementById('tnsDatabaseName');
+        const sshKeyElement = document.getElementById('sshKeyName');
+        const instanceIPElement = document.getElementById('computeInstanceIP');
+        const tns = tnsElement ? tnsElement.value.trim() : '';
+        const sshKey = sshKeyElement ? sshKeyElement.value.trim() : '';
+        const instanceIP = instanceIPElement ? instanceIPElement.value.trim() : '';
+        if (!tns || !sshKey || !instanceIP) {
+            alert('Enter the ADB TNS Alias, SSH Key Filename, and Compute Instance IP before copying the deployment script.');
             return;
         }
-        
-        const instanceIP = instanceIPElement.value || 'INSTANCE_IP';
-        
-        // Update all URL display spans
-        const urlElements = [
-            { id: 'frontendIP', value: instanceIP },
-            { id: 'swaggerIP', value: instanceIP },
-            { id: 'zipkinIP', value: instanceIP },
-            { id: 'quickAccessIP', value: instanceIP }
-        ];
-        
-        urlElements.forEach(item => {
-            const element = document.getElementById(item.id);
-            if (element) {
-                element.textContent = item.value;
-            }
-        });
-        
-        console.log('Updated access URLs for IP:', instanceIP);
-    } catch (error) {
-        console.error('Error updating access URLs:', error);
     }
-}
 
-// Initialize access URLs with session storage
-function initializeAccessURLs() {
-    try {
-        // Auto-populate from session storage if available
-        if (typeof(Storage) !== "undefined" && sessionStorage) {
-            document.getElementById('accessInstanceIP').value = sessionStorage.getItem('computePublicIP') || '';
+    const originalText = button ? button.innerHTML : '';
+    const done = function() {
+        if (button) {
+            button.innerHTML = '✅ Copied!';
+            button.style.backgroundColor = '#A8E6A8';
+            setTimeout(function() {
+                button.innerHTML = originalText;
+                button.style.backgroundColor = '#90EE90';
+            }, 2000);
         }
-        
-        // Update URLs display
-        updateAccessURLs();
-    } catch (error) {
-        console.error('Error initializing access URLs:', error);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function() {
+            fallbackCopyTextToClipboard(text, done);
+        });
+    } else {
+        fallbackCopyTextToClipboard(text, done);
     }
 }
 
-// Open URL in new tab
+function getComputeIP() {
+    const element = document.getElementById('computeInstanceIP');
+    return element ? element.value.trim() : '';
+}
+
 function openURL(type) {
-    const instanceIP = document.getElementById('accessInstanceIP').value || 'INSTANCE_IP';
-    
-    if (instanceIP === 'INSTANCE_IP' || !instanceIP) {
+    const instanceIP = getComputeIP();
+    if (!instanceIP) {
         alert('Please enter your compute instance IP address first!');
         return;
     }
-    
-    let url;
-    switch(type) {
-        case 'frontend':
-            url = `http://${instanceIP}:3000`;
-            break;
-        case 'swagger':
-            url = `http://${instanceIP}:8080/swagger-ui.html`;
-            break;
-        case 'zipkin':
-            url = `http://${instanceIP}:9411`;
-            break;
-        default:
-            console.error('Unknown URL type:', type);
-            return;
-    }
-    
-    window.open(url, '_blank');
+
+    const urls = {
+        frontend: `http://${instanceIP}:3000`,
+        swagger: `http://${instanceIP}:8080/swagger-ui.html`,
+        zipkin: `http://${instanceIP}:9411`
+    };
+
+    if (urls[type]) window.open(urls[type], '_blank');
 }
 
-// Copy URL to clipboard
-function copyURL(type) {
-    const instanceIP = document.getElementById('accessInstanceIP').value || 'INSTANCE_IP';
-    
-    let textToCopy;
-    switch(type) {
-        case 'frontend':
-            textToCopy = `http://${instanceIP}:3000`;
-            break;
-        case 'swagger':
-            textToCopy = `http://${instanceIP}:8080/swagger-ui.html`;
-            break;
-        case 'zipkin':
-            textToCopy = `http://${instanceIP}:9411`;
-            break;
-        case 'quickAccess':
-            textToCopy = document.getElementById('quickAccessOutput').textContent;
-            break;
-        default:
-            console.error('Unknown copy type:', type);
-            return;
+function copyURL(type, button) {
+    const instanceIP = getComputeIP();
+    if (!instanceIP) {
+        alert('Please enter your compute instance IP address first!');
+        return;
     }
-    
-    if (navigator.clipboard && navigator.clipboard.writeText) {
-        navigator.clipboard.writeText(textToCopy).then(function() {
-            // Visual feedback
-            const button = event.target;
-            const originalText = button.innerHTML;
-            button.innerHTML = '✅ Copied!';
-            button.style.backgroundColor = '#A8E6A8';
-            
-            setTimeout(function() {
-                button.innerHTML = originalText;
-                button.style.backgroundColor = '#90EE90';
-            }, 2000);
-        }).catch(function(err) {
-            console.error('Could not copy text: ', err);
-            fallbackCopyURL(textToCopy);
-        });
-    } else {
-        fallbackCopyURL(textToCopy);
-    }
-}
 
-// Fallback copy function for URLs
-function fallbackCopyURL(text) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.position = "fixed";
-    textArea.style.left = "-999999px";
-    textArea.style.top = "-999999px";
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            const button = event.target;
-            const originalText = button.innerHTML;
+    const urls = {
+        frontend: `http://${instanceIP}:3000`,
+        swagger: `http://${instanceIP}:8080/swagger-ui.html`,
+        zipkin: `http://${instanceIP}:9411`
+    };
+
+    const text = urls[type];
+    if (!text) return;
+
+    const originalText = button ? button.innerHTML : '';
+    const done = function() {
+        if (button) {
             button.innerHTML = '✅ Copied!';
             button.style.backgroundColor = '#A8E6A8';
-            
             setTimeout(function() {
                 button.innerHTML = originalText;
                 button.style.backgroundColor = '#90EE90';
             }, 2000);
         }
-    } catch (err) {
-        console.error('Fallback: Could not copy text: ', err);
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(text).then(done).catch(function() {
+            fallbackCopyTextToClipboard(text, done);
+        });
+    } else {
+        fallbackCopyTextToClipboard(text, done);
     }
-    
-    document.body.removeChild(textArea);
 }
 
-// Initialize access URLs when page loads
 if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', initializeAccessURLs);
+    document.addEventListener('DOMContentLoaded', loadPreviousLabValues);
 } else {
-    initializeAccessURLs();
+    loadPreviousLabValues();
 }
-window.addEventListener('load', initializeAccessURLs);
-setTimeout(initializeAccessURLs, 500);
-setTimeout(initializeAccessURLs, 1500);
+window.addEventListener('load', loadPreviousLabValues);
 </script>
-
-### Step 3: Transfer to Compute Instance
-
-Enter your compute instance details to generate the transfer commands:
-
-<div class="input-section">
-<strong>SSH Key Filename:</strong> 
-<input type="text" id="sshKeyName" placeholder="Enter SSH key filename (e.g., ssh-key-2025-01-01.key)" class="input-field" oninput="updateTransferCommands()"><br/>
-<strong>Compute Instance IP:</strong> 
-<input type="text" id="computeInstanceIP" placeholder="Enter compute instance IP (e.g., 195.168.2.124)" class="input-field" oninput="updateTransferCommands()"><br/>
-<strong>Username:</strong> 
-<input type="text" id="computeUsername" placeholder="ubuntu" value="ubuntu" class="input-field" oninput="updateTransferCommands()"><br/>
-<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>Use <strong>ubuntu</strong> for Ubuntu instances</em>
-</div>
-</div>
-
-**Generated Transfer Commands:**
-
-<pre id="transferCommandContainer" class="interactive-command">
-<code id="transferCommandOutput"># Create archive from the parent directory of oracle-saga-cloudbank
-tar -czf oracle-saga-cloudbank.tar.gz oracle-saga-cloudbank/
-
-# Transfer to compute instance
-scp -i <span id="sshKeyDisplay">your-key.pem</span> oracle-saga-cloudbank.tar.gz <span id="usernameDisplay">ubuntu</span>@<span id="ipDisplay">INSTANCE_IP</span>:~/</code>
-</pre>
-<div class="button-center">
-<button onclick="copyTransferCommands()" class="copy-btn-pastel">📋 Copy Transfer Commands</button>
-</div>
-
-
-
-### Step 4: Extract on Compute Instance
-
-**Generated Connection and Extraction Commands:**
-
-<pre id="extractCommandContainer" class="interactive-command">
-<code id="extractCommandOutput"># Connect to compute instance
-ssh -i <span id="sshKeyDisplayExtract">your-key.pem</span> <span id="usernameDisplayExtract">ubuntu</span>@<span id="ipDisplayExtract">INSTANCE_IP</span>
-
-# Extract CloudBank application
-cd ~/
-tar -xzf oracle-saga-cloudbank.tar.gz
-cd oracle-saga-cloudbank/
-
-# Verify extraction
-ls -la</code>
-</pre>
-
-<div class="button-center">
-<button onclick="copyExtractCommands()" class="copy-btn-pastel">📋 Copy Connection & Extract Commands</button>
-</div>
 
 
 ## Task 2: Verify CloudBank Environment Setup
 
 ---
 
-Before starting the application services, we need to verify that the CloudBank environment setup from Lab 2 has completed successfully. In Lab 2, you ran a setup script that configured Podman, containers, and the CloudBank environment.
+Before starting the application services, verify that the compute environment prepared in the earlier setup lab is ready. Podman, Podman Compose, the CloudBank directory, and the required container runtime should already be available.
 
-### Step 1: Verify Podman Installation
+### Step 1: Run the Environment Verification
 
-Check if Podman and related components were installed correctly:
+Copy and run the complete validation script from **Cloud Shell**:
 
-  ```bash
-  <copy>
-  # Check Podman version
-  podman --version
+<pre id="verifyCompute" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+set -e
 
-  # Check if podman-compose is available
-  podman-compose --version
+echo "=== Podman ==="
+podman --version
 
-  # Verify container images were pulled
-  podman images
-  </copy>
-  ```
+echo
+echo "=== Podman Compose ==="
+podman-compose --version
 
-**Expected Output:**
-- Podman version 3.x or higher
-- podman-compose available
-- Container images including:
-    - `ghcr.io/oracle/oraclelinux:8`
-    - `container-registry.oracle.com/database/sqlcl:latest`
-    - `docker.io/swaggerapi/swagger-ui:v5.20.7`
-    - `docker.io/library/maven:3.8.6-openjdk-11`
-    - `ghcr.io/openzipkin/zipkin:latest`
+echo
+echo "=== CloudBank Directory ==="
+test -d ~/oracle-saga-cloudbank
+ls -ld ~/oracle-saga-cloudbank
 
-### Step 2: Verify CloudBank Directory Structure
+echo
+echo "=== Current User and Groups ==="
+whoami
+groups
 
-Check if the CloudBank directories were created properly:
+echo
+echo "=== Podman System ==="
+podman system info >/dev/null
+echo "Podman system check passed."
 
-  ```bash
-  <copy>
-  # Check if cloudbank directory exists
-  ls -la ~/cloudbank/
+echo
+echo "=== Available Images ==="
+podman images
 
-  # Verify current user permissions
-  whoami
+echo
+echo "CloudBank environment verification completed successfully."
+REMOTE</code></pre>
 
-  # Check user groups (should include podman)
-  groups
-  </copy>
-  ```
-
-**Expected Output:**
-- `/home/ubuntu/cloudbank/` directory exists
-- Current user is `ubuntu`
-- User belongs to `podman` group
-
-### Step 3: Test Podman Functionality
-
-Verify that Podman is working correctly:
-
-  ```bash
-  <copy>
-  # Test podman socket
-  systemctl status podman.socket
-
-  # Check podman system info
-  podman system info
-  </copy>
-  ```
+<div class="button-center">
+<button onclick="copyBlock('verifyCompute', this)" class="copy-btn-pastel">📋 Copy Verification Script</button>
+</div>
 
 **Expected Results:**
-- Podman socket is active and running
-- System info shows proper configuration
+- Podman returns a valid version
+- Podman Compose is available
+- `~/oracle-saga-cloudbank/` exists
+- The current compute user is `ubuntu`
+- Podman system validation succeeds
+- Required images are available or can be pulled by Podman Compose
 
-### Step 4: Retry Environment Setup (If Needed)
-
-If any of the above verifications fail, you need to manually set up the CloudBank environment. Copy the following setup script and save it as `cloudbank-setup.sh`:
-
-```bash
-<copy>
-#!/bin/bash
-# CloudBank Environment Setup Script
-
-# Update system packages
-sudo apt-get update
-
-# Install required components
-sudo apt-get install -y podman curl wget pipx
-
-# Add user to podman group
-sudo usermod -aG podman ubuntu
-
-# Create cloudbank directory
-mkdir -p ~/cloudbank
-
-# Pull required container images
-podman pull ghcr.io/oracle/oraclelinux:8
-podman pull container-registry.oracle.com/database/sqlcl:latest
-podman pull docker.io/swaggerapi/swagger-ui:v5.20.7
-podman pull docker.io/library/maven:3.8.6-openjdk-11
-podman pull ghcr.io/openzipkin/zipkin:latest
-
-echo "CloudBank environment setup completed!"
-</copy>
-```
-
-**Run the setup:**
-  ```bash
-  <copy>
-  # Make the script executable and run it
-  chmod +x cloudbank-setup.sh
-  sudo bash cloudbank-setup.sh
-
-  # Log out and back in to refresh group membership
-  exit
-  </copy>
-  ```
-
-> **Note:** The setup script from Lab 2 configured Podman for the ubuntu user, pulled necessary container images, and created the CloudBank directory structure. If any component is missing, the CloudBank application deployment may fail.
+> **If verification fails:** Return to the compute environment setup from the previous lab and complete the missing Podman or Podman Compose configuration before continuing. The infrastructure installation procedure is intentionally not repeated here.
 
 ---
 
@@ -984,104 +556,116 @@ echo "CloudBank environment setup completed!"
 
 ---
 
-CloudBank uses a **two-stage deployment** approach with different Podman profiles for database setup and application runtime.
+CloudBank uses a **two-stage deployment** approach with different Podman profiles for database setup and application runtime:
 
-### Step 1: Start Database Setup Profile
+- **adbsSetup profile:** Initializes the database-facing application resources and connections
+- **adbs profile:** Starts the CloudBank frontend, bank services, orchestrator, Swagger components, and tracing services
 
-First, start services with the `adbsSetup` profile to initialize database connections:
+### Step 1: Start CloudBank
 
-```bash
+Run the following complete script from **Cloud Shell**. It starts the setup profile, waits for the setup containers to finish successfully, switches to the application profile, and performs a final service and log check.
+
+<pre id="startCloudBank" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+set -e
 cd ~/oracle-saga-cloudbank
 
-# Start with database setup profile
+echo "=== Starting database setup profile ==="
 podman-compose --profile adbsSetup up -d
 
-# Check setup containers
-podman ps
-```
+setup_ids="$(podman-compose --profile adbsSetup ps -q)"
+if [ -z "$setup_ids" ]; then
+  echo "ERROR: No containers were created for the adbsSetup profile."
+  exit 1
+fi
 
-**Expected Output:**
-```
-CONTAINER ID  IMAGE                     STATUS        PORTS
-a1b2c3d4e5f6  cloudbank/db-setup:latest Up 30 seconds 
-```
+echo "Waiting for database setup containers to complete..."
+completed=false
+for attempt in $(seq 1 60); do
+  running=false
+  for id in $setup_ids; do
+    if [ "$(podman inspect -f '{{.State.Running}}' "$id")" = "true" ]; then
+      running=true
+      break
+    fi
+  done
 
-Wait for database setup to complete (approximately 2-3 minutes):
+  if [ "$running" = "false" ]; then
+    completed=true
+    break
+  fi
 
-```bash
-# Monitor setup logs
-podman logs -f <db-setup-container-id>
+  sleep 5
+done
 
-# Wait for completion message
-echo "Waiting for database setup completion..."
-```
+if [ "$completed" != "true" ]; then
+  echo "ERROR: Database setup did not finish within the expected time."
+  for id in $setup_ids; do
+    podman logs --tail 50 "$id" 2>&1 || true
+  done
+  exit 1
+fi
 
-### Step 2: Start Application Services
+for id in $setup_ids; do
+  exit_code="$(podman inspect -f '{{.State.ExitCode}}' "$id")"
+  if [ "$exit_code" != "0" ]; then
+    echo "ERROR: Database setup container $id exited with code $exit_code."
+    podman logs --tail 50 "$id" 2>&1 || true
+    exit 1
+  fi
+done
 
-Once database setup completes, start the main application services with the `adbs` profile:
+echo "Database setup completed successfully."
 
-```bash
-# Stop setup profile
+echo
+echo "=== Switching to application profile ==="
 podman-compose --profile adbsSetup down
-
-# Start application profile
 podman-compose --profile adbs up -d
 
-# Verify all services are running
+sleep 10
+
+echo
+echo "=== Running CloudBank Services ==="
 podman ps
-```
+
+echo
+echo "=== Recent Service Logs ==="
+for container in $(podman ps --format '{{.Names}}'); do
+  echo
+  echo "----- $container -----"
+  podman logs --tail 20 "$container" 2>&1 || true
+done
+REMOTE</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('startCloudBank', this)" class="copy-btn-pastel">📋 Copy Start Script</button>
+</div>
 
 **Expected Output:**
-```
-CONTAINER ID  IMAGE                        STATUS        PORTS
-b2c3d4e5f6g7  cloudbank/frontend:latest    Up 1 minute   0.0.0.0:3000->3000/tcp
-c3d4e5f6g7h8  cloudbank/banka:latest       Up 1 minute   0.0.0.0:8081->8080/tcp
-d4e5f6g7h8i9  cloudbank/bankb:latest       Up 1 minute   0.0.0.0:8082->8080/tcp
-e5f6g7h8i9j0  cloudbank/orchestrator:latest Up 1 minute  0.0.0.0:8080->8080/tcp
-f6g7h8i9j0k1  cloudbank/zipkin:latest      Up 1 minute   0.0.0.0:9411->9411/tcp
-```
+- Frontend service available on port `3000`
+- Orchestrator/API service available on port `8080`
+- Bank services running on their configured application ports
+- Zipkin available on port `9411`
+- Recent logs do not show startup failures
 
-### Step 3: Verify Service Health
-
-Check the health status of all services:
-
-```bash
-# Check service logs
-podman logs cloudbank_frontend_1
-podman logs cloudbank_orchestrator_1
-podman logs cloudbank_banka_1
-podman logs cloudbank_bankb_1
-```
+> **Note:** The exact container IDs and generated container names can vary between environments. The script validates the setup containers by state and exit code instead of relying on a fixed wait time or container name.
 
 ## Task 4: Access Application Endpoints
 
 ---
 
-Once all services are running, you can access CloudBank through multiple endpoints. The system will auto-populate your compute instance IP address for easy access.
+Once all services are running, you can access CloudBank through multiple endpoints. The same compute instance IP entered in Task 1 is reused automatically; you do not need to enter it again.
 
-### Step 1: Configure Instance IP Address
-
-Enter your compute instance IP address to auto-generate all access URLs:
-
-<div class="input-section">
-<strong>Compute Instance IP:</strong> 
-<input type="text" id="accessInstanceIP" placeholder="Enter your compute instance IP (e.g., 195.168.2.124)" class="input-field" oninput="updateAccessURLs()"><br/>
-<div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>Get your IP with: <code>curl -s ifconfig.me</code></em>
-</div>
-</div>
-
-### Step 2: Frontend Application Access
+### Step 1: Frontend Application Access
 
 **CloudBank Flask UI** - Main application interface for executing transactions:
 
 <pre class="interactive-command">
-<code>🌐 Frontend URL: http://<span id="frontendIP">INSTANCE_IP</span>:3000</code>
+<code>🌐 Frontend URL: http://<span class="instance-ip-value">INSTANCE_IP</span>:3000</code>
 </pre>
 
 <div class="button-center">
 <button onclick="openURL('frontend')" class="copy-btn-pastel">🌐 Open CloudBank UI</button>
-<button onclick="copyURL('frontend')" class="copy-btn-pastel">📋 Copy Frontend URL</button>
+<button onclick="copyURL('frontend', this)" class="copy-btn-pastel">📋 Copy Frontend URL</button>
 </div>
 
 **Features Available:**
@@ -1097,17 +681,17 @@ Enter your compute instance IP address to auto-generate all access URLs:
 
 ---
 
-### Step 3: Swagger API Documentation
+### Step 2: Swagger API Documentation
 
 **CloudBank REST APIs** - Complete API documentation and testing interface:
 
 <pre class="interactive-command">
-<code>📡 Swagger URL: http://<span id="swaggerIP">INSTANCE_IP</span>:8080/swagger-ui.html</code>
+<code>📡 Swagger URL: http://<span class="instance-ip-value">INSTANCE_IP</span>:8080/swagger-ui.html</code>
 </pre>
 
 <div class="button-center">
 <button onclick="openURL('swagger')" class="copy-btn-pastel">📡 Open Swagger APIs</button>
-<button onclick="copyURL('swagger')" class="copy-btn-pastel">📋 Copy Swagger URL</button>
+<button onclick="copyURL('swagger', this)" class="copy-btn-pastel">📋 Copy Swagger URL</button>
 </div>
 
 **Available API Endpoints:**
@@ -1123,17 +707,17 @@ Enter your compute instance IP address to auto-generate all access URLs:
 
 ---
 
-### Step 4: Monitoring and Tracing
+### Step 3: Monitoring and Tracing
 
 **Zipkin Distributed Tracing** - Monitor saga execution across microservices:
 
 <pre class="interactive-command">
-<code>🔍 Zipkin URL: http://<span id="zipkinIP">INSTANCE_IP</span>:9411</code>
+<code>🔍 Zipkin URL: http://<span class="instance-ip-value">INSTANCE_IP</span>:9411</code>
 </pre>
 
 <div class="button-center">
 <button onclick="openURL('zipkin')" class="copy-btn-pastel">🔍 Open Zipkin Monitoring</button>
-<button onclick="copyURL('zipkin')" class="copy-btn-pastel">📋 Copy Zipkin URL</button>
+<button onclick="copyURL('zipkin', this)" class="copy-btn-pastel">📋 Copy Zipkin URL</button>
 </div>
 
 **Monitoring Capabilities:**
@@ -1143,6 +727,8 @@ Enter your compute instance IP address to auto-generate all access URLs:
 - Failure point analysis
 - Compensation flow visualization
 
+During the scenarios in the next task, keep Zipkin available so you can compare traces generated by successful execution, participant failure, and recovery.
+
 **Expected Interface:**
 
 ![Zipkin Tracing](./images/lab5-zipkin.png "Zipkin distributed tracing interface")
@@ -1151,31 +737,34 @@ Enter your compute instance IP address to auto-generate all access URLs:
 
 ---
 
-Now that CloudBank is fully deployed, you can test various transaction scenarios to observe Oracle Sagas in action.
+Now that CloudBank is fully deployed, test several transaction scenarios to observe Oracle Sagas during successful processing, distributed coordination, compensation, and service recovery.
 
 ### Scenario 1: Successful Intra-Bank Transfer
 
 Execute a transfer between accounts within the same bank:
 
 **Via Frontend UI:**
-1. Navigate to CloudBank UI: `http://<INSTANCE_IP>:3000`
+1. Navigate to CloudBank UI: <code>http://<span class="instance-ip-value">INSTANCE_IP</span>:3000</code>
 2. Select **"Intra-Bank Transfer"**
 3. Choose source account: `BANKA-ACC-001` 
 4. Choose destination account: `BANKA-ACC-002`
 5. Enter amount: `250.00`
 6. Click **"Execute Transfer"**
 
-**Via Swagger API:**
-```bash
-curl -X POST "http://<INSTANCE_IP>:8080/transfer/intra-bank" \
+**Optional - Via REST API:**
+
+<pre id="intraBankCurl" class="interactive-command"><code>curl -X POST "http://<span class="instance-ip-value">INSTANCE_IP</span>:8080/transfer/intra-bank" \
   -H "Content-Type: application/json" \
   -d '{
     "sourceAccount": "BANKA-ACC-001",
     "targetAccount": "BANKA-ACC-002", 
     "amount": 250.00,
     "currency": "USD"
-  }'
-```
+  }'</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('intraBankCurl', this)" class="copy-btn-pastel">📋 Copy Intra-Bank Request</button>
+</div>
 
 **Expected Saga Flow:**
 1. **Begin Saga** - Orchestrator starts intra-bank saga
@@ -1185,13 +774,23 @@ curl -X POST "http://<INSTANCE_IP>:8080/transfer/intra-bank" \
 5. **Commit Saga** - Transaction completed successfully
 
 **Verification:**
-```sql
--- Check saga status
-SELECT saga_id, status, outcome FROM DBA_SAGAS ORDER BY start_time DESC FETCH FIRST 1 ROWS ONLY;
+
+<pre id="verifyIntraBank" class="interactive-command"><code>-- Check saga status
+SELECT saga_id, status, outcome
+FROM DBA_SAGAS
+ORDER BY start_time DESC
+FETCH FIRST 1 ROWS ONLY;
 
 -- Verify account balances
-SELECT account_id, balance FROM banka.accounts WHERE account_id IN ('BANKA-ACC-001', 'BANKA-ACC-002');
-```
+SELECT account_id, balance
+FROM bankchicago.accounts
+WHERE account_id IN ('BANKA-ACC-001', 'BANKA-ACC-002');</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('verifyIntraBank', this)" class="copy-btn-pastel">📋 Copy Verification SQL</button>
+</div>
+
+Also review the corresponding Zipkin trace to see the request path for the successful transaction.
 
 ---
 
@@ -1207,98 +806,176 @@ Execute a transfer between accounts in different banks:
 5. Execute transfer
 
 **Expected Saga Flow:**
-1. **Begin Saga** - Orchestrator coordinates cross-bank saga
-2. **BankA Debit Request** - Withdraw funds from source bank
-3. **BankB Credit Request** - Deposit funds to target bank
+1. **Begin Saga** - Orchestrator (CloudBankCoordinator) coordinates cross-bank saga
+2. **BankChicago Debit Request** - Withdraw funds from source bank
+3. **BankMex Credit Request** - Deposit funds to target bank
 4. **Confirmation Phase** - Both banks confirm success
 5. **Commit Saga** - Distributed transaction completed
 
 **Monitor in Zipkin:**
 - View distributed trace spanning multiple services
-- Observe network calls between BankA and BankB
+- Observe network calls between BankChicago and BankMex
 - Verify saga coordination timing
 
 ---
 
 ### Scenario 3: Failure Handling (Insufficient Balance)
 
-Test compensation when source account has insufficient funds:
-
-**Setup:**
-```sql  
--- Reduce account balance
-UPDATE banka.accounts SET balance = 100.00 WHERE account_id = 'BANKA-ACC-001';
-COMMIT;
-```
+Test compensation when the source account cannot cover the requested transfer amount. This scenario does not modify the account balance directly, so no cleanup is required before the recovery scenario.
 
 **Execute Transfer:**
-- Attempt to transfer `$1000.00` from `BANKA-ACC-001`
-- Transfer should fail due to insufficient funds
+1. In the CloudBank UI, review the available balance for `BANKA-ACC-001`
+2. Start an **Inter-Bank Transfer** from `BANKA-ACC-001` to `BANKB-ACC-001`
+3. Enter an amount greater than the available source balance
+4. Execute the transfer
+
+The transfer should fail because the requested amount exceeds the available balance.
 
 **Expected Compensation Flow:**
 1. **Begin Saga** - Transfer saga initiated
-2. **Withdrawal Check** - BankA checks available balance
+2. **Withdrawal Check** - BankChicago checks available balance
 3. **Insufficient Funds** - Balance validation fails  
-4. **Trigger Compensation** - Saga framework initiates rollback
-5. **Rollback Saga** - All partial operations reversed
+4. **Trigger Compensation** - Saga framework initiates the failure/rollback path
+5. **Restore Consistency** - No partial distributed transfer is left as successful
 
 **Verification:**
-```sql
--- Check compensated saga
-SELECT saga_id, status, outcome FROM DBA_SAGAS WHERE outcome = 'COMPENSATED';
 
--- Verify balance unchanged  
-SELECT account_id, balance FROM banka.accounts WHERE account_id = 'BANKA-ACC-001';
-```
+<pre id="verifyCompensation" class="interactive-command"><code>-- Check compensated saga activity
+SELECT saga_id, status, outcome
+FROM DBA_SAGAS
+WHERE outcome = 'COMPENSATED'
+ORDER BY start_time DESC;
+
+-- Verify source account state
+SELECT account_id, balance
+FROM bankchicago.accounts
+WHERE account_id = 'BANKA-ACC-001';</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('verifyCompensation', this)" class="copy-btn-pastel">📋 Copy Compensation Verification</button>
+</div>
+
+**What to Observe in Zipkin:**
+- Compare this trace with the successful inter-bank transfer
+- Identify where the business validation failed
+- Observe which downstream interactions are missing or different
+- Relate the trace to the compensation outcome reported by the database
 
 ---
 
 ### Scenario 4: Crash Recovery Testing
 
-Simulate service failure during saga execution:
+Simulate a participant becoming unavailable while an inter-bank Saga request is being processed.
 
-**Step 1: Initiate Transfer**
-```bash
-# Start a large inter-bank transfer
-curl -X POST "http://<INSTANCE_IP>:8080/transfer/inter-bank" \
+### Step 1: Initiate the Transfer and Stop BankMex
+
+Run the following complete block from **Cloud Shell**. It identifies the BankMex container automatically, starts a small inter-bank transfer in the background, and stops BankMex immediately after the request begins.
+
+<pre id="simulateCrash" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+set -e
+
+BANKB_CONTAINER="$(podman ps --format '{{.Names}}' | grep -i bankb | head -n 1)"
+if [ -z "$BANKB_CONTAINER" ]; then
+  echo "ERROR: BankMex container was not found."
+  exit 1
+fi
+
+echo "BankMex container: $BANKB_CONTAINER"
+echo "Starting inter-bank transfer..."
+
+curl -sS -X POST "http://localhost:8080/transfer/inter-bank" \
   -H "Content-Type: application/json" \
   -d '{
     "sourceAccount": "BANKA-ACC-001",
-    "targetAccount": "BANKB-ACC-001", 
-    "amount": 1000.00,
+    "targetAccount": "BANKB-ACC-001",
+    "amount": 1.00,
     "currency": "USD"
-  }'
-```
+  }' > /tmp/lab5-crash-transfer.out 2>&1 &
 
-**Step 2: Simulate Service Crash**
-```bash
-# Kill BankB service during execution
-podman stop cloudbank_bankb_1
-```
+TRANSFER_PID=$!
+sleep 1
 
-**Step 3: Observe Saga State**
-```sql
--- Check incomplete sagas
-SELECT saga_id, status, participants FROM DBA_INCOMPLETE_SAGAS;
+echo "Stopping BankMex while the transfer is being processed..."
+podman stop "$BANKB_CONTAINER"
 
--- Monitor saga recovery attempts
-SELECT saga_id, retry_count, last_retry FROM DBA_SAGA_RETRY_LOG;
-```
+wait "$TRANSFER_PID" || true
 
-**Step 4: Restart Service and Recovery**
-```bash
-# Restart BankB service
-podman start cloudbank_bankb_1
+echo
+echo "=== Transfer Response ==="
+cat /tmp/lab5-crash-transfer.out || true
 
-# Monitor automatic recovery
-watch "podman logs cloudbank_orchestrator_1 | tail -10"
-```
+echo
+echo "=== BankMex State ==="
+podman ps -a --filter "name=$BANKB_CONTAINER"
+REMOTE</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('simulateCrash', this)" class="copy-btn-pastel">📋 Copy Crash Simulation</button>
+</div>
+
+### Step 2: Observe Saga State
+
+Use the database connection method from the previous labs:
+
+<pre id="verifyCrashState" class="interactive-command"><code>-- Check incomplete sagas
+SELECT saga_id, status, participants
+FROM DBA_INCOMPLETE_SAGAS;
+
+-- If available in this environment, inspect retry information
+SELECT saga_id, retry_count, last_retry
+FROM DBA_SAGA_RETRY_LOG;</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('verifyCrashState', this)" class="copy-btn-pastel">📋 Copy Recovery Verification SQL</button>
+</div>
+
+### Step 3: Restart BankMex and Observe Recovery
+
+Run the following complete block from **Cloud Shell**:
+
+<pre id="restartBankMex" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+set -e
+
+BANKB_CONTAINER="$(podman ps -a --format '{{.Names}}' | grep -i bankb | head -n 1)"
+if [ -z "$BANKB_CONTAINER" ]; then
+  echo "ERROR: BankMex container was not found."
+  exit 1
+fi
+
+podman start "$BANKB_CONTAINER"
+sleep 5
+
+echo "=== BankMex State ==="
+podman ps --filter "name=$BANKB_CONTAINER"
+
+echo
+echo "=== Recent BankMex Logs ==="
+podman logs --tail 30 "$BANKB_CONTAINER" 2>&1 || true
+
+echo
+echo "=== Recent Orchestrator Logs ==="
+ORCHESTRATOR_CONTAINER="$(podman ps --format '{{.Names}}' | grep -i orchestrator | head -n 1)"
+if [ -n "$ORCHESTRATOR_CONTAINER" ]; then
+  podman logs --tail 30 "$ORCHESTRATOR_CONTAINER" 2>&1 || true
+fi
+REMOTE</code></pre>
+
+<div class="button-center">
+<button onclick="copyBlock('restartBankMex', this)" class="copy-btn-pastel">📋 Copy Restart and Recovery Check</button>
+</div>
 
 **Expected Recovery:**
-- Saga marked as `INCOMPLETE` during service outage
-- Automatic retry mechanism engages after service restart
-- Transaction either completes successfully or compensates cleanly
-- No data inconsistency despite service failure
+- The Saga cannot complete normally while BankMex is unavailable
+- The temporary outage is visible through application or Saga state
+- After BankMex returns, the workflow reaches a consistent final outcome according to the application's recovery behavior
+- The transaction either completes successfully or compensates cleanly
+- No data inconsistency remains after the participant failure
+
+**What to Observe:**
+- Compare the recovery trace with the normal inter-bank trace
+- Identify the point where BankMex becomes unavailable
+- Observe what changes after BankMex is restarted
+- Relate the final application outcome to the database Saga state
 
 ---
 

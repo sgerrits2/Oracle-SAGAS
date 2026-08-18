@@ -3,11 +3,32 @@ set -euo pipefail
 
 # CloudBank Live Lab automated provisioning with OCI CLI.
 # Run this script in OCI Cloud Shell, where OCI CLI authentication is available.
-# It provisions the Autonomous Database, networking, and compute instance.
+# It provisions the Autonomous Database, networking, and compute instance, then
+# prepares the CloudBank package, wallet, database users, and VM transfer.
+
+# ----------------- REQUIRED INPUT -----------------
+# Pass COMPARTMENT_ID when starting the script. The ADMIN password is requested
+# securely if it was not supplied as an environment variable.
+COMPARTMENT_ID="${COMPARTMENT_ID:-}"
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+
+if [[ -z "$COMPARTMENT_ID" ]]; then
+  echo "ERROR: COMPARTMENT_ID is required."
+  echo "Example: COMPARTMENT_ID='ocid1.compartment...' ./provision.sh"
+  exit 1
+fi
+
+if [[ -z "$ADMIN_PASSWORD" ]]; then
+  read -r -s -p "Enter the Autonomous Database ADMIN password: " ADMIN_PASSWORD
+  echo
+fi
+
+if [[ -z "$ADMIN_PASSWORD" ]]; then
+  echo "ERROR: An Autonomous Database ADMIN password is required."
+  exit 1
+fi
 
 # ----------------- CONFIGURATION -----------------
-COMPARTMENT_ID="ocid1..." # Replace with your compartment OCID.
-ADMIN_PASSWORD="Welcome_123#" # Replace with your ADB ADMIN password.
 DB_DISPLAY_NAME="Oracle-Saga-Demo"
 DB_NAME="OracleSagaDemo"
 VCN_CIDR="10.0.0.0/16"
@@ -16,7 +37,115 @@ INSTANCE_SHAPE="VM.Standard.E2.1.Micro"
 INSTANCE_NAME="oracle-saga-compute-instance"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
+SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
+APP_ARCHIVE_URL="${APP_ARCHIVE_URL:-https://github.com/sgerrits2/Oracle-SAGAS/raw/main/l2-provision/files/oracle-saga-cloudbank.zip}"
+USER_SETUP_SQL_URL="${USER_SETUP_SQL_URL:-https://github.com/sgerrits2/Oracle-SAGAS/raw/main/l2-provision/files/create-cloudbank-users.sql}"
 # -------------------------------------------------
+
+for REQUIRED_COMMAND in curl oci scp sql ssh ssh-keygen unzip; do
+  if ! command -v "$REQUIRED_COMMAND" >/dev/null 2>&1; then
+    echo "ERROR: $REQUIRED_COMMAND is required. Run this script from OCI Cloud Shell."
+    exit 1
+  fi
+done
+
+download_file() {
+  local url="$1"
+  local destination="$2"
+  curl --fail --location --retry 3 --output "$destination" "$url"
+}
+
+wait_for_ssh() {
+  local attempt
+
+  echo ">>> Waiting for SSH on the compute instance..."
+  for attempt in {1..30}; do
+    if ssh -o StrictHostKeyChecking=accept-new \
+      -o ConnectTimeout=10 \
+      -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+      "ubuntu@$PUBLIC_IP" 'exit' >/dev/null 2>&1; then
+      return 0
+    fi
+    sleep 10
+  done
+
+  echo "ERROR: The compute instance did not accept SSH connections in time."
+  exit 1
+}
+
+wait_for_cloud_init() {
+  echo ">>> Waiting for compute initialization to finish..."
+  ssh -o StrictHostKeyChecking=accept-new \
+    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    "ubuntu@$PUBLIC_IP" 'sudo cloud-init status --wait'
+}
+
+verify_remote_environment() {
+  echo ">>> Verifying Podman, Podman Compose, and the CloudBank package..."
+  ssh -o StrictHostKeyChecking=accept-new \
+    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    "ubuntu@$PUBLIC_IP" 'bash -s' <<'REMOTE_VERIFY'
+set -euo pipefail
+
+export PATH="$HOME/.local/bin:$PATH"
+
+podman --version
+podman-compose --version
+podman system info >/dev/null
+test -d "$HOME/oracle-saga-cloudbank"
+test -f "$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet/tnsnames.ora"
+
+echo "CloudBank package: READY"
+echo "ADB wallet: READY"
+echo "Podman environment: READY"
+REMOTE_VERIFY
+}
+
+prepare_cloudbank() {
+  local app_archive="$SETUP_DIR/oracle-saga-cloudbank.zip"
+  local user_setup_sql="$SETUP_DIR/create-cloudbank-users.sql"
+  local app_dir="$SETUP_DIR/oracle-saga-cloudbank"
+  local wallet_dir="$app_dir/adbsSetup/adb_wallet"
+  local wallet_archive="$wallet_dir/SagasWallet.zip"
+  local tns_alias
+
+  echo ">>> Downloading the CloudBank package and database user setup script..."
+  mkdir -p "$SETUP_DIR"
+  download_file "$APP_ARCHIVE_URL" "$app_archive"
+  download_file "$USER_SETUP_SQL_URL" "$user_setup_sql"
+
+  echo ">>> Extracting the CloudBank package..."
+  unzip -q -o "$app_archive" -d "$SETUP_DIR"
+  mkdir -p "$wallet_dir"
+
+  echo ">>> Generating and extracting the Autonomous Database wallet..."
+  oci db autonomous-database generate-wallet \
+    --autonomous-database-id "$ADB_ID" \
+    --file "$wallet_archive" \
+    --password "$ADMIN_PASSWORD"
+  unzip -q -o "$wallet_archive" -d "$wallet_dir"
+
+  tns_alias=$(sed -n -E 's/^([[:alnum:]_]+_medium)[[:space:]]*=.*/\1/p' "$wallet_dir/tnsnames.ora" | head -n 1)
+  if [[ -z "$tns_alias" ]]; then
+    echo "ERROR: Could not find a _medium TNS alias in the generated wallet."
+    exit 1
+  fi
+
+  echo ">>> Creating the CloudBank database users..."
+  TNS_ADMIN="$wallet_dir" sql -L -s "admin/${ADMIN_PASSWORD}@${tns_alias}" "@$user_setup_sql"
+
+  echo ">>> Transferring the prepared CloudBank package to the compute instance..."
+  wait_for_ssh
+  wait_for_cloud_init
+  scp -o StrictHostKeyChecking=accept-new \
+    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    -r "$app_dir" "ubuntu@$PUBLIC_IP:~/"
+
+  verify_remote_environment
+
+  TNS_ALIAS="$tns_alias"
+  APP_DIR="$app_dir"
+}
 
 echo ">>> Checking region and compartment..."
 REGION=$(oci iam region-subscription list --query 'data[0]."region-name"' --raw-output)
@@ -65,6 +194,8 @@ SECURITY_LIST_ID=$(oci network security-list create \
   --egress-security-rules '[{"destination":"0.0.0.0/0","protocol":"all","destinationType":"CIDR_BLOCK"}]' \
   --ingress-security-rules '[
     {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":22,"max":22}}},
+    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":3000,"max":3000}}},
+    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8080,"max":8080}}},
     {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8081,"max":8081}}},
     {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8082,"max":8082}}},
     {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8083,"max":8083}}},
@@ -161,12 +292,18 @@ PUBLIC_IP=$(oci compute instance list-vnics \
   --instance-id "$INSTANCE_ID" \
   --query 'data[0]."public-ip"' --raw-output)
 
+prepare_cloudbank
+
 echo
 echo "================= PROVISIONING COMPLETE ================="
 echo "VCN OCID:       $VCN_ID"
 echo "Subnet OCID:    $SUBNET_ID"
 echo "ADB OCID:       $ADB_ID"
+echo "TNS Alias:      $TNS_ALIAS"
 echo "Instance OCID:  $INSTANCE_ID"
 echo "Instance IP:    $PUBLIC_IP"
 echo "SSH:            ssh -i ${SSH_PUBLIC_KEY_PATH%.pub} ubuntu@$PUBLIC_IP"
+echo "CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank"
+echo "CloudBank local: $APP_DIR"
+echo "Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, TRANSFER = READY"
 echo "============================================================"

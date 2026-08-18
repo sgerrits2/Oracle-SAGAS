@@ -101,7 +101,7 @@ Use the code editor to review and complete the supplied CloudBank files. The par
 
 </details>
 
-### Step 2: Register the CloudBank Initiator
+### Step 2: Configure and Review the CloudBank Initiator
 
 Open `/Cloudbank/orchestrator/src/java/.../controller/CloudBankController.java`. Replace the participant annotation placeholder above `CloudBankController` with:
 
@@ -114,8 +114,6 @@ Open `/Cloudbank/orchestrator/src/java/.../controller/CloudBankController.java`.
 **`@Participant`** registers the initiator with the fixed `CloudBank` name.
 
 ![Participant Annotation](./images/lab4-task2-participant.png "@Participant annotation in CloudBank controller")
-
-### Step 3: Review the Connection Provider
 
 In the same class, review the supplied method:
 
@@ -130,8 +128,6 @@ public static Connection getCloudBankConnection() throws SQLException {
 
 ![SagaConnection Annotation](./images/lab4-task2-sagaconnection.png "@SagaConnection annotation providing database connectivity")
 
-### Step 4: Start the Saga
-
 Find this code in the `newBankAccount` and `transfer` methods:
 
 ```java
@@ -144,8 +140,6 @@ var sagaId = saga.getSagaId();
 **`getSagaId()`** returns the identifier used for logging and correlation.
 
 ![beginSaga Method](./images/lab4-task2-beginsaga.png "beginSaga() method calls in CloudBank controller")
-
-### Step 5: Send Participant Requests
 
 Find the requests sent from CloudBank:
 
@@ -160,7 +154,7 @@ saga.sendRequest(Stubs.BANK_B, payload.toString());
 
 ![sendRequest Method](./images/lab4-task2-sendrequest.png "saga.sendRequest() calls in CloudBank controller")
 
-### Step 6: Receive Requests in a Participant
+### Step 3: Review Participant Requests and Responses
 
 Open `/Cloudbank/banka/src/java/.../controller/AccountsController.java`. Review the BankChicago participant:
 
@@ -191,9 +185,7 @@ The BankMex implementation is in `/Cloudbank/bankb/src/java/.../controller/Accou
 
 </details>
 
-### Step 7: Review Participant Responses
-
-In `CloudBankController.java`, review the supplied response handlers:
+Return to `CloudBankController.java` and review the supplied response handlers:
 
 ```java
 @oracle.saga.annotation.Response(sender = "BankChicago.*")
@@ -211,7 +203,7 @@ public void onResponseBankMex(SagaMessageContext info) {
 
 ![Response Annotations](./images/lab4-task2-response.png "@Response annotations for participant responses")
 
-### Step 8: Complete or Compensate
+### Step 4: Complete or Compensate the Saga
 
 Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
 
@@ -235,8 +227,6 @@ Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
 
 ![Complete Annotation](./images/lab4-task2-complete.png "@Complete annotation for successful saga completion")
 
-### Step 9: Decide the Outcome
-
 Find the lifecycle calls in the controller:
 
 ```java
@@ -249,8 +239,6 @@ saga.rollbackSaga();
 **`rollbackSaga()`** compensates a failed saga and invokes `@Compensate` callbacks.
 
 ![Saga Lifecycle Methods](./images/lab4-task2-lifecycle.png "saga.commitSaga() and saga.rollbackSaga() method calls")
-
-### Step 10: CloudBank Flow at a Glance
 
 | Stage | CloudBank action | Participant action |
 |---|---|---|
@@ -272,6 +260,8 @@ CloudBank coordinates account creation and inter-bank transfers. Bank balances u
 ![CloudBank Schema](./images/lab4-task3-1.png "CloudBank database schema and architecture")
 
 ![CloudBank Workflows](./images/lab4-task3-2.png "CloudBank saga workflows: account creation and money transfer")
+
+</details>
 
 ## Learn More
 

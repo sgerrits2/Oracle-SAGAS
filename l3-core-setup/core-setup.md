@@ -163,15 +163,27 @@ Since we were using the Code Editor in Lab 2, we need to switch back to the Clou
 
 ### Step 2: Run the Saga Core Setup
 
-Run the following script once to create the Saga foundation shown in the topology above. The script creates the Broker and Coordinator, registers the required Participants, and verifies the resulting configuration.
+From Cloud Shell, configure the wallet location and start SQLcl without connecting:
+
+```bash
+<copy>
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+sql /nolog
+</copy>
+```
+
+When the `SQL>` prompt appears, copy and run the complete script below once. It uses the fixed demo password configured in Lab 2, creates the Broker and Coordinator, registers the required Participants, and verifies the resulting configuration.
 
 <pre id="full-setup-script-container" class="interactive-command">
 <button class="copy-btn" type="button" onclick="copyToClipboard('full-setup-script', 'full-setup-script-container')">Copy</button>
 <span id="full-setup-script" class="command-text">-- =========================================================
 -- FULL SAGA CORE SETUP
 -- =========================================================
-DEFINE DATABASE_CONNECTION_TNS_NAME = '&lt;DATABASE_CONNECTION_TNS_NAME&gt;'
+SET VERIFY OFF
+SET SERVEROUTPUT ON
 DEFINE ADMIN_PASSWORD               = 'Welcome_123#'
+
+DEFINE DATABASE_CONNECTION_TNS_NAME = 'oraclesagademo_medium'
 DEFINE BROKER_SCHEMA                = 'brokerchicago'
 DEFINE BROKER_SCHEMA_PASSWORD       = 'Welcome_123#'
 DEFINE ORCHESTRATOR_SCHEMA          = 'orchestratorchicago'
@@ -187,57 +199,106 @@ DEFINE MAILBOX_SCHEMA              = 'brokerchicago'
 -- 1. Create the broker
 CONNECT &BROKER_SCHEMA/&BROKER_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
-EXEC DBMS_SAGA_ADM.ADD_BROKER(
-  broker_name   => '&BROKER_NAME',
-  broker_schema => '&BROKER_SCHEMA'
-);
+BEGIN
+  DBMS_SAGA_ADM.ADD_BROKER(
+    broker_name   => '&BROKER_NAME',
+    broker_schema => '&BROKER_SCHEMA'
+  );
+END;
+/
 
 -- 2. Create the coordinator in the orchestrator schema
 CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
-EXEC DBMS_SAGA_ADM.ADD_COORDINATOR(
-  coordinator_name   => '&COORDINATOR_NAME',
-  coordinator_schema => '&ORCHESTRATOR_SCHEMA',
-  mailbox_schema     => '&MAILBOX_SCHEMA',
-  broker_name        => '&BROKER_NAME',
-  queue_partitions   => 1,
-  listener_count     => DBMS_SAGA_ADM.AQ_NTFN
-);
+BEGIN
+  DBMS_SAGA_ADM.ADD_COORDINATOR(
+    coordinator_name   => '&COORDINATOR_NAME',
+    coordinator_schema => '&ORCHESTRATOR_SCHEMA',
+    mailbox_schema     => '&MAILBOX_SCHEMA',
+    broker_name        => '&BROKER_NAME',
+    queue_partitions   => 1,
+    listener_count     => DBMS_SAGA_ADM.AQ_NTFN
+  );
+END;
+/
 
 -- 3. Register CloudBank participant
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => 'CloudBank',
-  coordinator_name => '&COORDINATOR_NAME',
-  mailbox_schema   => '&MAILBOX_SCHEMA',
-  broker_name      => '&BROKER_NAME'
-);
+BEGIN
+  DBMS_SAGA_ADM.ADD_PARTICIPANT(
+    participant_name => 'CloudBank',
+    coordinator_name => '&COORDINATOR_NAME',
+    mailbox_schema   => '&MAILBOX_SCHEMA',
+    broker_name      => '&BROKER_NAME'
+  );
+END;
+/
 
 -- 4. Register BankChicago participant
 CONNECT &BANKA_SCHEMA/&BANKA_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => 'BankChicago',
-  coordinator_name => '&COORDINATOR_NAME',
-  mailbox_schema   => '&MAILBOX_SCHEMA',
-  broker_name      => '&BROKER_NAME'
-);
+BEGIN
+  DBMS_SAGA_ADM.ADD_PARTICIPANT(
+    participant_name => 'BankChicago',
+    coordinator_name => '&COORDINATOR_NAME',
+    mailbox_schema   => '&MAILBOX_SCHEMA',
+    broker_name      => '&BROKER_NAME'
+  );
+END;
+/
 
 -- 5. Register BankMex participant
 CONNECT &BANKB_SCHEMA/&BANKB_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
-EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(
-  participant_name => 'BankMex',
-  coordinator_name => '&COORDINATOR_NAME',
-  mailbox_schema   => '&MAILBOX_SCHEMA',
-  broker_name      => '&BROKER_NAME'
-);
+BEGIN
+  DBMS_SAGA_ADM.ADD_PARTICIPANT(
+    participant_name => 'BankMex',
+    coordinator_name => '&COORDINATOR_NAME',
+    mailbox_schema   => '&MAILBOX_SCHEMA',
+    broker_name      => '&BROKER_NAME'
+  );
+END;
+/
 
 -- 6. Verify all participants
 CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
-SELECT participant_name, participant_schema, coordinator_name, broker_name, mailbox_schema
-FROM   user_saga_participants
-WHERE  coordinator_name = '&COORDINATOR_NAME';</span>
+SELECT name        AS participant_name,
+       owner       AS participant_schema,
+       coordinator AS coordinator_name,
+       broker_name,
+       type
+FROM   dba_saga_participants
+ORDER BY owner, name;
+
+DECLARE
+  configured_entities PLS_INTEGER;
+BEGIN
+  SELECT COUNT(*)
+  INTO   configured_entities
+  FROM   dba_saga_participants
+  WHERE  (UPPER(name), UPPER(owner)) IN (
+           ('BANKCHICAGO', 'BANKCHICAGO'),
+           ('BANKMEX', 'BANKMEX'),
+           ('CLOUDBANK', 'ORCHESTRATORCHICAGO'),
+           ('CLOUDBANKCOORDINATOR', 'ORCHESTRATORCHICAGO')
+         )
+  AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
+
+  IF configured_entities != 4 THEN
+    RAISE_APPLICATION_ERROR(
+      -20001,
+      'Saga verification failed: expected four configured entities but found ' ||
+      configured_entities
+    );
+  END IF;
+
+  DBMS_OUTPUT.PUT_LINE(
+    'SUCCESS: Broker, Coordinator, and all three Saga Participants are configured correctly.'
+  );
+END;
+/
+
+UNDEFINE ADMIN_PASSWORD</span>
 </pre>
 
 ### In one sentence
@@ -290,7 +351,7 @@ Each participant represents one business unit in the workflow: `CloudBank`, `Ban
 You can see the key code lines in Task 2:
 
 - `EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(...)` — registers each participant.
-- `SELECT ... FROM user_saga_participants` — shows the registered participants.
+- `SELECT ... FROM dba_saga_participants` — shows the coordinator and registered participants across the CloudBank schemas.
 
 [Syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#ARPLS-GUID-F2E81F25-93AD-4DDB-A887-D325A1F8C84A)
 <br/>

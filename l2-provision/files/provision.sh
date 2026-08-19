@@ -7,24 +7,14 @@ set -euo pipefail
 # prepares the CloudBank package, wallet, database users, and VM transfer.
 
 # ----------------- REQUIRED INPUT -----------------
-# Pass COMPARTMENT_ID when starting the script. The ADMIN password is requested
-# securely if it was not supplied as an environment variable.
+# Pass COMPARTMENT_ID when starting the script. This training environment uses
+# the fixed demo password below for ADMIN and the CloudBank application schemas.
 COMPARTMENT_ID="${COMPARTMENT_ID:-}"
-ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
+ADMIN_PASSWORD='Welcome_123#'
 
 if [[ -z "$COMPARTMENT_ID" ]]; then
   echo "ERROR: COMPARTMENT_ID is required."
   echo "Example: COMPARTMENT_ID='ocid1.compartment...' ./provision.sh"
-  exit 1
-fi
-
-if [[ -z "$ADMIN_PASSWORD" ]]; then
-  read -r -s -p "Enter the Autonomous Database ADMIN password: " ADMIN_PASSWORD
-  echo
-fi
-
-if [[ -z "$ADMIN_PASSWORD" ]]; then
-  echo "ERROR: An Autonomous Database ADMIN password is required."
   exit 1
 fi
 
@@ -35,6 +25,7 @@ VCN_CIDR="10.0.0.0/16"
 PUBLIC_SUBNET_CIDR="10.0.0.0/24"
 INSTANCE_SHAPE="VM.Standard.E2.1.Micro"
 INSTANCE_NAME="oracle-saga-compute-instance"
+SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
 SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
@@ -62,7 +53,7 @@ wait_for_ssh() {
   for attempt in {1..30}; do
     if ssh -o StrictHostKeyChecking=accept-new \
       -o ConnectTimeout=10 \
-      -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+      -i "$SSH_PRIVATE_KEY_PATH" \
       "ubuntu@$PUBLIC_IP" 'exit' >/dev/null 2>&1; then
       return 0
     fi
@@ -76,14 +67,14 @@ wait_for_ssh() {
 wait_for_cloud_init() {
   echo ">>> Waiting for compute initialization to finish..."
   ssh -o StrictHostKeyChecking=accept-new \
-    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    -i "$SSH_PRIVATE_KEY_PATH" \
     "ubuntu@$PUBLIC_IP" 'sudo cloud-init status --wait'
 }
 
 verify_remote_environment() {
   echo ">>> Verifying Podman, Podman Compose, and the CloudBank package..."
   ssh -o StrictHostKeyChecking=accept-new \
-    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    -i "$SSH_PRIVATE_KEY_PATH" \
     "ubuntu@$PUBLIC_IP" 'bash -s' <<'REMOTE_VERIFY'
 set -euo pipefail
 
@@ -138,7 +129,7 @@ prepare_cloudbank() {
   wait_for_ssh
   wait_for_cloud_init
   scp -o StrictHostKeyChecking=accept-new \
-    -i "${SSH_PUBLIC_KEY_PATH%.pub}" \
+    -i "$SSH_PRIVATE_KEY_PATH" \
     -r "$app_dir" "ubuntu@$PUBLIC_IP:~/"
 
   verify_remote_environment
@@ -153,7 +144,7 @@ echo "Detected region: $REGION"
 
 if [[ ! -f "$SSH_PUBLIC_KEY_PATH" ]]; then
   echo ">>> Generating SSH key pair..."
-  ssh-keygen -t rsa -b 2048 -f "${SSH_PUBLIC_KEY_PATH%.pub}" -N ""
+  ssh-keygen -t rsa -b 2048 -f "$SSH_PRIVATE_KEY_PATH" -N ""
 fi
 
 echo ">>> Creating VCN..."
@@ -302,7 +293,7 @@ echo "ADB OCID:       $ADB_ID"
 echo "TNS Alias:      $TNS_ALIAS"
 echo "Instance OCID:  $INSTANCE_ID"
 echo "Instance IP:    $PUBLIC_IP"
-echo "SSH:            ssh -i ${SSH_PUBLIC_KEY_PATH%.pub} ubuntu@$PUBLIC_IP"
+echo "SSH:            ssh -i $SSH_PRIVATE_KEY_PATH ubuntu@$PUBLIC_IP"
 echo "CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank"
 echo "CloudBank local: $APP_DIR"
 echo "Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, TRANSFER = READY"

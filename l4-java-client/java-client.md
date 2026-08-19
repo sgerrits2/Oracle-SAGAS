@@ -7,7 +7,7 @@ In this lab, you will examine a Java-based saga client that provides an applicat
 ### What You Will Do in This Lab
 
 1. **Review the Maven dependency** required by the Java client.
-2. **Complete and review the supplied annotations** in the CloudBank initiator and participant.
+2. **Verify and understand the supplied annotations** in the CloudBank initiator and participants.
 3. **Follow the CloudBank saga flow** from request through completion or compensation.
 
 ### About the CloudBank Demo Application
@@ -20,19 +20,15 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 
 > **⚠️ Important:** CloudBank is a demo application designed for learning. Its business logic is simplified and may not cover all production cases; focus on the saga patterns and compensation workflow.
 
-*Estimated Time: 40 minutes*
+*Estimated Time: 10 minutes*
 
 ### Objectives
 
 - **Review Maven dependencies** for Oracle Saga integration.
-- **Add and verify annotations** in the supplied CloudBank files.
+- **Verify the supplied Saga annotations** and understand why each one is used.
 - **Understand** the CloudBank architecture and saga workflows.
 
-### Prerequisites
-
-- Completion of **Lab 3** (Broker, Coordinator, and Participants configured).
-- Java 11+ installed in your CloudShell or VM.
-- Maven or Gradle installed for dependency management.
+> **Note:** Lab 4 is review-only. The CloudBank source, Maven dependencies, and annotations are already complete. You do not need to edit, build, or run the application in this lab.
 
 ## Task 1: Maven Dependency
 
@@ -40,30 +36,26 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 
 The Oracle Saga Maven dependency provides the annotations and client functionality used by the CloudBank demo application.
 
-### Step 1: Core Saga Dependency
+### Step 1: Verify the Core Saga Dependency
 
-Add this dependency to each CloudBank service that participates in a saga:
+The supplied CloudBank project already includes the following dependency in each service that participates in a saga. Review the corresponding `pom.xml` files and verify that the dependency and version match:
 
-```xml
-<copy>
-<dependency>
-    <groupId>com.oracle.database.saga</groupId>
-    <artifactId>saga-core</artifactId>
-    <version>XX.X.X</version>
-</dependency>
-</copy>
-```
+<pre><code>&lt;dependency&gt;
+    &lt;groupId&gt;com.oracle.database.saga&lt;/groupId&gt;
+    &lt;artifactId&gt;saga-core&lt;/artifactId&gt;
+    &lt;version&gt;23.7.0&lt;/version&gt;
+&lt;/dependency&gt;</code></pre>
 
-**`saga-core`** provides the Java client, `Saga` API, and the annotations used in this lab.
+**`saga-core` version `23.7.0`** provides the Java client, `Saga` API, and the annotations used in this lab. No dependency changes are required when the supplied POM files already contain this entry.
 
 ### Step 2: CloudBank Project Structure
 
 <details>
 <summary>CloudBank service POM files</summary>
 
-- `oracle-saga-cloudbank/Cloudbank/orchestrator/pom.xml`
-- `oracle-saga-cloudbank/Cloudbank/banka/pom.xml` — BankChicago source directory
-- `oracle-saga-cloudbank/Cloudbank/bankb/pom.xml` — BankMex source directory
+- `oracle-saga-cloudbank/CloudBank/orchestrator/pom.xml`
+- `oracle-saga-cloudbank/CloudBank/banka/pom.xml` — BankChicago source directory
+- `oracle-saga-cloudbank/CloudBank/bankb/pom.xml` — BankMex source directory
 
 </details>
 
@@ -80,7 +72,7 @@ The Maven environment is configured and verified in the next lab when you config
 
 ---
 
-Use the code editor to review and complete the supplied CloudBank files. The participant names are fixed: `CloudBank`, `BankChicago`, and `BankMex`.
+Use the code editor to inspect the supplied CloudBank implementation. All annotations are already present; do not change the source files. Verify where each annotation is used and review how it participates in the Saga lifecycle. The participant names are fixed: `CloudBank`, `BankChicago`, and `BankMex`.
 
 ### Step 1: Annotation Map
 
@@ -101,14 +93,12 @@ Use the code editor to review and complete the supplied CloudBank files. The par
 
 </details>
 
-### Step 2: Configure and Review the CloudBank Initiator
+### Step 2: Verify the CloudBank Initiator Annotations
 
-Open `/Cloudbank/orchestrator/src/java/.../controller/CloudBankController.java`. Replace the participant annotation placeholder above `CloudBankController` with:
+Open `oracle-saga-cloudbank/CloudBank/orchestrator/src/main/java/com/oracle/saga/cloudbank/orchestrator/controller/CloudBankController.java`. Verify that the following annotation is already present above `CloudBankController`:
 
 ```java
-<copy>
 @Participant(name = "CloudBank")
-</copy>
 ```
 
 **`@Participant`** registers the initiator with the fixed `CloudBank` name.
@@ -156,7 +146,7 @@ saga.sendRequest(Stubs.BANK_B, payload.toString());
 
 ### Step 3: Review Participant Requests and Responses
 
-Open `/Cloudbank/banka/src/java/.../controller/AccountsController.java`. Review the BankChicago participant:
+Open `oracle-saga-cloudbank/CloudBank/banka/src/main/java/com/oracle/saga/cloudbank/banka/controller/AccountsController.java`. Review the supplied BankChicago participant; no changes are required in this file:
 
 ```java
 @Participant(name = "BankChicago")
@@ -181,7 +171,7 @@ public class AccountsController extends SagaParticipant {
 <details>
 <summary>BankMex equivalent</summary>
 
-The BankMex implementation is in `/Cloudbank/bankb/src/java/.../controller/AccountsController.java` and uses `@Participant(name = "BankMex")` with the same `@Request(sender = "CloudBank")` pattern.
+The supplied BankMex implementation is in `oracle-saga-cloudbank/CloudBank/bankb/src/main/java/com/oracle/saga/cloudbank/bankb/controller/AccountsController.java` and uses `@Participant(name = "BankMex")` with the same `@Request(sender = "CloudBank")` pattern. No changes are required in this file.
 
 </details>
 
@@ -203,29 +193,35 @@ public void onResponseBankMex(SagaMessageContext info) {
 
 ![Response Annotations](./images/lab4-task2-response.png "@Response annotations for participant responses")
 
-### Step 4: Complete or Compensate the Saga
+### Step 4: Verify Completion and Compensation
 
-Find the placeholders above `onPostRollback` and `onPostCommit`, then add:
+In the supplied `CloudBankController.java`, verify that `@Compensate` is present above `onPostRollback`:
 
 ```java
-<copy>
 @Compensate
-</copy>
 ```
 
 **`@Compensate`** marks the idempotent callback that runs when the saga rolls back.
 
 ![Compensate Annotation](./images/lab4-task2-compensate.png "@Compensate annotation for saga rollback handling")
 
+Verify that `@Complete` is present above `onPostCommit`:
+
 ```java
-<copy>
 @Complete
-</copy>
 ```
 
 **`@Complete`** marks the idempotent callback that runs after the saga completes successfully.
 
 ![Complete Annotation](./images/lab4-task2-complete.png "@Complete annotation for successful saga completion")
+
+Together, these are the three key orchestrator annotations reviewed in this lab:
+
+- `@Participant(name = "CloudBank")` above `CloudBankController`
+- `@Compensate` above `onPostRollback`
+- `@Complete` above `onPostCommit`
+
+The annotations and remaining implementation are supplied by the project. No edits or save operation are required.
 
 Find the lifecycle calls in the controller:
 
@@ -262,6 +258,10 @@ CloudBank coordinates account creation and inter-bank transfers. Bank balances u
 ![CloudBank Workflows](./images/lab4-task3-2.png "CloudBank saga workflows: account creation and money transfer")
 
 </details>
+
+### Step 5: Continue to Lab 5
+
+After reviewing the supplied annotations and Saga lifecycle, continue to **Lab 5: Oracle Sagas in Action — The CloudBank Application** to build, start, and test the application.
 
 ## Learn More
 

@@ -4,7 +4,7 @@
 
 This lab provisions the complete OCI environment required by the CloudBank demo. A single automation script creates the infrastructure, prepares the application, configures the database users and wallet, and verifies the compute instance.
 
-- Estimated time: 35 minutes
+- Estimated time: 30 minutes
 
 Watch the video below for a quick walk-through of the lab.
 
@@ -21,9 +21,7 @@ By completing this lab, you will be able to:
 
 ### Prerequisites
 
-- A Free Tier or LiveLabs Oracle Cloud account.
-- Permission to create resources in an OCI compartment.
-- OCI Cloud Shell access.
+- A Free Tier Oracle Cloud account.
 
 ## Task 1: Provision the CloudBank Environment
 
@@ -33,28 +31,49 @@ The provisioning script performs the complete setup. You only need to enter your
 
 ### Step 1: Enter Your Compartment Information
 
-In the OCI Console, select **Identity & Security** → **Compartments**, open the compartment assigned to your environment, and copy its OCID. Enter it below to generate your command automatically.
+Run the following command in OCI Cloud Shell to obtain the root compartment OCID for your tenancy:
+
+```bash
+<copy>
+oci iam availability-domain list --query "data[0].\"compartment-id\"" --raw-output
+</copy>
+```
+
+Paste the returned OCID below to automatically update the command used to run the downloaded provisioning script.
+
 
 <div class="provision-input-section">
-<table class="provision-input-table">
-<thead>
-<tr>
-<th>Required value</th>
-<th>Your environment</th>
-<th>Example</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td><strong>Compartment OCID</strong></td>
-<td><input type="text" id="compartmentOcid" class="provision-input" placeholder="Paste your compartment OCID" oninput="updateProvisionCommand()" autocomplete="off"></td>
-<td><code>ocid1.compartment.oc1..example</code></td>
-</tr>
-</tbody>
-</table>
+<div class="provision-input-grid">
+<div class="provision-grid-header">Required value</div>
+<div class="provision-grid-header">Your environment</div>
+<div class="provision-grid-header">Example</div>
+<div class="provision-grid-cell"><strong>Compartment OCID</strong></div>
+<div class="provision-grid-cell"><input type="text" id="compartmentOcid" class="provision-input" placeholder="Paste your compartment OCID" oninput="updateProvisionCommand()" autocomplete="off"></div>
+<div class="provision-grid-cell"><code>ocid1.tenancy.oc1..example</code></div>
+</div>
 </div>
 
-**Generated command:**
+### Step 2: Download and Run the Provisioning Script
+
+Download the script below, upload it to OCI Cloud Shell, and run the command generated from the value entered in Step 1.
+
+[**Download Provisioning Script**](files/provision.sh?download=1)
+
+> **Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
+
+Alternatively, run the following commands to download the provisioning script directly into OCI Cloud Shell:
+
+```bash
+<copy>
+curl -fL -o provision.sh \
+https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/main/l2-provision/files/provision.sh
+
+chmod +x provision.sh
+ls -l provision.sh
+</copy>
+```
+
+- These commands download the script directly into Cloud Shell, make it executable, and confirm that the file is available.
 
 <pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">chmod +x provision.sh
 COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
@@ -65,15 +84,7 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 > **Note:** The generated command uses the compartment OCID entered above. Review the value before copying and running the command.
 
-> **Security note:** The generated command does not contain a password. When it starts, the script securely prompts for the Autonomous Database `ADMIN` password without displaying it.
-
-### Step 2: Download and Run the Provisioning Script
-
-Download the script below, upload it to OCI Cloud Shell, and run the command generated in Step 1.
-
-<div class="download-center">
-<a href="files/provision.sh?download=1" class="download-btn">Download Provisioning Script</a>
-</div>
+> **Demo credential:** The provisioning script automatically configures `Welcome_123#` as the password for the Autonomous Database `ADMIN` account and every CloudBank application schema. This shared password is for the training environment only and must not be used in production.
 
 The script automatically:
 
@@ -138,7 +149,7 @@ BROKERMEX
 ORCHESTRATORCHICAGO
 ORCHESTRATORMEX
 
-CloudBank Saga user setup: READY
+SUCCESS: All eight CloudBank database users are configured and ready.
 ```
 
 The fixed schema names must remain consistent with the participant registrations and application configuration used in the following labs.
@@ -151,22 +162,27 @@ You may now [proceed to the next lab](#next).
   overflow-x: auto;
 }
 
-.provision-input-table {
-  width: 100%;
-  border-collapse: collapse;
+.provision-input-grid {
+  display: grid;
+  grid-template-columns: minmax(170px, 1fr) minmax(340px, 2fr) minmax(220px, 1fr);
+  min-width: 760px;
+  border-top: 1px solid #d5d8dc;
+  border-left: 1px solid #d5d8dc;
   background: #f8f9fa;
 }
 
-.provision-input-table th,
-.provision-input-table td {
-  border: 1px solid #d5d8dc;
+.provision-grid-header,
+.provision-grid-cell {
+  border-right: 1px solid #d5d8dc;
+  border-bottom: 1px solid #d5d8dc;
   padding: 12px;
   text-align: left;
   vertical-align: middle;
 }
 
-.provision-input-table th {
+.provision-grid-header {
   background: #eef2f5;
+  font-weight: 700;
 }
 
 .provision-input {
@@ -188,14 +204,12 @@ You may now [proceed to the next lab](#next).
   white-space: pre-wrap;
 }
 
-.button-center,
-.download-center {
+.button-center {
   margin: 18px 0;
   text-align: center;
 }
 
-.copy-btn,
-.download-btn {
+.copy-btn {
   display: inline-block;
   padding: 12px 22px;
   border: 0;
@@ -209,19 +223,6 @@ You may now [proceed to the next lab](#next).
 }
 
 @media (max-width: 700px) {
-  .provision-input-table,
-  .provision-input-table thead,
-  .provision-input-table tbody,
-  .provision-input-table tr,
-  .provision-input-table th,
-  .provision-input-table td {
-    display: block;
-  }
-
-  .provision-input-table thead {
-    display: none;
-  }
-
   .provision-input {
     min-width: 0;
   }

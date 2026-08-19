@@ -53,6 +53,6 @@ WHERE username IN (
 )
 ORDER BY username;
 
-PROMPT CloudBank Saga user setup: READY
+PROMPT SUCCESS: All eight CloudBank database users are configured and ready.
 
 EXIT

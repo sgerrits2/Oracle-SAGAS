@@ -34,7 +34,7 @@ The setup steps are intentionally minimized and only prepare the environment req
 
 </details>
 
-*Estimated Time: 20–30 minutes*
+*Estimated Time: 5 minutes*
 
 ---
 
@@ -63,26 +63,22 @@ In this lab, you will:
 
 ---
 
-This task performs only the environment work required for the Saga scenarios. From **Cloud Shell**, provide the values specific to your environment and run one script to deploy and start CloudBank.
+This task performs only the environment work required for the Saga scenarios. From **Cloud Shell**, provide the compute instance IP specific to your environment and run one script to deploy and start CloudBank. The script uses the fixed SSH private key generated in Lab 2 at `$HOME/.ssh/cloudbank_key`.
 
-### Step 1: Enter Your Environment Information
+### Step 1: Enter Your Compute Instance Information
 
 <div class="input-section">
-<strong>ADB TNS Alias:</strong>
-<input type="text" id="tnsDatabaseName" placeholder="Enter TNS alias (e.g., cloudbank_high)" class="input-field" oninput="updateLabValues()"><br/>
-<strong>SSH Key Filename:</strong>
-<input type="text" id="sshKeyName" placeholder="Enter SSH key filename (e.g., ssh-key-2026-08-14.key)" class="input-field" oninput="updateLabValues()"><br/>
 <strong>Compute Instance IP:</strong>
 <input type="text" id="computeInstanceIP" placeholder="Enter compute instance IP (e.g., 129.146.123.45)" class="input-field" oninput="updateLabValues()"><br/>
 <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
-💡 <em>The CloudBank schemas, passwords, Broker, Coordinator, and compute username are fixed by the previous labs.</em>
+💡 <em>The SSH key, CloudBank schemas, passwords, Broker, Coordinator, database connection, and compute username are fixed by the previous labs.</em>
 </div>
 </div>
 
-> **Note:** If these values were saved in an earlier lab, they are populated automatically. Review them before continuing.
+> **Note:** If the compute instance IP was saved in an earlier lab, it is populated automatically. Review it before continuing.
 
 <div id="configWarning" style="display:none; background:#fff4e5; border:1px solid #f0ad4e; padding:12px 14px; border-radius:8px; margin:12px 0; color:#7a4b00;">
-<strong>Required environment information is missing.</strong> Enter the ADB TNS Alias, SSH Key Filename, and Compute Instance IP before copying the launch script.
+<strong>Required environment information is missing.</strong> Enter the Compute Instance IP before copying the launch script.
 </div>
 
 <br>
@@ -105,7 +101,7 @@ cat > .env <<'EOF'
 
 Database Connection Settings
 
-TNS_ALIAS_CONTAINER=<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>
+TNS_ALIAS_CONTAINER=oraclesagademo_medium
 ADBS_USER=ADMIN
 ADBS_PASSWORD=Welcome_123#
 
@@ -132,9 +128,9 @@ EOF
 
 cd ..
 tar -czf oracle-saga-cloudbank.tar.gz oracle-saga-cloudbank/
-scp -i <span class="ssh-key-value">your-key.pem</span> oracle-saga-cloudbank.tar.gz ubuntu@<span class="instance-ip-value">INSTANCE_IP</span>:~/
+scp -i "$HOME/.ssh/cloudbank_key" oracle-saga-cloudbank.tar.gz ubuntu@<span class="instance-ip-value">INSTANCE_IP</span>:~/
 
-ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
 set -e
 cd ~
 rm -rf oracle-saga-cloudbank
@@ -292,45 +288,26 @@ element.textContent = value;
 }
 
 function updateLabValues() {
-const tnsElement = document.getElementById('tnsDatabaseName');
-const sshKeyElement = document.getElementById('sshKeyName');
 const instanceIPElement = document.getElementById('computeInstanceIP');
 
-const tnsAlias = (tnsElement ? tnsElement.value : '').trim() || 'DATABASE_CONNECTION_TNS_NAME';
-const sshKey = (sshKeyElement ? sshKeyElement.value : '').trim() || 'your-key.pem';
 const instanceIP = (instanceIPElement ? instanceIPElement.value : '').trim() || 'INSTANCE_IP';
 
-setTextForClass('tns-value', tnsAlias);
-setTextForClass('ssh-key-value', sshKey);
 setTextForClass('instance-ip-value', instanceIP);
 
-if (tnsElement && tnsElement.value.trim()) sessionStorage.setItem('adbConnectionString', tnsElement.value.trim());
-if (sshKeyElement && sshKeyElement.value.trim()) sessionStorage.setItem('sshKeyName', sshKeyElement.value.trim());
 if (instanceIPElement && instanceIPElement.value.trim()) sessionStorage.setItem('computePublicIP', instanceIPElement.value.trim());
 
 const warning = document.getElementById('configWarning');
-const missing = !tnsElement || !tnsElement.value.trim() || !sshKeyElement || !sshKeyElement.value.trim() || !instanceIPElement || !instanceIPElement.value.trim();
+const missing = !instanceIPElement || !instanceIPElement.value.trim();
 if (warning) warning.style.display = missing ? 'block' : 'none';
 
 }
 
 function loadPreviousLabValues() {
 try {
-const savedTns = getFirstSessionValue([
-'adbConnectionString',
-'DATABASE_CONNECTION_TNS_NAME',
-'cloudbank_DATABASE_CONNECTION_TNS_NAME',
-'tnsDatabaseName'
-]);
-const savedKey = getFirstSessionValue(['sshKeyName']);
 const savedIP = getFirstSessionValue(['computePublicIP', 'computeInstanceIP']);
 
-    const tnsElement = document.getElementById('tnsDatabaseName');
-    const sshKeyElement = document.getElementById('sshKeyName');
     const instanceIPElement = document.getElementById('computeInstanceIP');
 
-    if (savedTns && tnsElement) tnsElement.value = savedTns;
-    if (savedKey && sshKeyElement) sshKeyElement.value = savedKey;
     if (savedIP && instanceIPElement) instanceIPElement.value = savedIP;
 
     updateLabValues();
@@ -364,14 +341,10 @@ if (!element) return;
 
 const text = element.innerText;
 if (elementId === 'deployCloudBank') {
-    const tnsElement = document.getElementById('tnsDatabaseName');
-    const sshKeyElement = document.getElementById('sshKeyName');
     const instanceIPElement = document.getElementById('computeInstanceIP');
-    const tns = tnsElement ? tnsElement.value.trim() : '';
-    const sshKey = sshKeyElement ? sshKeyElement.value.trim() : '';
     const instanceIP = instanceIPElement ? instanceIPElement.value.trim() : '';
-    if (!tns || !sshKey || !instanceIP) {
-        alert('Enter the ADB TNS Alias, SSH Key Filename, and Compute Instance IP before copying the deployment script.');
+    if (!instanceIP) {
+        alert('Enter the Compute Instance IP before copying the deployment script.');
         return;
     }
 }
@@ -540,7 +513,7 @@ Execute an inter-bank transfer so that the Saga spans BankChicago and BankMex.
 
 **Verify the Saga:**
 
-<pre id="verifySuccessfulSaga" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>'
+<pre id="verifySuccessfulSaga" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
 
 SELECT saga_id, status, outcome, start_time
 FROM DBA_SAGAS
@@ -575,7 +548,7 @@ Trigger a business failure by requesting more than the available source balance.
 
 **Verify Saga and Business State:**
 
-<pre id="verifyCompensation" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>'
+<pre id="verifyCompensation" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
 
 SELECT saga_id, status, outcome, start_time
 FROM DBA_SAGAS
@@ -583,7 +556,7 @@ WHERE outcome = 'COMPENSATED'
 ORDER BY start_time DESC
 FETCH FIRST 1 ROW ONLY;
 
-CONNECT bankchicago/Welcome_123#@'<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>'
+CONNECT bankchicago/Welcome_123#@'oraclesagademo_medium'
 
 SELECT account_id, balance
 FROM accounts
@@ -606,7 +579,7 @@ Simulate BankMex becoming unavailable while an inter-bank Saga is being processe
 
 Run the following block from **Cloud Shell**. The technical container name still uses bankb, while the registered Saga participant is BankMex.
 
-<pre id="simulateCrash" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+<pre id="simulateCrash" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
 set -e
 
 BANKB_CONTAINER="$(podman ps --format '{{.Names}}' | grep -i bankb | head -n 1)"
@@ -641,7 +614,7 @@ REMOTE</code></pre>
 
 Use the same SQLcl session from the previous scenarios:
 
-<pre id="verifyCrashState" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>'
+<pre id="verifyCrashState" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
 
 SELECT i.saga_id,
 i.status,
@@ -663,7 +636,7 @@ The LEFT JOIN uses saga_id, the common Saga identifier, to show the incomplete s
 
 Run the following block from **Cloud Shell**:
 
-<pre id="restartBankMex" class="interactive-command"><code>ssh -i <span class="ssh-key-value">your-key.pem</span> ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+<pre id="restartBankMex" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
 set -e
 
 BANKB_CONTAINER="$(podman ps -a --format '{{.Names}}' | grep -i bankb | head -n 1)"
@@ -683,7 +656,7 @@ REMOTE</code></pre>
 
 **Verify the Final Saga State:**
 
-<pre id="verifyRecoveryFinal" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'<span class="tns-value">DATABASE_CONNECTION_TNS_NAME</span>'
+<pre id="verifyRecoveryFinal" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
 
 SELECT saga_id, status, outcome, start_time
 FROM DBA_SAGAS

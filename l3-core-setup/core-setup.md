@@ -172,7 +172,7 @@ sql /nolog
 </copy>
 ```
 
-When the `SQL>` prompt appears, copy and run the complete script below once. It uses the fixed demo password configured in Lab 2, creates the Broker and Coordinator, registers the required Participants, and verifies the resulting configuration.
+When the `SQL>` prompt appears, copy and run the complete script below once. Enter the same ADB `ADMIN` password selected in Lab 2; the suggested training password is `Welcome_123#`. The CloudBank schema passwords remain fixed. The script creates the Broker and Coordinator, registers the required Participants, and verifies the resulting configuration.
 
 <pre id="full-setup-script-container" class="interactive-command">
 <button class="copy-btn" type="button" onclick="copyToClipboard('full-setup-script', 'full-setup-script-container')">Copy</button>
@@ -181,7 +181,7 @@ When the `SQL>` prompt appears, copy and run the complete script below once. It 
 -- =========================================================
 SET VERIFY OFF
 SET SERVEROUTPUT ON
-DEFINE ADMIN_PASSWORD               = 'Welcome_123#'
+ACCEPT ADMIN_PASSWORD CHAR PROMPT 'Enter the ADB ADMIN password (suggested password: Welcome_123#): ' HIDE
 
 DEFINE DATABASE_CONNECTION_TNS_NAME = 'oraclesagademo_medium'
 DEFINE BROKER_SCHEMA                = 'brokerchicago'
@@ -260,7 +260,7 @@ END;
 /
 
 -- 6. Verify all participants
-CONNECT ADMIN/&ADMIN_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+CONNECT ADMIN/"&ADMIN_PASSWORD"@'&DATABASE_CONNECTION_TNS_NAME'
 
 SELECT name        AS participant_name,
        owner       AS participant_schema,

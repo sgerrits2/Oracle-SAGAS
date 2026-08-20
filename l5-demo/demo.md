@@ -136,6 +136,18 @@ COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
 
 TNS_ALIAS="oraclesagademo_medium"
 
+read -r -s -p "Enter the ADB ADMIN password (suggested password: Welcome_123#): " ADB_ADMIN_PASSWORD
+
+echo
+
+if [ -z "$ADB_ADMIN_PASSWORD" ]; then
+
+echo "ERROR: An ADB ADMIN password is required."
+
+exit 1
+
+fi
+
 if [ ! -d "$PROJECT_DIR" ]; then
 
 echo "ERROR: $PROJECT_DIR was not found."
@@ -156,35 +168,35 @@ cd "$PROJECT_DIR"
 
 cat > .env <<EOF
 
-Database Connection Settings
+# Database Connection Settings
 
 TNS_ALIAS_CONTAINER=$TNS_ALIAS
 
-ADBS_USER=ADMIN
+ADBS_USERNAME=ADMIN
 
-ADBS_PASSWORD=Welcome_123#
+ADBS_ADMIN_PWD=$ADB_ADMIN_PASSWORD
 
-Bank Service Credentials
+# Bank Service Credentials
 
-BANKA_USER=bankchicago
+BANKA_USERNAME=bankchicago
 
 BANKA_PASSWORD=Welcome_123#
 
-BANKB_USER=bankmex
+BANKB_USERNAME=bankmex
 
 BANKB_PASSWORD=Welcome_123#
 
-Orchestrator and Broker
+# Orchestrator and Broker
 
-ORCHESTRATOR_USER=orchestratorchicago
+ORCHESTRATOR_USERNAME=orchestratorchicago
 
 ORCHESTRATOR_PASSWORD=Welcome_123#
 
-BROKER_USER=brokerchicago
+BROKER_USERNAME=brokerchicago
 
 BROKER_PASSWORD=Welcome_123#
 
-Container and Monitoring Configuration
+# Container and Monitoring Configuration
 
 TNS_ADMIN_CONTAINER=/opt/adb_wallet
 
@@ -193,6 +205,8 @@ ENABLE_ZIPKIN=true
 ZIPKIN_URL=http://zipkin:9411/api/v2/spans
 
 EOF
+
+chmod 600 .env
 
 cd "$HOME"
 
@@ -828,7 +842,15 @@ For each scenario, compare the latest trace with the Saga state returned by Orac
 
 ---
 
-Run the following three scenarios to compare successful execution, compensation, and participant recovery. Keep CloudBank and Zipkin open. For SQL verification, open SQLcl once in **Cloud Shell** with sql /nolog and keep the session open.
+Run the following three scenarios to compare successful execution, compensation, and participant recovery. Keep CloudBank and Zipkin open. For SQL verification, open SQLcl once in **Cloud Shell** with `sql /nolog` and keep the session open. At the `SQL>` prompt, run the following command once and enter the same ADB `ADMIN` password selected in Lab 2:
+
+```sql
+<copy>
+ACCEPT ADMIN_PASSWORD CHAR PROMPT 'Enter the ADB ADMIN password (suggested password: Welcome_123#): ' HIDE
+</copy>
+```
+
+The CloudBank application-schema password remains fixed as `Welcome_123#`.
 
 ### Scenario 1: Successful Distributed Saga
 
@@ -860,7 +882,7 @@ Execute an inter-bank transfer so that the Saga spans BankChicago and BankMex.
 
 **Verify the Saga:**
 
-<pre id="verifySuccessfulSaga" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
+<pre id="verifySuccessfulSaga" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
 
 SELECT saga_id, status, coordinator, start_time, saga_source
 
@@ -928,7 +950,7 @@ Trigger a business failure by requesting more than the available source balance.
 
 **Verify Saga and Business State:**
 
-<pre id="verifyCompensation" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
+<pre id="verifyCompensation" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
 
 SELECT saga_id, status, coordinator, start_time, saga_source
 
@@ -1024,7 +1046,7 @@ REMOTE</code></pre>
 
 Use the same SQLcl session from the previous scenarios:
 
-<pre id="verifyCrashState" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
+<pre id="verifyCrashState" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
 
 SELECT RAWTOHEX(id) AS saga_id,
 
@@ -1084,7 +1106,7 @@ REMOTE</code></pre>
 
 **Verify the Final Saga State:**
 
-<pre id="verifyRecoveryFinal" class="interactive-command"><code>CONNECT ADMIN/Welcome_123#@'oraclesagademo_medium'
+<pre id="verifyRecoveryFinal" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
 
 SELECT saga_id, status, coordinator, start_time, saga_source
 
@@ -1108,7 +1130,9 @@ WHERE is_initiator = 'YES'
 
 ORDER BY start_time DESC
 
-FETCH FIRST 1 ROW ONLY;</code></pre>
+FETCH FIRST 1 ROW ONLY;
+
+UNDEFINE ADMIN_PASSWORD</code></pre>
 
 <div class="button-center">
 

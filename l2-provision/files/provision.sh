@@ -7,14 +7,39 @@ set -euo pipefail
 # prepares the CloudBank package, wallet, database users, and VM transfer.
 
 # ----------------- REQUIRED INPUT -----------------
-# Pass COMPARTMENT_ID when starting the script. This training environment uses
-# the fixed demo password below for ADMIN and the CloudBank application schemas.
+# Pass COMPARTMENT_ID when starting the script. The ADB ADMIN password is
+# requested securely unless it was supplied through the environment.
 COMPARTMENT_ID="${COMPARTMENT_ID:-}"
-ADMIN_PASSWORD='Welcome_123#'
+ADMIN_PASSWORD="${ADMIN_PASSWORD:-}"
 
 if [[ -z "$COMPARTMENT_ID" ]]; then
   echo "ERROR: COMPARTMENT_ID is required."
   echo "Example: COMPARTMENT_ID='ocid1.compartment...' ./provision.sh"
+  exit 1
+fi
+
+if [[ -z "$ADMIN_PASSWORD" ]]; then
+  read -r -s -p "Enter the ADB ADMIN password (suggested password: Welcome_123#): " ADMIN_PASSWORD
+  echo
+fi
+
+if [[ -z "$ADMIN_PASSWORD" ]]; then
+  echo "ERROR: An ADB ADMIN password is required."
+  exit 1
+fi
+
+if (( ${#ADMIN_PASSWORD} < 12 || ${#ADMIN_PASSWORD} > 30 )) ||
+  [[ ! "$ADMIN_PASSWORD" =~ [A-Z] ]] ||
+  [[ ! "$ADMIN_PASSWORD" =~ [a-z] ]] ||
+  [[ ! "$ADMIN_PASSWORD" =~ [0-9] ]] ||
+  [[ "$ADMIN_PASSWORD" =~ [Aa][Dd][Mm][Ii][Nn] ]]; then
+  echo "ERROR: The ADB ADMIN password must contain 12-30 characters,"
+  echo "include uppercase, lowercase, and numeric characters, and not contain ADMIN."
+  exit 1
+fi
+
+if [[ ! "$ADMIN_PASSWORD" =~ ^[A-Za-z0-9_#.!-]+$ ]]; then
+  echo "ERROR: For this lab, use only letters, numbers, and _ # . ! - in the ADB ADMIN password."
   exit 1
 fi
 
@@ -25,6 +50,7 @@ VCN_CIDR="10.0.0.0/16"
 PUBLIC_SUBNET_CIDR="10.0.0.0/24"
 INSTANCE_SHAPE="VM.Standard.E2.1.Micro"
 INSTANCE_NAME="oracle-saga-compute-instance"
+WALLET_PASSWORD='Welcome_123#'
 SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
@@ -113,7 +139,7 @@ prepare_cloudbank() {
   oci db autonomous-database generate-wallet \
     --autonomous-database-id "$ADB_ID" \
     --file "$wallet_archive" \
-    --password "$ADMIN_PASSWORD"
+    --password "$WALLET_PASSWORD"
   unzip -q -o "$wallet_archive" -d "$wallet_dir"
 
   tns_alias=$(sed -n -E 's/^([[:alnum:]_]+_medium)[[:space:]]*=.*/\1/p' "$wallet_dir/tnsnames.ora" | head -n 1)
@@ -123,7 +149,7 @@ prepare_cloudbank() {
   fi
 
   echo ">>> Creating the CloudBank database users..."
-  TNS_ADMIN="$wallet_dir" sql -L -s "admin/${ADMIN_PASSWORD}@${tns_alias}" "@$user_setup_sql"
+  TNS_ADMIN="$wallet_dir" sql -L -s "admin/\"${ADMIN_PASSWORD}\"@${tns_alias}" "@$user_setup_sql"
 
   echo ">>> Transferring the prepared CloudBank package to the compute instance..."
   wait_for_ssh

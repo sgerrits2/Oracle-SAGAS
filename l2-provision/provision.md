@@ -25,7 +25,7 @@ By completing this lab, you will be able to:
 
 ## Task 1: Provision the CloudBank Environment
 
-The provisioning script performs the complete setup. You only need to enter your compartment OCID, download the script, and run the generated command in OCI Cloud Shell.
+The provisioning script performs the complete setup. Enter your compartment OCID, download and run the script in OCI Cloud Shell, and provide an ADB `ADMIN` password when the secure terminal prompt appears.
 
 ![Automated provisioning flow](./images/lab2-automated-provisioning.svg "The provisioning script prepares and verifies the complete CloudBank environment")
 
@@ -84,7 +84,9 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 > **Note:** The generated command uses the compartment OCID entered above. Review the value before copying and running the command.
 
-> **Demo credential:** The provisioning script automatically configures `Welcome_123#` as the password for the Autonomous Database `ADMIN` account and every CloudBank application schema. This shared password is for the training environment only and must not be used in production.
+> **ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. Your input is hidden while you type. Remember this password because Labs 3, 5, and 6 require it again.
+
+> **Demo credentials:** The CloudBank application schemas and wallet continue to use the fixed password `Welcome_123#`. This shared password is for the training environment only and must not be used in production.
 
 The script automatically:
 

@@ -1,4 +1,4 @@
-# Lab 6: Clean Up or Terminate Resources
+# Cleanup
 
 ## Introduction
 
@@ -19,7 +19,7 @@ In this lab, you will:
 
 ### Prerequisites
 
-- Completion of Lab 5 (CloudBank Application).
+- Completion of Labs 1–5 and Lab 6 (Extended Lab).
 - Access to OCI Cloud Shell.
 - Permission to terminate and delete the workshop OCI resources.
 
@@ -64,9 +64,7 @@ The script waits for the compute instance, boot volume, and networking deletions
 
 ---
 
-✅ **End of Lab 6.** You have cleaned up the resources used for this workshop. This helps prevent unwanted charges and keeps your environment ready for future work.
-
-Next: **Lab 7 — Extended Labs**, where you will explore Oracle Sagas with PL/SQL and polyglot transactions.
+✅ **Workshop complete.** You have cleaned up the resources used for this workshop. This helps prevent unwanted charges and keeps your environment ready for future work.
 
 ---
 

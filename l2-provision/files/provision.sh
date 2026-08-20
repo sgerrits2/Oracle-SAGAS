@@ -245,10 +245,7 @@ pull_image docker.io/library/maven:3.8.6-openjdk-11 &
 pull_image ghcr.io/openzipkin/zipkin:latest &
 pull_image container-registry.oracle.com/database/free:latest &
 wait
-mkdir -p /home/ubuntu/cloudbank
 USER_SETUP
-
-chown -R ubuntu:ubuntu /home/ubuntu/cloudbank
 CLOUD_INIT
 
 echo ">>> Looking up Ubuntu 24.04 Minimal image..."

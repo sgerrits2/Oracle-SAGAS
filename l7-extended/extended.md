@@ -1,235 +1,183 @@
-# Lab 7: Extended Labs
+# Extended Lab: Add a Saga Participant
 
-## **Introduction**
+## Introduction
 
-In this lab, you will go beyond the default CloudBank setup and explore **advanced usage of Oracle Sagas**.  
-You will work with the **PL/SQL client** via the `DBMS_SAGA` package and set up **new participants** to simulate multi-bank transactions.  
-Finally, you will test **polyglot transactions**, where both Java and PL/SQL clients participate in the same Saga.  
+In Labs 1–5, you prepared the Oracle Cloud environment, configured the Saga broker and coordinator, reviewed the Java client, and ran the CloudBank application with the original `CloudBank`, `BankChicago`, and `BankMex` participants.
 
-</br>
+In this lab, you will extend that existing topology manually. You will connect to the `banklondon` schema created in Lab 2, register `BankLondon` with the broker and coordinator created in Lab 3, and verify the new participant from the database metadata.
 
-*Estimated Time: 45–60 minutes*
-
----
+*Estimated time: 10 minutes*
 
 ### Objectives
 
-By the end of this lab, you will:  
-- Use the **DBMS_SAGA** PL/SQL API for defining and executing Saga logic.  
-- Add new users and participants (`Bank C` and `Bank D`) to extend the CloudBank demo.  
-- Test **normal and failure scenarios** for transactions between Bank C and Bank D.  
-- Simulate **polyglot transactions** spanning Java and PL/SQL clients.  
+By completing this lab, you will be able to:
 
----
+- Register an additional Saga participant manually with `DBMS_SAGA_ADM.ADD_PARTICIPANT`.
+- Associate the participant with the existing CloudBank coordinator and broker.
+- Verify the participant name, owner, coordinator, broker, and type.
+- Understand the difference between registering a participant and implementing its business logic.
 
 ### Prerequisites
 
-- Completion of **Lab 5: CloudBank Application**.  
-- Hands-on familiarity with **Lab 3: Core Setup** (Broker, Coordinator, Participants).  
-- SQLcl access to your Autonomous Database (ADB-S) using Cloud Shell.  
+- Complete Labs 1–5 before starting this lab.
+- Keep the Autonomous Database and CloudBank environment from the previous labs available.
+- Do not run Cleanup until this lab is complete.
 
----
+## Task 1: Register BankLondon as an Additional Participant
 
-## Task 1: Develop Oracle Sagas with PL/SQL Client
+The `banklondon` schema, password, roles, wallet, broker, and coordinator are already configured by the previous labs. You only need to connect with SQLcl and run the complete registration script once.
 
----
+### Step 1: Open SQLcl
 
-### Step i: Overview of `DBMS_SAGA` Package
+Run the following commands in OCI Cloud Shell. The first command points SQLcl to the Autonomous Database wallet created in Lab 2, and the second command opens SQLcl without connecting to a schema yet.
 
-Oracle Database provides the `DBMS_SAGA` package for PL/SQL clients.  
-This package enables:  
-- **Saga lifecycle management** (begin, join, complete, compensate).  
-- **Defining participants** and registering PL/SQL procedures as Saga actions.  
-- **Error handling** for compensating or retrying transactions.  
+```bash
+<copy>
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+sql /nolog
+</copy>
+```
 
-Some important APIs include:  
+Wait for the `SQL>` prompt before continuing.
 
-- `DBMS_SAGA.BEGIN_SAGA` — Start a new Saga.  
-- `DBMS_SAGA.JOIN_PARTICIPANT` — Add a participant.  
-- `DBMS_SAGA.COMPLETE_SAGA` — Commit the Saga.  
-- `DBMS_SAGA.ABORT_SAGA` — Abort and trigger compensations.  
-- `DBMS_SAGA.REGISTER_PACKAGE` — Register a PL/SQL package as a participant.  
+### Step 2: Add and Verify BankLondon
 
----
+At the `SQL>` prompt, copy and paste the complete block below once. Participant names must be unique within a broker, so do not run the registration block a second time after it succeeds.
 
-### Step ii: Create New Users (Bank C and Bank D)
+```sql
+<copy>
+-- =========================================================
+-- ADD BANKLONDON AS AN EXTRA SAGA PARTICIPANT
+-- =========================================================
+SET VERIFY OFF
+SET SERVEROUTPUT ON
 
-1. Connect to your ADB-S with SQLcl as an admin user.  
+DEFINE DATABASE_CONNECTION_TNS_NAME = 'oraclesagademo_medium'
+DEFINE DEMO_PASSWORD                = 'Welcome_123#'
+DEFINE PARTICIPANT_SCHEMA           = 'banklondon'
+DEFINE PARTICIPANT_NAME             = 'BankLondon'
+DEFINE COORDINATOR_NAME             = 'CloudBankCoordinator'
+DEFINE MAILBOX_SCHEMA               = 'brokerchicago'
+DEFINE BROKER_NAME                  = 'TEST'
 
-VVVsql
--- Create Bank C
-CREATE USER bankc IDENTIFIED BY "Password123";
-GRANT CONNECT, RESOURCE TO bankc;
+-- ADD_PARTICIPANT must run from the participant's own schema.
+CONNECT &PARTICIPANT_SCHEMA/&DEMO_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
--- Create Bank D
-CREATE USER bankd IDENTIFIED BY "Password123";
-GRANT CONNECT, RESOURCE TO bankd;
-VVV
-
-2. Create basic schema objects for both banks (accounts table, balances).  
-
-VVVsql
--- In BANKC schema
-CREATE TABLE accounts (
-  acct_id NUMBER PRIMARY KEY,
-  balance NUMBER
-);
-
-INSERT INTO accounts VALUES (1, 1000);
-
--- In BANKD schema
-CREATE TABLE accounts (
-  acct_id NUMBER PRIMARY KEY,
-  balance NUMBER
-);
-
-INSERT INTO accounts VALUES (1, 2000);
-VVV
-
----
-
-### Step iii: Register New Participants
-
-1. Define PL/SQL procedures for debit/credit actions in both schemas.  
-
-VVVsql
--- Example in BANKC
-CREATE OR REPLACE PACKAGE bankc_pkg AS
-  PROCEDURE debit(acct_id NUMBER, amt NUMBER);
-  PROCEDURE credit(acct_id NUMBER, amt NUMBER);
-END bankc_pkg;
-/
-
-CREATE OR REPLACE PACKAGE BODY bankc_pkg AS
-  PROCEDURE debit(acct_id NUMBER, amt NUMBER) IS
-  BEGIN
-    UPDATE accounts SET balance = balance - amt WHERE acct_id = acct_id;
-  END;
-
-  PROCEDURE credit(acct_id NUMBER, amt NUMBER) IS
-  BEGIN
-    UPDATE accounts SET balance = balance + amt WHERE acct_id = acct_id;
-  END;
-END bankc_pkg;
-/
-
--- Register the package with DBMS_SAGA
 BEGIN
-  DBMS_SAGA_ADM.REGISTER_PACKAGE(
-    participant_name => 'BankC',
-    package_name     => 'BANKC_PKG'
+  DBMS_SAGA_ADM.ADD_PARTICIPANT(
+    participant_name => '&PARTICIPANT_NAME',
+    coordinator_name => '&COORDINATOR_NAME',
+    mailbox_schema   => '&MAILBOX_SCHEMA',
+    broker_name      => '&BROKER_NAME'
   );
 END;
 /
-VVV
 
-*(Repeat similar steps for BANKD with `bankd_pkg`.)*
+-- Verify the new participant using the ADMIN metadata view.
+CONNECT ADMIN/&DEMO_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
 
----
+COLUMN participant_name FORMAT A20
+COLUMN participant_schema FORMAT A20
+COLUMN coordinator_name FORMAT A25
+COLUMN broker_name FORMAT A15
+COLUMN type FORMAT A15
 
-### Step iv: Test Normal and Failure Cases
+SELECT name        AS participant_name,
+       owner       AS participant_schema,
+       coordinator AS coordinator_name,
+       broker_name,
+       type
+FROM   dba_saga_participants
+WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
+AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA');
 
-1. Normal case: Transfer from Bank C → Bank D.  
-
-VVVsql
 DECLARE
-  l_saga_id RAW(16);
+  participant_count PLS_INTEGER;
 BEGIN
-  l_saga_id := DBMS_SAGA.BEGIN_SAGA('Transfer C to D');
+  SELECT COUNT(*)
+  INTO   participant_count
+  FROM   dba_saga_participants
+  WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
+  AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA')
+  AND    UPPER(coordinator) = UPPER('&COORDINATOR_NAME')
+  AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
 
-  DBMS_SAGA.JOIN_PARTICIPANT(l_saga_id, 'BankC');
-  DBMS_SAGA.JOIN_PARTICIPANT(l_saga_id, 'BankD');
+  IF participant_count != 1 THEN
+    RAISE_APPLICATION_ERROR(
+      -20001,
+      'BankLondon participant verification failed.'
+    );
+  END IF;
 
-  bankc_pkg.debit(1, 200);
-  bankd_pkg.credit(1, 200);
-
-  DBMS_SAGA.COMPLETE_SAGA(l_saga_id);
+  DBMS_OUTPUT.PUT_LINE(
+    'SUCCESS: BankLondon is registered as an additional Saga participant.'
+  );
 END;
 /
-VVV
 
-2. Failure case: Attempt transfer with insufficient balance.  
+UNDEFINE DATABASE_CONNECTION_TNS_NAME
+UNDEFINE DEMO_PASSWORD
+UNDEFINE PARTICIPANT_SCHEMA
+UNDEFINE PARTICIPANT_NAME
+UNDEFINE COORDINATOR_NAME
+UNDEFINE MAILBOX_SCHEMA
+UNDEFINE BROKER_NAME
+</copy>
+```
 
-VVVsql
-DECLARE
-  l_saga_id RAW(16);
-BEGIN
-  l_saga_id := DBMS_SAGA.BEGIN_SAGA('Failure Scenario C to D');
+**Expected output:**
 
-  DBMS_SAGA.JOIN_PARTICIPANT(l_saga_id, 'BankC');
-  DBMS_SAGA.JOIN_PARTICIPANT(l_saga_id, 'BankD');
+```text
+Connected.
 
-  bankc_pkg.debit(1, 5000); -- Overdraft!
-  bankd_pkg.credit(1, 5000);
+PL/SQL procedure successfully completed.
 
-  DBMS_SAGA.COMPLETE_SAGA(l_saga_id);
-EXCEPTION
-  WHEN OTHERS THEN
-    DBMS_SAGA.ABORT_SAGA(l_saga_id);
-END;
-/
-VVV
+Connected.
 
-**Expected Output:**  
-- Normal case: Balances updated.  
-- Failure case: Saga aborts and compensations triggered.  
+PARTICIPANT_NAME    PARTICIPANT_SCHEMA    COORDINATOR_NAME         BROKER_NAME    TYPE
+------------------- --------------------- ------------------------ -------------- -----------
+BANKLONDON          BANKLONDON            CLOUDBANKCOORDINATOR     TEST           Participant
 
----
+SUCCESS: BankLondon is registered as an additional Saga participant.
 
-## Task 2: Testing a Polyglot Transaction
+PL/SQL procedure successfully completed.
+```
 
----
+The exact spacing and capitalization displayed by SQLcl can vary. The registration is successful when the query returns one `BANKLONDON` row with coordinator `CLOUDBANKCOORDINATOR`, broker `TEST`, and the final `SUCCESS` message appears.
 
-### Step i: Java + PL/SQL Clients in the Same Saga
+### Step 3: Understand Why the Script Works
 
-Oracle Sagas allow **polyglot transactions**, where multiple client types (Java, PL/SQL, REST) participate in the same Saga.
+| Script section | What it does | Why it is required |
+|---|---|---|
+| `CONNECT banklondon...` | Connects to the existing participant schema. | Oracle requires participant administration to run from the participant's own schema. |
+| `ADD_PARTICIPANT` | Registers `BankLondon` in the Saga framework. | It creates the participant metadata and messaging relationships. |
+| `coordinator_name` | Associates it with `CloudBankCoordinator`. | The coordinator manages Saga completion and compensation. |
+| `mailbox_schema` and `broker_name` | Connect it to broker `TEST`. | The broker routes messages between Saga entities. |
+| `DBA_SAGA_PARTICIPANTS` query | Reads the registered participant metadata. | It confirms that the participant has the expected owner and topology. |
+| Validation block | Requires exactly one matching participant. | It prevents the lab from displaying a misleading success message. |
 
-For example:  
-- **Bank A** handled by a **Java Client** (CloudBank microservice).  
-- **Bank C** handled by a **PL/SQL Client** (registered package).  
+The resulting topology is:
 
----
+```text
+TEST
+└── CloudBankCoordinator
+    ├── CloudBank
+    ├── BankChicago
+    ├── BankMex
+    └── BankLondon
+```
 
-### Step ii: Normal Polyglot Case
+> **Important:** This lab registers `BankLondon` as a Saga participant, but the supplied CloudBank Java application does not send business requests to it. Processing requests would additionally require a Java implementation with `@Participant(name = "BankLondon")` or a PL/SQL callback package registered with `DBMS_SAGA_ADM.REGISTER_SAGA_CALLBACK`.
 
-1. Start a Saga from the **Java Client** (Bank A).  
-2. Join participant **Bank C** (PL/SQL).  
-
-- Bank A debits from its account (Java logic).  
-- Bank C credits into its account (PL/SQL package).  
-- Saga completes successfully.  
-
-**Expected Result:** Cross-client transaction is consistent.  
-
----
-
-### Step iii: Failure Polyglot Case
-
-1. Start a Saga from the **Java Client** (Bank A).  
-2. Join participant **Bank C**.  
-3. Force a failure in Bank C (e.g., debit more than balance).  
-
-- Bank A debits first.  
-- Bank C fails credit.  
-- Saga aborts, compensating Bank A.  
-
-**Expected Result:** All clients (Java + PL/SQL) roll back consistently.  
-
----
-
-✅ **End of Lab 7.**  
-You have now extended Oracle Sagas to include **custom PL/SQL participants** and tested **polyglot transactions**.  
-This demonstrates the flexibility of Oracle Sagas in handling real-world distributed applications.  
-
----
+You have now manually extended the Saga topology created by Labs 1–5. Continue to Cleanup to delete the workshop resources.
 
 ## Learn More
 
-- [DBMS_SAGA PL/SQL Reference](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)  
-- [Saga Polyglot Transactions](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/introduction-to-saga.html)  
+- [DBMS_SAGA_ADM PL/SQL Reference](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html)
+- [Developing Applications with Sagas](https://docs.oracle.com/en/database/oracle/oracle-database/26/adfns/developing-applications-saga.html)
 
 ## Acknowledgements
 
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney  
-* **Created By/Date** — Vinay Pandhariwal, August 2025  
-* **Last Updated By/Date** — Vinay Pandhariwal, August 2025
+* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney
+* **Created By/Date** — Vinay Pandhariwal, August 2025
+* **Last Updated By/Date** — Sebastian Gerritsen, August 2026

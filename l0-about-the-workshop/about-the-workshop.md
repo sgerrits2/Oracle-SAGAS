@@ -4,7 +4,7 @@ Explore **Oracle Sagas**—a native Oracle Database framework for managing sophi
 
 Modern applications often span multiple microservices and systems, making it challenging to maintain data consistency across long-running, distributed transactions without resorting to cumbersome locks or traditional two-phase commit. Oracle Sagas offers a powerful, database-native solution—embedding the saga pattern directly into Oracle Database. This approach allows developers to model, execute, and compensate distributed transactions natively, eliminating the need for external orchestration tools or heavy resource locking.
 
-This LiveLab, **Oracle Sagas: Simplifying Distributed Application Development**, guides you through a step-by-step, hands-on series of seven labs. You’ll cover everything from fundamental concepts and environment setup to hands-on coding, deployment, and testing—using both **PL/SQL** and **Java**. By the end of these immersive labs, you’ll have built practical know-how and templates for integrating lock-free, compensating workflows into your own modern applications.
+This LiveLab, **Oracle Sagas: Simplifying Distributed Application Development**, guides you through a step-by-step series of labs followed by final resource cleanup. You’ll cover everything from fundamental concepts and environment setup to deployment, testing, and manually extending a Saga topology with PL/SQL administration APIs. By the end of these labs, you’ll have practical experience with Oracle Saga infrastructure and the CloudBank Java application.
 
 ## Flow of the LiveLab
 1. **Introduction to Oracle Sagas and Distributed Transactions**
@@ -31,16 +31,15 @@ This LiveLab, **Oracle Sagas: Simplifying Distributed Application Development**,
     - Use Postman or Swagger to test APIs, simulate normal transactions, failure handling, and crash recovery.
     - Monitor and validate saga states and compensating actions in real time.
 
-6. **Terminate and/or Cleanup**
-    - Stop Podman services.
-    - Clean up configuration files.
-    - Terminate OCI compute and database resources (if applicable).
-    - Verify that your environment has been fully released.
+6. **Lab 6: Extended Lab**
+    - Manually register `BankLondon` as an additional Saga participant.
+    - Connect it to the existing CloudBank coordinator and broker.
+    - Verify the new participant through the Saga metadata views.
 
-7. **Advanced and Extended Labs (Optional)**
-    - Dive deeper into PL/SQL saga procedures, compensation mechanisms, and troubleshooting strategies.
-    - Explore polyglot workflows combining Java initiators with PL/SQL participant logic.
-    - Apply lessons learned to real-world distributed transaction requirements.
+7. **Cleanup**
+    - Stop Podman services and remove Cloud Shell configuration files.
+    - Terminate OCI compute, database, and networking resources.
+    - Verify that the workshop environment has been fully released.
 
 ## Before you begin
 
@@ -50,7 +49,7 @@ Oracle Sagas can be implemented via:
 - **Java annotations** using the [Oracle Sagas Java Client](https://mvnrepository.com/artifact/com.oracle.database.saga/saga-core/23.7.0) – ideal for microservices.
 - **PL/SQL APIs** using built-in package `DBMS_SAGA` – suitable for database-native applications.
 
-This lab is primarily focused on setting up the infrastructure using the `DBMS_SAGA_ADM` package and using Java annotations to build a demo application, **CloudBank**. You can read more about the PL/SQL client in our extended lab (**Lab 7 Task 1**). We also test out polyglot functionality in the extended section (**Lab 7 Task 2**) where we have saga participants deployed using both the Java client and the PL/SQL client.
+This workshop uses the `DBMS_SAGA_ADM` package to configure Saga infrastructure and Java annotations in the supplied **CloudBank** application. After completing Labs 1–5, Lab 6 (Extended Lab) shows how to manually register `BankLondon` as an additional participant in the existing topology.
 
 ### **Single-PDB vs. Multi-PDB Environments**
 
@@ -68,7 +67,7 @@ Some saga operations require **specific user privileges** (required for Core Sag
 
 By the end of this LiveLab, you will:
 - Understand the **Oracle Sagas** framework and its role in orchestrating distributed, long-running transactions in modern applications.
-- Gain hands-on experience modeling and executing saga workflows using both **PL/SQL** and **Oracle Sagas Java Client annotations**.
+- Gain hands-on experience administering Saga entities through **PL/SQL APIs** and understanding the supplied **Oracle Sagas Java Client annotations**.
 - Learn how to define **compensation logic** and ensure reliable, lock-free data consistency across microservices or application modules.
 - Be able to **deploy, monitor, and troubleshoot** sagas within Oracle Autonomous Database.
 - Acquire practical patterns for building **resilient, distributed applications** without relying on global locks or complex external orchestrators.

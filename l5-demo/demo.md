@@ -1130,7 +1130,7 @@ FETCH FIRST 1 ROW ONLY;</code></pre>
 
 ✅ **Congratulations!** You have executed a successful distributed Saga, observed compensation, and validated participant failure and recovery with Oracle Sagas.
 
-**Next Lab:** Continue to **Lab 6 — Blockchain Flashback Journals** to explore combining Oracle Sagas with blockchain technology for enhanced data protection and audit trails.
+**Next Lab:** Continue to **Lab 6 — Extended Lab** to manually add a Saga participant to the topology created in the previous labs.
 
 ---
 

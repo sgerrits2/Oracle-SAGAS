@@ -142,11 +142,12 @@ fi
 
 if [ -n "$INSTANCE_ID" ]; then
   echo ">>> Terminating oracle-saga-compute-instance and its boot volume..."
+  # Compute termination is tracked by an OCI work request, whose success state is SUCCEEDED.
   oci compute instance terminate \
     --instance-id "$INSTANCE_ID" \
     --preserve-boot-volume false \
     --force \
-    --wait-for-state TERMINATED
+    --wait-for-state SUCCEEDED
 else
   echo "Active compute instance was not found; skipping."
 fi

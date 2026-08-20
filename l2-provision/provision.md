@@ -59,8 +59,6 @@ Download the script below, upload it to OCI Cloud Shell, and run the command gen
 
 [**Download Provisioning Script**](files/provision.sh?download=1)
 
-> **Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
-
 Alternatively, run the following commands to download the provisioning script directly into OCI Cloud Shell:
 
 ```bash
@@ -82,11 +80,11 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 <button id="copyProvisionButton" onclick="copyProvisionCommand()" class="copy-btn">Copy Provisioning Command</button>
 </div>
 
-> **Note:** The generated command uses the compartment OCID entered above. Review the value before copying and running the command.
+> **Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
 
-> **ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. Your input is hidden while you type. Remember this password because Labs 3, 5, and 6 require it again.
+> **ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
 
-> **Demo credentials:** The CloudBank application schemas and wallet continue to use the fixed password `Welcome_123#`. This shared password is for the training environment only and must not be used in production.
+> **Demo credentials:** The CloudBank application schemas and wallet use the fixed password `Welcome_123#`.
 
 The script automatically:
 
@@ -117,11 +115,7 @@ Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, TRANSFER = READY
 ============================================================
 ```
 
-> **Troubleshooting:** If the script stops before this summary, use the last `ERROR` message to identify the failed operation. Correct that issue before continuing to Lab 3.
-
 ## Task 2: Review the Automated Database User Setup
-
-The provisioning script invokes `create-cloudbank-users.sql` automatically as `ADMIN`. No SQL Worksheet, manual copy-and-paste, or separate database connection is required.
 
 ### Step 3: Review the SQL Verification
 

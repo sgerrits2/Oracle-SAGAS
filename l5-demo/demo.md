@@ -26,11 +26,11 @@ The setup steps are intentionally minimized and only prepare the environment req
 
 - **CloudBank UI:** Starts the money-transfer requests used in this lab
 
-- **Saga Participants:** BankChicago, BankMex, and CloudBank
+- **Saga Participants:** BankChicago and BankMex
 
-- **Saga Coordinator:** CloudBankCoordinator in schema orchestratorchicago
+- **Saga Coordinator:** CloudBankCoordinator in schema orchestratorhub
 
-- **Saga Broker:** TEST in schema brokerchicago
+- **Saga Broker:** CloudBankBroker in schema brokerhub
 
 - **Database Layer:** Oracle Database schemas bankchicago and bankmex
 
@@ -188,11 +188,11 @@ BANKB_PASSWORD=Welcome_123#
 
 # Orchestrator and Broker
 
-ORCHESTRATOR_USERNAME=orchestratorchicago
+ORCHESTRATOR_USERNAME=orchestratorhub
 
 ORCHESTRATOR_PASSWORD=Welcome_123#
 
-BROKER_USERNAME=brokerchicago
+BROKER_USERNAME=brokerhub
 
 BROKER_PASSWORD=Welcome_123#
 

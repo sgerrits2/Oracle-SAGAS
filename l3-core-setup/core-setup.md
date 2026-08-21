@@ -184,17 +184,17 @@ SET SERVEROUTPUT ON
 ACCEPT ADMIN_PASSWORD CHAR PROMPT 'Enter the ADB ADMIN password (suggested password: Welcome_123#): ' HIDE
 
 DEFINE DATABASE_CONNECTION_TNS_NAME = 'oraclesagademo_medium'
-DEFINE BROKER_SCHEMA                = 'brokerchicago'
+DEFINE BROKER_SCHEMA                = 'brokerhub'
 DEFINE BROKER_SCHEMA_PASSWORD       = 'Welcome_123#'
-DEFINE ORCHESTRATOR_SCHEMA          = 'orchestratorchicago'
+DEFINE ORCHESTRATOR_SCHEMA          = 'orchestratorhub'
 DEFINE ORCHESTRATOR_SCHEMA_PASSWORD = 'Welcome_123#'
 DEFINE BANKA_SCHEMA                 = 'bankchicago'
 DEFINE BANKA_SCHEMA_PASSWORD        = 'Welcome_123#'
 DEFINE BANKB_SCHEMA                 = 'bankmex'
 DEFINE BANKB_SCHEMA_PASSWORD        = 'Welcome_123#'
-DEFINE BROKER_NAME                 = 'TEST'
+DEFINE BROKER_NAME                 = 'CloudBankBroker'
 DEFINE COORDINATOR_NAME            = 'CloudBankCoordinator'
-DEFINE MAILBOX_SCHEMA              = 'brokerchicago'
+DEFINE MAILBOX_SCHEMA              = 'brokerhub'
 
 -- 1. Create the broker
 CONNECT &BROKER_SCHEMA/&BROKER_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
@@ -279,8 +279,8 @@ BEGIN
   WHERE  (UPPER(name), UPPER(owner)) IN (
            ('BANKCHICAGO', 'BANKCHICAGO'),
            ('BANKMEX', 'BANKMEX'),
-           ('CLOUDBANK', 'ORCHESTRATORCHICAGO'),
-           ('CLOUDBANKCOORDINATOR', 'ORCHESTRATORCHICAGO')
+           ('CLOUDBANK', 'ORCHESTRATORHUB'),
+           ('CLOUDBANKCOORDINATOR', 'ORCHESTRATORHUB')
          )
   AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
 
@@ -366,8 +366,8 @@ The participant registration is already included in the single script at the top
 
 The saga setup uses the minimum role needed per schema:
 
-- **brokerchicago**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
-- **orchestratorchicago**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
+- **brokerhub**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
+- **orchestratorhub**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
 - **bankchicago / bankmex**: `SAGA_PARTICIPANT_ROLE`
 
 This keeps the security model simple and aligned with the demo architecture.
@@ -722,8 +722,8 @@ PL/SQL callbacks provide a powerful way to implement database-native saga partic
 
 ✅ **Congratulations!** You have successfully completed Lab 3: Core Setup. You have:
 
-- ✅ **Created a Saga Broker** (`brokerchicago`) for message coordination
-- ✅ **Configured a Saga Coordinator** (`orchestratorchicago`) for saga orchestration  
+- ✅ **Created a Saga Broker** (`brokerhub`) for message coordination
+- ✅ **Configured a Saga Coordinator** (`orchestratorhub`) for saga orchestration
 - ✅ **Registered Saga Participants** (`CloudBank`, `BankChicago`, and `BankMex`) for Java client implementation
 - ✅ **Verified roles and permissions** for saga framework access
 - ✅ **Explored monitoring views** and infrastructure components

@@ -18,8 +18,8 @@ DECLARE
       END IF;
   END;
 BEGIN
-  create_user_if_missing('brokerchicago');
-  create_user_if_missing('orchestratorchicago');
+  create_user_if_missing('brokerhub');
+  create_user_if_missing('orchestratorhub');
   create_user_if_missing('brokermex');
   create_user_if_missing('orchestratormex');
   create_user_if_missing('bankchicago');
@@ -30,15 +30,15 @@ END;
 /
 
 GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_CONNECT_ROLE
-TO brokerchicago, brokermex;
+TO brokerhub, brokermex;
 
 GRANT CONNECT, RESOURCE, SAGA_ADM_ROLE, SAGA_PARTICIPANT_ROLE
-TO orchestratorchicago, orchestratormex,
+TO orchestratorhub, orchestratormex,
 bankchicago, bankmex, banklondon, banktokyo;
 
-ALTER USER brokerchicago QUOTA 500M ON DATA;
+ALTER USER brokerhub QUOTA 500M ON DATA;
 ALTER USER brokermex QUOTA 500M ON DATA;
-ALTER USER orchestratorchicago QUOTA 500M ON DATA;
+ALTER USER orchestratorhub QUOTA 500M ON DATA;
 ALTER USER orchestratormex QUOTA 500M ON DATA;
 ALTER USER bankchicago QUOTA 500M ON DATA;
 ALTER USER bankmex QUOTA 500M ON DATA;
@@ -48,7 +48,7 @@ ALTER USER banktokyo QUOTA 500M ON DATA;
 SELECT username
 FROM dba_users
 WHERE username IN (
-  'BROKERCHICAGO', 'ORCHESTRATORCHICAGO', 'BROKERMEX', 'ORCHESTRATORMEX',
+  'BROKERHUB', 'ORCHESTRATORHUB', 'BROKERMEX', 'ORCHESTRATORMEX',
   'BANKCHICAGO', 'BANKMEX', 'BANKLONDON', 'BANKTOKYO'
 )
 ORDER BY username;

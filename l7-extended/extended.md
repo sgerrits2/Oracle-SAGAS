@@ -21,7 +21,6 @@ By completing this lab, you will be able to:
 
 - Complete Labs 1–5 before starting this lab.
 - Keep the Autonomous Database and CloudBank environment from the previous labs available.
-- Do not run Cleanup until this lab is complete.
 
 ## Task 1: Register BankLondon as an Additional Participant
 
@@ -149,14 +148,17 @@ The exact spacing and capitalization displayed by SQLcl can vary. The registrati
 
 ### Step 3: Understand Why the Script Works
 
-| Script section | What it does | Why it is required |
-|---|---|---|
-| `CONNECT banklondon...` | Connects to the existing participant schema. | Oracle requires participant administration to run from the participant's own schema. |
-| `ADD_PARTICIPANT` | Registers `BankLondon` in the Saga framework. | It creates the participant metadata and messaging relationships. |
-| `coordinator_name` | Associates it with `CloudBankCoordinator`. | The coordinator manages Saga completion and compensation. |
-| `mailbox_schema` and `broker_name` | Connect it to broker `TEST`. | The broker routes messages between Saga entities. |
-| `DBA_SAGA_PARTICIPANTS` query | Reads the registered participant metadata. | It confirms that the participant has the expected owner and topology. |
-| Validation block | Requires exactly one matching participant. | It prevents the lab from displaying a misleading success message. |
+- **`CONNECT banklondon...`:** Connects to the existing participant schema. Oracle requires participant administration to run from the participant's own schema.
+
+- **`ADD_PARTICIPANT`:** Registers `BankLondon` in the Saga framework, creating the participant metadata and messaging relationships.
+
+- **`coordinator_name`:** Associates the participant with `CloudBankCoordinator`, which manages Saga completion and compensation.
+
+- **`mailbox_schema` and `broker_name`:** Connect the participant to broker `TEST`, which routes messages between Saga entities.
+
+- **`DBA_SAGA_PARTICIPANTS` query:** Reads the registered participant metadata and confirms that the participant has the expected owner and topology.
+
+- **Validation block:** Requires exactly one matching participant, preventing the lab from displaying a misleading success message.
 
 The resulting topology is:
 
@@ -170,8 +172,6 @@ TEST
 ```
 
 > **Important:** This lab registers `BankLondon` as a Saga participant, but the supplied CloudBank Java application does not send business requests to it. Processing requests would additionally require a Java implementation with `@Participant(name = "BankLondon")` or a PL/SQL callback package registered with `DBMS_SAGA_ADM.REGISTER_SAGA_CALLBACK`.
-
-You have now manually extended the Saga topology created by Labs 1–5. Continue to Cleanup to delete the workshop resources.
 
 ## Learn More
 

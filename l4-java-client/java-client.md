@@ -28,7 +28,7 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 - **Verify the supplied Saga annotations** and understand why each one is used.
 - **Understand** the CloudBank architecture and saga workflows.
 
-> **Note:** Lab 4 is review-only. The CloudBank source, Maven dependencies, and annotations are already complete. You do not need to edit, build, or run the application in this lab.
+> **👀 Note:** Lab 4 is review-only. The CloudBank source, Maven dependencies, and annotations are already complete. You do not need to edit, build, or run the application in this lab.
 
 ## Task 1: Maven Dependency
 
@@ -259,7 +259,7 @@ CloudBank coordinates account creation and inter-bank transfers. Bank balances u
 
 </details>
 
-### Step 5: Continue to Lab 5
+**Next Step: Continue to Lab 5**
 
 After reviewing the supplied annotations and Saga lifecycle, continue to **Lab 5: Oracle Sagas in Action — The CloudBank Application** to build, start, and test the application.
 

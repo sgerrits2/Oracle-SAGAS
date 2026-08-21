@@ -126,7 +126,7 @@ UNDEFINE BROKER_NAME
 </copy>
 ```
 
-**Expected output:**
+**✅ Expected output:**
 
 ```text
 Connected.
@@ -171,7 +171,7 @@ TEST
     └── BankLondon
 ```
 
-> **Important:** This lab registers `BankLondon` as a Saga participant, but the supplied CloudBank Java application does not send business requests to it. Processing requests would additionally require a Java implementation with `@Participant(name = "BankLondon")` or a PL/SQL callback package registered with `DBMS_SAGA_ADM.REGISTER_SAGA_CALLBACK`.
+> **⚠️ Important:** This lab registers `BankLondon` as a Saga participant, but the supplied CloudBank Java application does not send business requests to it. Processing requests would additionally require a Java implementation with `@Participant(name = "BankLondon")` or a PL/SQL callback package registered with `DBMS_SAGA_ADM.REGISTER_SAGA_CALLBACK`.
 
 ## Learn More
 

@@ -80,11 +80,11 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 <button id="copyProvisionButton" onclick="copyProvisionCommand()" class="copy-btn">Copy Provisioning Command</button>
 </div>
 
-> **Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
+> **⏱️ Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
 >
 > <br>
 >
-> **ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
+> **⚠️ 🔑 ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
 >
 > <br>
 >
@@ -103,7 +103,7 @@ The script automatically:
 
 Keep Cloud Shell open until the **PROVISIONING COMPLETE** summary appears.
 
-**Expected output:**
+**✅ Expected output:**
 
 ```text
 ================= PROVISIONING COMPLETE =================
@@ -137,7 +137,7 @@ ORDER BY username;
 
 The complete SQL executed by the provisioning script is available in [`create-cloudbank-users.sql`](files/create-cloudbank-users.sql).
 
-**Expected output:**
+**✅ Expected output:**
 
 ```text
 BANKCHICAGO

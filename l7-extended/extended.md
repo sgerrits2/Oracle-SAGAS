@@ -52,7 +52,6 @@ SET VERIFY OFF
 SET SERVEROUTPUT ON
 
 DEFINE DATABASE_CONNECTION_TNS_NAME = 'oraclesagademo_medium'
-ACCEPT ADMIN_PASSWORD CHAR PROMPT 'Enter the ADB ADMIN password (suggested password: Welcome_123#): ' HIDE
 DEFINE CLOUDBANK_PASSWORD           = 'Welcome_123#'
 DEFINE PARTICIPANT_SCHEMA           = 'banklondon'
 DEFINE PARTICIPANT_NAME             = 'BankLondon'
@@ -73,9 +72,7 @@ BEGIN
 END;
 /
 
--- Verify the new participant using the ADMIN metadata view.
-CONNECT ADMIN/"&ADMIN_PASSWORD"@'&DATABASE_CONNECTION_TNS_NAME'
-
+-- Verify the new participant using the current schema metadata view.
 COLUMN participant_name FORMAT A20
 COLUMN participant_schema FORMAT A20
 COLUMN coordinator_name FORMAT A25
@@ -87,7 +84,7 @@ SELECT name        AS participant_name,
        coordinator AS coordinator_name,
        broker_name,
        type
-FROM   dba_saga_participants
+FROM   user_saga_participants
 WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
 AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA');
 
@@ -96,7 +93,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*)
   INTO   participant_count
-  FROM   dba_saga_participants
+  FROM   user_saga_participants
   WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
   AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA')
   AND    UPPER(coordinator) = UPPER('&COORDINATOR_NAME')
@@ -116,7 +113,6 @@ END;
 /
 
 UNDEFINE DATABASE_CONNECTION_TNS_NAME
-UNDEFINE ADMIN_PASSWORD
 UNDEFINE CLOUDBANK_PASSWORD
 UNDEFINE PARTICIPANT_SCHEMA
 UNDEFINE PARTICIPANT_NAME
@@ -132,8 +128,6 @@ UNDEFINE BROKER_NAME
 Connected.
 
 PL/SQL procedure successfully completed.
-
-Connected.
 
 PARTICIPANT_NAME    PARTICIPANT_SCHEMA    COORDINATOR_NAME         BROKER_NAME    TYPE
 ------------------- --------------------- ------------------------ -------------- -----------
@@ -156,7 +150,7 @@ The exact spacing and capitalization displayed by SQLcl can vary. The registrati
 
 - **`mailbox_schema` and `broker_name`:** Connect the participant to broker `CloudBankBroker`, which routes messages between Saga entities.
 
-- **`DBA_SAGA_PARTICIPANTS` query:** Reads the registered participant metadata and confirms that the participant has the expected owner and topology.
+- **`USER_SAGA_PARTICIPANTS` query:** Reads the participant metadata visible to the current schema and confirms that the participant has the expected owner and topology.
 
 - **Validation block:** Requires exactly one matching participant, preventing the lab from displaying a misleading success message.
 

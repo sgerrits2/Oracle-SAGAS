@@ -259,15 +259,19 @@ BEGIN
 END;
 /
 
--- 6. Verify all participants
-CONNECT ADMIN/"&ADMIN_PASSWORD"@'&DATABASE_CONNECTION_TNS_NAME'
+-- 6. Verify the broker first, then the registered participants using USER_SAGA views
+CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+
+SELECT name AS broker_name
+FROM   user_saga_brokers
+WHERE  UPPER(name) = UPPER('&BROKER_NAME');
 
 SELECT name        AS participant_name,
-       owner       AS participant_schema,
-       coordinator AS coordinator_name,
-       broker_name,
-       type
-FROM   dba_saga_participants
+      owner       AS participant_schema,
+      coordinator AS coordinator_name,
+      broker_name,
+      type
+FROM   user_saga_participants
 ORDER BY owner, name;
 
 DECLARE
@@ -275,7 +279,7 @@ DECLARE
 BEGIN
   SELECT COUNT(*)
   INTO   configured_entities
-  FROM   dba_saga_participants
+  FROM   user_saga_participants
   WHERE  (UPPER(name), UPPER(owner)) IN (
            ('BANKCHICAGO', 'BANKCHICAGO'),
            ('BANKMEX', 'BANKMEX'),
@@ -300,6 +304,35 @@ END;
 
 UNDEFINE ADMIN_PASSWORD</span>
 </pre>
+
+**✅ Expected output:**
+
+```text
+SQL> SELECT name AS broker_name
+    FROM user_saga_brokers
+    WHERE UPPER(name) = UPPER('CloudBankBroker');
+
+BROKER_NAME
+--------------------
+CLOUDBANKBROKER
+
+SQL> SELECT name        AS participant_name,
+           owner       AS participant_schema,
+           coordinator AS coordinator_name,
+           broker_name,
+           type
+    FROM user_saga_participants
+    ORDER BY owner, name;
+
+PARTICIPANT_NAME       PARTICIPANT_SCHEMA      COORDINATOR_NAME          BROKER_NAME         TYPE
+--------------------   --------------------   ----------------------   -----------------   --------------
+CLOUDBANK              ORCHESTRATORHUB        CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
+CLOUDBANKCOORDINATOR   ORCHESTRATORHUB        CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Coordinator
+
+SUCCESS: Broker, Coordinator, and all three Saga Participants are configured correctly.
+```
+
+This ordering matches the script execution: the broker is displayed first, followed by the participants and the final verification message.
 
 ### In one sentence
 
@@ -351,7 +384,7 @@ Each participant represents one business unit in the workflow: `CloudBank`, `Ban
 You can see the key code lines in Task 2:
 
 - `EXEC DBMS_SAGA_ADM.ADD_PARTICIPANT(...)` — registers each participant.
-- `SELECT ... FROM dba_saga_participants` — shows the coordinator and registered participants across the CloudBank schemas.
+- `SELECT ... FROM user_saga_participants` — shows the coordinator and registered participants visible to the current user in the CloudBank setup.
 
 [Syntax and parameter reference for Saga Participants.](https://docs.oracle.com/en/database/oracle/oracle-database/26/arpls/dbms_saga_adm.html#ARPLS-GUID-F2E81F25-93AD-4DDB-A887-D325A1F8C84A)
 <br/>

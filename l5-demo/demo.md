@@ -84,7 +84,7 @@ In this lab, you will:
 
 ---
 
-This task performs only the environment work required for the Saga scenarios. The ADB TNS alias and SSH private key path are fixed for this LiveLab; the only value you need to provide is the Compute instance public IP.
+This task performs only the environment work required for the Saga scenarios. The ADB TNS alias and SSH private key path are fixed for this LiveLab; the required values are the Compute instance public IP and the ADB ADMIN password used to initialize the database setup.
 
 ### Step 1: Enter Your Compute Instance IP
 
@@ -94,9 +94,13 @@ This task performs only the environment work required for the Saga scenarios. Th
 
 <input type="text" id="computeInstanceIP" placeholder="Enter compute public IP (e.g., 129.146.123.45)" class="input-field" oninput="updateLabValues()"><br/>
 
+<strong>ADB ADMIN password:</strong>
+
+<input type="password" id="adbAdminPassword" placeholder="Enter ADB ADMIN password" class="input-field" oninput="updateLabValues()"><br/>
+
 <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
 
-💡 <em>This lab always uses TNS alias oraclesagademo_medium and SSH private key $HOME/.ssh/cloudbank_key.</em>
+💡 <em>This lab always uses TNS alias oraclesagademo_medium, SSH private key $HOME/.ssh/cloudbank_key, and the same ADB ADMIN password in the generated launch script.</em>
 
 </div>
 
@@ -116,7 +120,7 @@ Copy the **Public IP address** and paste it in the field above.
 
 <div id="configWarning" style="display:none; background:#fff4e5; border:1px solid #f0ad4e; padding:12px 14px; border-radius:8px; margin:12px 0; color:#7a4b00;">
 
-<strong>Required environment information is missing.</strong> Enter the Compute Instance Public IP before copying the launch script.
+<strong>Required environment information is missing.</strong> Enter the Compute Instance Public IP and ADB ADMIN password before copying the launch script.
 
 </div>
 
@@ -136,15 +140,13 @@ COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
 
 TNS_ALIAS="oraclesagademo_medium"
 
-read -r -s -p "Enter the ADB ADMIN password (suggested password: Welcome_123#): " ADB_ADMIN_PASSWORD
+ADB_ADMIN_PASSWORD="<span class="adb-admin-password">ADB_ADMIN_PASSWORD</span>"
 
-echo
+if [ -z "$ADB_ADMIN_PASSWORD" ] || [ "$ADB_ADMIN_PASSWORD" = "ADB_ADMIN_PASSWORD" ]; then
 
-if [ -z "$ADB_ADMIN_PASSWORD" ]; then
+  echo "ERROR: An ADB ADMIN password is required."
 
-echo "ERROR: An ADB ADMIN password is required."
-
-exit 1
+  exit 1
 
 fi
 
@@ -531,8 +533,10 @@ element.textContent = value;
 function updateLabValues() {
 
 const instanceIPElement = document.getElementById('computeInstanceIP');
+const adminPasswordElement = document.getElementById('adbAdminPassword');
 
 const instanceIP = (instanceIPElement ? instanceIPElement.value : '').trim() || 'INSTANCE_IP';
+const adminPassword = (adminPasswordElement ? adminPasswordElement.value : '').trim() || 'ADB_ADMIN_PASSWORD';
 
 document.querySelectorAll('.instance-ip-value').forEach(function(element) {
 
@@ -541,12 +545,13 @@ element.textContent = instanceIP;
 });
 
 setTextForClass('instance-ip-value', instanceIP);
+setTextForClass('adb-admin-password', adminPassword);
 
 if (instanceIPElement && instanceIPElement.value.trim()) sessionStorage.setItem('computePublicIP', instanceIPElement.value.trim());
+if (adminPasswordElement && adminPasswordElement.value.trim()) sessionStorage.setItem('adbAdminPassword', adminPasswordElement.value.trim());
 
 const warning = document.getElementById('configWarning');
-
-const missing = !instanceIPElement || !instanceIPElement.value.trim();
+const missing = !instanceIPElement || !instanceIPElement.value.trim() || !adminPasswordElement || !adminPasswordElement.value.trim();
 
 if (warning) warning.style.display = missing ? 'block' : 'none';
 
@@ -557,10 +562,13 @@ function loadPreviousLabValues() {
 try {
 
 const savedIP = getFirstSessionValue(['computePublicIP', 'computeInstanceIP']);
+const savedPassword = getFirstSessionValue(['adbAdminPassword']);
 
 const instanceIPElement = document.getElementById('computeInstanceIP');
+const adminPasswordElement = document.getElementById('adbAdminPassword');
 
 if (savedIP && instanceIPElement) instanceIPElement.value = savedIP;
+if (savedPassword && adminPasswordElement) adminPasswordElement.value = savedPassword;
 
 updateLabValues();
 

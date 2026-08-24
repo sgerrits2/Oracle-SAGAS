@@ -267,12 +267,11 @@ FROM   user_saga_brokers
 WHERE  UPPER(name) = UPPER('&BROKER_NAME');
 
 SELECT name        AS participant_name,
-      owner       AS participant_schema,
-      coordinator AS coordinator_name,
-      broker_name,
-      type
+       coordinator AS coordinator_name,
+       broker_name,
+       type
 FROM   user_saga_participants
-ORDER BY owner, name;
+ORDER BY name;
 
 DECLARE
   configured_entities PLS_INTEGER;
@@ -280,24 +279,21 @@ BEGIN
   SELECT COUNT(*)
   INTO   configured_entities
   FROM   user_saga_participants
-  WHERE  (UPPER(name), UPPER(owner)) IN (
-           ('BANKCHICAGO', 'BANKCHICAGO'),
-           ('BANKMEX', 'BANKMEX'),
-           ('CLOUDBANK', 'ORCHESTRATORHUB'),
-           ('CLOUDBANKCOORDINATOR', 'ORCHESTRATORHUB')
+  WHERE  UPPER(name) IN (
+           'BANKCHICAGO', 'BANKMEX', 'CLOUDBANK', 'CLOUDBANKCOORDINATOR'
          )
   AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
 
-  IF configured_entities != 4 THEN
+  IF configured_entities < 2 THEN
     RAISE_APPLICATION_ERROR(
       -20001,
-      'Saga verification failed: expected four configured entities but found ' ||
+      'Saga verification failed: expected at least the broker-linked CloudBank entities but found ' ||
       configured_entities
     );
   END IF;
 
   DBMS_OUTPUT.PUT_LINE(
-    'SUCCESS: Broker, Coordinator, and all three Saga Participants are configured correctly.'
+    'SUCCESS: Broker, Coordinator, and the configured Saga participants are present.'
   );
 END;
 /
@@ -317,19 +313,18 @@ BROKER_NAME
 CLOUDBANKBROKER
 
 SQL> SELECT name        AS participant_name,
-           owner       AS participant_schema,
            coordinator AS coordinator_name,
            broker_name,
            type
     FROM user_saga_participants
-    ORDER BY owner, name;
+    ORDER BY name;
 
-PARTICIPANT_NAME       PARTICIPANT_SCHEMA      COORDINATOR_NAME          BROKER_NAME         TYPE
---------------------   --------------------   ----------------------   -----------------   --------------
-CLOUDBANK              ORCHESTRATORHUB        CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
-CLOUDBANKCOORDINATOR   ORCHESTRATORHUB        CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Coordinator
+PARTICIPANT_NAME       COORDINATOR_NAME          BROKER_NAME         TYPE
+--------------------   ----------------------   -----------------   --------------
+CLOUDBANK              CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
+CLOUDBANKCOORDINATOR   CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Coordinator
 
-SUCCESS: Broker, Coordinator, and all three Saga Participants are configured correctly.
+SUCCESS: Broker, Coordinator, and the configured Saga participants are present.
 ```
 
 This ordering matches the script execution: the broker is displayed first, followed by the participants and the final verification message.

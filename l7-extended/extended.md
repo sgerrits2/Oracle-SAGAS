@@ -14,7 +14,7 @@ By completing this lab, you will be able to:
 
 - Register an additional Saga participant manually with `DBMS_SAGA_ADM.ADD_PARTICIPANT`.
 - Associate the participant with the existing CloudBank coordinator and broker.
-- Verify the participant name, owner, coordinator, broker, and type.
+- Verify the participant name, coordinator, broker, and type.
 - Understand the difference between registering a participant and implementing its business logic.
 
 ### Prerequisites
@@ -74,19 +74,17 @@ END;
 
 -- Verify the new participant using the current schema metadata view.
 COLUMN participant_name FORMAT A20
-COLUMN participant_schema FORMAT A20
 COLUMN coordinator_name FORMAT A25
 COLUMN broker_name FORMAT A15
 COLUMN type FORMAT A15
 
 SELECT name        AS participant_name,
-       owner       AS participant_schema,
        coordinator AS coordinator_name,
        broker_name,
        type
 FROM   user_saga_participants
 WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
-AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA');
+ORDER BY name;
 
 DECLARE
   participant_count PLS_INTEGER;
@@ -95,7 +93,6 @@ BEGIN
   INTO   participant_count
   FROM   user_saga_participants
   WHERE  UPPER(name) = UPPER('&PARTICIPANT_NAME')
-  AND    UPPER(owner) = UPPER('&PARTICIPANT_SCHEMA')
   AND    UPPER(coordinator) = UPPER('&COORDINATOR_NAME')
   AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
 
@@ -129,9 +126,9 @@ Connected.
 
 PL/SQL procedure successfully completed.
 
-PARTICIPANT_NAME    PARTICIPANT_SCHEMA    COORDINATOR_NAME         BROKER_NAME    TYPE
-------------------- --------------------- ------------------------ -------------- -----------
-BANKLONDON          BANKLONDON            CLOUDBANKCOORDINATOR     CLOUDBANKBROKER Participant
+PARTICIPANT_NAME    COORDINATOR_NAME         BROKER_NAME    TYPE
+------------------- ------------------------ -------------- -----------
+BANKLONDON          CLOUDBANKCOORDINATOR     CLOUDBANKBROKER Participant
 
 SUCCESS: BankLondon is registered as an additional Saga participant.
 
@@ -150,7 +147,7 @@ The exact spacing and capitalization displayed by SQLcl can vary. The registrati
 
 - **`mailbox_schema` and `broker_name`:** Connect the participant to broker `CloudBankBroker`, which routes messages between Saga entities.
 
-- **`USER_SAGA_PARTICIPANTS` query:** Reads the participant metadata visible to the current schema and confirms that the participant has the expected owner and topology.
+- **`USER_SAGA_PARTICIPANTS` query:** Reads the participant metadata visible to the current schema and confirms the expected coordinator and broker topology.
 
 - **Validation block:** Requires exactly one matching participant, preventing the lab from displaying a misleading success message.
 

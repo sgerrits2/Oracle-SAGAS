@@ -770,6 +770,6 @@ Your Oracle Sagas foundation is now ready for implementing actual business logic
 
 ## Acknowledgements
 
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney  
+* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney, Luis Cruz, Sebastian Gerritsen
 * **Created By/Date** — Vinay Pandhariwal, August 2025  
 * **Last Updated By/Date** — Vinay Pandhariwal, August 2025

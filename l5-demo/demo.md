@@ -2,53 +2,35 @@
 
 ## **Introduction**
 
-In this lab, you will use the **CloudBank application** to focus on the **Oracle Saga Pattern in action**. The demo environment is automated so that most of your time is spent observing Saga behavior instead of configuring infrastructure.
+In this lab, you use the **CloudBank application** to observe Oracle Sagas. This updated procedure reflects the environment that was actually validated in OCI Cloud Shell.
 
 You will:
 
-- Execute a successful distributed Saga between BankChicago and BankMex
+- Build the CloudBank Java and Flask runtime image
 
-- Trigger a compensation flow and verify the resulting Saga state
+- Initialize the ADB objects only once
 
-- Simulate a participant failure and observe recovery
+- Validate the stack locally in Cloud Shell
 
-- Correlate database Saga state with distributed traces in Zipkin
-
-The setup steps are intentionally minimized and only prepare the environment required for the Saga scenarios.
+- Deploy and open the public UI only after a Compute instance with enough memory is available
 
 </br>
 
 <details open>
 
-<summary><mark>CloudBank Architecture</mark></summary>
+<summary><mark>Important environment status</mark></summary>
 
-**CloudBank** uses the following components for the Saga scenarios:
+- **Cloud Shell preparation:** validated: source, ADB wallet, .env, Podman Compose, Java builds, runtime image, and ADB setup.
 
-- **CloudBank UI:** Starts the money-transfer requests used in this lab
+- **Current Compute instance:** not suitable for the complete stack. It has about 1 GB RAM; starting Bank A, Bank B, orchestrator, Zipkin, Flask, and Swagger exhausts memory and SSH becomes unavailable.
 
-- **Saga Participants:** BankChicago and BankMex
+- **Public UI and Zipkin:** pending until an instance with at least 4 GB RAM (6 GB recommended) is available and responds locally and publicly.
 
-- **Saga Coordinator:** CloudBankCoordinator in schema orchestratorhub
-
-- **Saga Broker:** CloudBankBroker in schema brokerhub
-
-- **Database Layer:** Oracle Database schemas bankchicago and bankmex
-
-- **Tracing:** Zipkin for following the distributed request path
-
-**Saga Focus:**
-
-- Successful distributed execution
-
-- Compensation after a business failure
-
-- Participant failure and recovery
-
-- Final consistency and Saga lifecycle visibility
+- Do not put passwords, wallet files, or .env values in terminal history, screenshots, this document, or a repository.
 
 </details>
 
-*Estimated Time: 20–30 minutes*
+*Estimated Time: 30–45 minutes, excluding Compute capacity wait time*
 
 ---
 
@@ -56,37 +38,235 @@ The setup steps are intentionally minimized and only prepare the environment req
 
 In this lab, you will:
 
-- **Launch CloudBank** using one automated setup script
+- **Prepare Cloud Shell** with Podman Compose and the missing Dockerfiles
 
-- **Execute a successful distributed Saga** between BankChicago and BankMex
+- **Validate the application image** before deployment
 
-- **Trigger compensation** and inspect the resulting Saga state
+- **Initialize ADB once** and preserve the resulting objects
 
-- **Simulate participant failure** and observe recovery
+- **Check Compute resources** before starting services
 
-- **Use database views and Zipkin** to correlate Saga state with distributed execution
+- **Run the Saga scenarios** after the UI and monitoring endpoints are available
 
 ---
 
 ### Prerequisites
 
-- Completion of **Lab 3 (Saga Core Setup)** and **Lab 4 (Saga Client)**
+- Cloud Shell project at $HOME/cloudbank-setup/oracle-saga-cloudbank
 
-- Cloud Shell with **Oracle ADB wallet** configured and **CloudBank codebase** ready
+- ADB wallet at adbsSetup/adb_wallet and an already configured .env
 
-- Compute instance with **Podman and Podman Compose** installed
+- SSH key at $HOME/.ssh/cloudbank_key for Compute deployment
 
-- Security rules allowing ports **3000 (UI)**, **8080 (API)**, and **9411 (Zipkin)**
+- Compute with Podman, Podman Compose, and at least 4 GB RAM
 
----
-
-## Task 1: Launch CloudBank
+- Stateful ingress rules for TCP 22, 3000, 8080, 8081, 8082, 8083, and 9411
 
 ---
 
-This task performs only the environment work required for the Saga scenarios. The ADB TNS alias and SSH private key path are fixed for this LiveLab; the required values are the Compute instance public IP and the ADB ADMIN password used to initialize the database setup.
+## Task 1: Prepare and Validate Cloud Shell
 
-### Step 1: Enter Your Compute Instance IP
+---
+
+### Step 1: Verify the project and install Podman Compose
+
+Run this block in **Cloud Shell**. It checks the project without printing secrets and installs the Compose wrapper if necessary.
+
+<pre id="prepareCloudShell" class="interactive-command"><code>set -e
+
+PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
+
+if [ ! -d "$PROJECT_DIR" ]; then
+echo "ERROR: $PROJECT_DIR was not found."
+exit 1
+fi
+
+cd "$PROJECT_DIR"
+
+python3 -m pip install --user podman-compose
+export PATH="$HOME/.local/bin:$PATH"
+
+echo "--- tools ---"
+podman --version
+podman-compose --version
+
+echo "--- source modules ---"
+find CloudBank -maxdepth 3 -name pom.xml -type f -print
+find . -maxdepth 4 -type f ( -name app.py -o -name requirements.txt ) -print
+
+echo "--- wallet and configuration ---"
+test -d adbsSetup/adb_wallet && echo "OK: wallet present" || echo "ERROR: wallet missing"
+test -f .env && echo "OK: .env present" || echo "ERROR: .env missing"
+sed -n 's/^([A-Za-z_][A-Za-z0-9_])=./\1=<configured>/p' .env | sort
+find adbsSetup/adb_wallet -maxdepth 1 -type f -printf '%f\n' | sort
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('prepareCloudShell', this)" class="copy-btn-pastel">📋 Copy Cloud Shell Preparation</button>
+
+</div>
+
+**Expected Result:**
+
+- podman-compose is available from $HOME/.local/bin.
+
+- The three Maven modules, the Flask application, wallet, and .env are present.
+
+- Only variable names are printed; no .env values are exposed.
+
+> **Note:** In a new Cloud Shell session, run export PATH="$HOME/.local/bin:$PATH" again or add it to your shell profile.
+
+### Step 2: Create build files and apply compatibility fixes
+
+The following block creates the validated multi-stage files and adds the Flask RESTX compatibility requirement.
+
+<pre id="createBuildFiles" class="interactive-command"><code>set -e
+cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+
+tee osagaJavaBuilder >/dev/null <<'EOF'
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-17 AS builder
+WORKDIR /workspace
+COPY CloudBank ./CloudBank
+RUN mvn -q -f /workspace/CloudBank/banka/pom.xml package -DskipTests && 
+mvn -q -f /workspace/CloudBank/bankb/pom.xml package -DskipTests && 
+mvn -q -f /workspace/CloudBank/orchestrator/pom.xml package -DskipTests
+EOF
+
+tee osagaJavaRuntime >/dev/null <<'EOF'
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-17 AS builder
+WORKDIR /workspace
+COPY CloudBank ./CloudBank
+RUN mvn -q -f /workspace/CloudBank/banka/pom.xml package -DskipTests && 
+mvn -q -f /workspace/CloudBank/bankb/pom.xml package -DskipTests && 
+mvn -q -f /workspace/CloudBank/orchestrator/pom.xml package -DskipTests
+
+FROM docker.io/library/eclipse-temurin:17-jre-jammy AS runtime
+WORKDIR /opt/app
+RUN apt-get update && 
+apt-get install -y --no-install-recommends python3 python3-pip && 
+rm -rf /var/lib/apt/lists/*
+COPY --from=builder /workspace/CloudBank/banka/target/banka-1.jar /opt/app/bankA.jar
+COPY --from=builder /workspace/CloudBank/bankb/target/bankb-1.jar /opt/app/bankB.jar
+COPY --from=builder /workspace/CloudBank/orchestrator/target/orchestrator-1.jar /opt/app/orchestrator.jar
+COPY CloudBank/Website /opt/app/flask_ui
+RUN pip3 install --no-cache-dir -r /opt/app/flask_ui/requirements.txt
+EXPOSE 8081 8082 8083 8084 8085
+EOF
+
+grep -qxF 'Werkzeug>=2.3.7,<3.0' CloudBank/Website/requirements.txt || 
+printf '\nWerkzeug>=2.3.7,<3.0\n' >> CloudBank/Website/requirements.txt
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('createBuildFiles', this)" class="copy-btn-pastel">📋 Copy Build File Fix</button>
+
+</div>
+
+The runtime builds its own builder stage. This avoids the failure caused by COPY --from=localhost/osaga-builder:1.0, which Buildah attempts to resolve as a remote registry image.
+
+### Step 3: Correct the Compose YAML and validate the image
+
+Back up osagaAdbsSetup.yaml. Confirm these required corrections before building:
+
+- osagas-cleanup-adbs is indented under services:.
+
+- SQLcl scripts use $${TNS_ALIAS}, not $${TNS_ALIAS_CONTAINER}.
+
+- Swagger image is docker.io/swaggerapi/swagger-ui:v5.20.7.
+
+- Published ports are Flask 3000:8084, Swagger 8080:8080, and Zipkin 9411:9411.
+
+<pre id="validateBuild" class="interactive-command"><code>set -e
+cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+
+cp osagaAdbsSetup.yaml osagaAdbsSetup.yaml.bak
+sed -i 
+-e 's/"8084:8084"/"3000:8084"/' 
+-e 's/"8085:8080"/"8080:8080"/' 
+osagaAdbsSetup.yaml
+
+grep -nE 'docker.io/swaggerapi/swagger-ui|osagas-cleanup-adbs|TNS_ALIAS}' osagaAdbsSetup.yaml
+grep -nE '"(3000:8084|8080:8080|9411:9411)"' osagaAdbsSetup.yaml
+
+podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder .
+podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime .
+podman run --rm --entrypoint /bin/sh osaga-runtime:1.0 -c 
+'ls -l /opt/app/bankA.jar /opt/app/bankB.jar /opt/app/orchestrator.jar /opt/app/flask_ui/app.py'
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('validateBuild', this)" class="copy-btn-pastel">📋 Copy Build and Validation</button>
+
+</div>
+
+**Expected Result:** The build succeeds and the image contains bankA.jar, bankB.jar, orchestrator.jar, and flask_ui/app.py.
+
+---
+
+## Task 2: Initialize ADB and Test Locally
+
+---
+
+### Step 1: Run ADB setup only if it has never completed
+
+The actual profile is adbssagasetup, not adbsSetup. If osagas-setup-adbs is Exited (0), database setup is complete. Do not rerun it because the schemas and objects already exist.
+
+<pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+export PATH="$HOME/.local/bin:$PATH"
+
+podman ps -a --format 'table {{.Names}}\t{{.Status}}'
+podman logs --tail 30 osagas-setup-adbs
+
+Run the next command only when osagas-setup-adbs has never completed:
+
+COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-setup-adbs
+
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('verifyAdbSetup', this)" class="copy-btn-pastel">📋 Copy ADB Setup Verification</button>
+
+</div>
+
+### Step 2: Temporary local stack test
+
+Cloud Shell can validate the containers locally. It does not provide the public ingress required for the browser UI; do not treat this as the public demo deployment.
+
+<pre id="localStackTest" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+
+podman start zipkin bankA bankB orchestrator flask swagger-ui
+sleep 20
+podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+
+Older containers retain their original host ports until recreated.
+
+curl -sSI http://127.0.0.1:8084 | head -n 1 || true
+curl -sSI http://127.0.0.1:8085 | head -n 1 || true
+podman logs --tail 50 flask
+podman logs --tail 50 zipkin
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('localStackTest', this)" class="copy-btn-pastel">📋 Copy Local Stack Test</button>
+
+</div>
+
+Expected local result: Flask and Swagger return HTTP 200. Zipkin may need separate log review if it reports unhealthy or a reset.
+
+---
+
+## Task 3: Compute Deployment and Public UI (Pending)
+
+---
+
+The current 1 GB Compute instance must not run the complete stack. Its disk space and OCI ingress rules are not the blocker; memory is. A VM.Standard.E2.1.Micro cannot be resized. Use a VM with at least 4 GB RAM, preferably 6 GB.
+
+### Step 1: Check Compute resources before deployment
 
 <div class="input-section">
 
@@ -94,709 +274,128 @@ This task performs only the environment work required for the Saga scenarios. Th
 
 <input type="text" id="computeInstanceIP" placeholder="Enter compute public IP (e.g., 129.146.123.45)" class="input-field" oninput="updateLabValues()"><br/>
 
-<strong>ADB ADMIN password:</strong>
-
-<input type="password" id="adbAdminPassword" placeholder="Enter ADB ADMIN password" class="input-field" oninput="updateLabValues()"><br/>
-
 <div style="font-size: 0.9em; color: #666; margin-top: 5px;">
 
-💡 <em>This lab always uses TNS alias oraclesagademo_medium, SSH private key $HOME/.ssh/cloudbank_key, and the same ADB ADMIN password in the generated launch script.</em>
+💡 <em>Use an instance with at least 4 GB RAM. In Toronto, Always Free Ampere capacity may temporarily be unavailable (OUT_OF_HOST_CAPACITY).</em>
 
 </div>
 
 </div>
 
-**How to obtain the Compute Instance Public IP:**
-
-In the OCI Console, open the navigation menu and select **Compute → Instances**.
-
-Select the Compute instance used for the CloudBank demo.
-
-In **Instance information**, locate the primary VNIC / instance access information.
-
-Copy the **Public IP address** and paste it in the field above.
-
-> **Note:** Use the **Public IP address**, not the private IP address.
-
-<div id="configWarning" style="display:none; background:#fff4e5; border:1px solid #f0ad4e; padding:12px 14px; border-radius:8px; margin:12px 0; color:#7a4b00;">
-
-<strong>Required environment information is missing.</strong> Enter the Compute Instance Public IP and ADB ADMIN password before copying the launch script.
-
-</div>
-
-<br>
-
-### Step 2: Deploy and Start CloudBank
-
-Run the following complete block directly in **Cloud Shell**. The CloudBank project is located at $HOME/cloudbank-setup/oracle-saga-cloudbank, so the script does not depend on your current working directory.
-
-<pre id="deployCloudBank" class="interactive-command"><code>set -e
-
-PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
-
-SSH_KEY="$HOME/.ssh/cloudbank_key"
-
-COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
-
-TNS_ALIAS="oraclesagademo_medium"
-
-ADB_ADMIN_PASSWORD="<span class="adb-admin-password">ADB_ADMIN_PASSWORD</span>"
-
-if [ -z "$ADB_ADMIN_PASSWORD" ] || [ "$ADB_ADMIN_PASSWORD" = "ADB_ADMIN_PASSWORD" ]; then
-
-  echo "ERROR: An ADB ADMIN password is required."
-
-  exit 1
-
-fi
-
-if [ ! -d "$PROJECT_DIR" ]; then
-
-echo "ERROR: $PROJECT_DIR was not found."
-
-exit 1
-
-fi
-
-if [ ! -f "$SSH_KEY" ]; then
-
-echo "ERROR: SSH private key was not found: $SSH_KEY"
-
-exit 1
-
-fi
-
-cd "$PROJECT_DIR"
-
-cat > .env <<EOF
-
-# Database Connection Settings
-
-TNS_ALIAS_CONTAINER=$TNS_ALIAS
-
-ADBS_USERNAME=ADMIN
-
-ADBS_ADMIN_PWD=$ADB_ADMIN_PASSWORD
-
-# Bank Service Credentials
-
-BANKA_USERNAME=bankchicago
-
-BANKA_PASSWORD=Welcome_123#
-
-BANKB_USERNAME=bankmex
-
-BANKB_PASSWORD=Welcome_123#
-
-# Orchestrator and Broker
-
-ORCHESTRATOR_USERNAME=orchestratorhub
-
-ORCHESTRATOR_PASSWORD=Welcome_123#
-
-BROKER_USERNAME=brokerhub
-
-BROKER_PASSWORD=Welcome_123#
-
-# Container and Monitoring Configuration
-
-TNS_ADMIN_CONTAINER=/opt/adb_wallet
-
-ENABLE_ZIPKIN=true
-
-ZIPKIN_URL=http://zipkin:9411/api/v2/spans
-
-EOF
-
-chmod 600 .env
-
-cd "$HOME"
-
-tar -czf oracle-saga-cloudbank.tar.gz oracle-saga-cloudbank*/*
-
-scp -i "$SSH_KEY" oracle-saga-cloudbank.tar.gz "ubuntu@$COMPUTE_IP:~/"
-
-ssh -i "$SSH_KEY" "ubuntu@$COMPUTE_IP" 'bash -s*'* <<'REMOTE'
-
-set -e
-
-cd "$HOME"
-
-rm -rf oracle-saga-cloudbank
-
-tar -xzf oracle-saga-cloudbank.tar.gz
-
-cd oracle-saga-cloudbank
-
-command -v podman >/dev/null || { echo "ERROR: podman was not found."; exit 1; }
-
-command -v podman-compose >/dev/null || { echo "ERROR: podman-compose was not found."; exit 1; }
-
-echo "=== Starting database setup ==="
-
-podman-compose --profile adbsSetup up -d
-
-SETUP_IDS="$(podman-compose --profile adbsSetup ps -q)"
-
-if [ -z "$SETUP_IDS" ]; then
-
-echo "ERROR: No database setup containers were created."
-
-podman-compose --profile adbsSetup ps
-
-exit 1
-
-fi
-
-COMPLETED=false
-
-for attempt in $(seq 1 60); do
-
-RUNNING=false
-
-for id in $SETUP_IDS; do
-
-if [ "$(podman inspect -f '{{.State.Running}}' "$id")" = "true" ]; then
-
-RUNNING=true
-
-break
-
-fi
-
-done
-
-if [ "$RUNNING" = "false" ]; then
-
-COMPLETED=true
-
-break
-
-fi
-
-sleep 5
-
-done
-
-if [ "$COMPLETED" != "true" ]; then
-
-echo "ERROR: Database setup did not finish within the expected time."
-
-for id in $SETUP_IDS; do
-
-podman logs --tail 50 "$id" 2>&1 || true
-
-done
-
-exit 1
-
-fi
-
-for id in $SETUP_IDS; do
-
-EXIT_CODE="$(podman inspect -f '{{.State.ExitCode}}' "$id")"
-
-if [ "$EXIT_CODE" != "0" ]; then
-
-echo "ERROR: Database setup failed in container $id."
-
-podman logs --tail 50 "$id" 2>&1 || true
-
-exit 1
-
-fi
-
-done
-
-podman-compose --profile adbsSetup down
-
-echo "=== Starting CloudBank services ==="
-
-podman-compose --profile adbs up -d
-
-sleep 10
-
-echo "=== CloudBank Services ==="
-
-podman ps
-
-echo "CloudBank is ready for the Saga scenarios."
-
-REMOTE</code></pre>
+<pre id="checkCompute" class="interactive-command"><code>ssh -o ConnectTimeout=10 -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+free -h
+df -h /
+podman --version
+podman-compose --version
+REMOTE
+</code></pre>
 
 <div class="button-center">
 
-<button onclick="copyBlock('deployCloudBank', this)" class="copy-btn-pastel">📋 Copy Launch Script</button>
+<button onclick="copyBlock('checkCompute', this)" class="copy-btn-pastel">📋 Copy Compute Preflight</button>
 
 </div>
 
-**Expected Result:**
+Stop here if total memory is near 954Mi or below 4 GB. Wait for capacity, use a different eligible AD/region, or ask the instructor for an appropriately sized lab instance.
 
-- CloudBank is deployed to the compute instance
+### Step 2: Deploy only to a suitable VM
 
-- Database setup completes successfully
+After the preflight passes, package the corrected source and deploy it. ADB setup is intentionally not run on the VM again.
 
-- CloudBank services are running and ready for the Saga scenarios
+<pre id="deployCloudBank" class="interactive-command"><code>set -e
+PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ARCHIVE="$HOME/oracle-saga-cloudbank-deploy.tar.gz"
+COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
+SSH_KEY="$HOME/.ssh/cloudbank_key"
+
+cd "$PROJECT_DIR"
+rm -f "$ARCHIVE"
+tar -czf "$ARCHIVE" -C "$HOME/cloudbank-setup" oracle-saga-cloudbank
+scp -i "$SSH_KEY" "$ARCHIVE" "ubuntu@$COMPUTE_IP:~/"
+
+ssh -i "$SSH_KEY" "ubuntu@$COMPUTE_IP" 'bash -s' <<'REMOTE'
+set -e
+cd "$HOME"
+rm -rf oracle-saga-cloudbank
+tar -xzf oracle-saga-cloudbank-deploy.tar.gz
+cd oracle-saga-cloudbank
+chmod 600 .env
+podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime .
+COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d
+sleep 20
+podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+sudo loginctl enable-linger ubuntu
+REMOTE
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('deployCloudBank', this)" class="copy-btn-pastel">📋 Copy Deployment Script</button>
+
+</div>
+
+### Step 3: Verify service endpoints
+
+<pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+for port in 3000 8080 9411; do
+printf "localhost:%s -> " "$port"
+curl -4 -sS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port" || true
+done
+podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+REMOTE
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('verifyEndpoints', this)" class="copy-btn-pastel">📋 Copy Endpoint Verification</button>
+
+</div>
+
+Expected result: ports 3000 and 8080 return 200. If Zipkin is unhealthy, inspect podman logs --tail 100 zipkin.
 
 <style>
 
-.input-section {
-
-background-color: #f9f9f9;
-
-padding: 15px;
-
-margin: 12px 0;
-
-border-radius: 8px;
-
-border: 1px solid #ddd;
-
-}
-
-.input-field {
-
-width: 300px;
-
-max-width: 100%;
-
-padding: 8px 10px;
-
-font-size: 14px;
-
-border: 1px solid #ccc;
-
-border-radius: 4px;
-
-margin: 6px 0;
-
-box-sizing: border-box;
-
-}
-
-.interactive-command {
-
-position: relative;
-
-background-color: #f5f5f5;
-
-border: 1px solid #ddd;
-
-padding: 12px 14px;
-
-border-radius: 6px;
-
-margin: 12px 0;
-
-font-family: "Courier New", monospace;
-
-white-space: pre-wrap;
-
-overflow-wrap: anywhere;
-
-}
-
-.button-center {
-
-text-align: left;
-
-margin: 15px 0;
-
-}
-
-.copy-btn-pastel {
-
-background-color: #90EE90;
-
-color: #2E7D32;
-
-padding: 10px 16px;
-
-border: none;
-
-border-radius: 12px;
-
-cursor: pointer;
-
-font-size: 14px;
-
-margin: 10px 0;
-
-font-weight: 500;
-
-transition: all 0.2s ease;
-
-}
-
-.copy-btn-pastel:hover {
-
-background-color: #7FDD7F;
-
-transform: translateY(-1px);
-
-box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
-
-}
-
-.save-btn, .save-btn-small,
-
-.delete-btn, .delete-btn-small,
-
-.clear-btn, .clear-btn-small {
-
-padding: 8px 12px;
-
-border: none;
-
-border-radius: 12px;
-
-cursor: pointer;
-
-font-size: 12px;
-
-margin: 2px;
-
-font-weight: 500;
-
-}
-
-.save-btn, .save-btn-small {
-
-background-color: #90EE90;
-
-color: #2E7D32;
-
-}
-
-.delete-btn, .delete-btn-small {
-
-background-color: #f44336;
-
-color: white;
-
-}
-
-.clear-btn, .clear-btn-small {
-
-background-color: #008CBA;
-
-color: white;
-
-}
-
-@media (max-width: 768px) {
-
-.input-section {
-
-grid-template-columns: 1fr;
-
-}
-
-.input-field {
-
-width: 100%;
-
-max-width: 300px;
-
-}
-
-}
-
+.input-section { background-color: #f9f9f9; padding: 15px; margin: 12px 0; border-radius: 8px; border: 1px solid #ddd; }
+.input-field { width: 300px; max-width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; margin: 6px 0; box-sizing: border-box; }
+.interactive-command { position: relative; background-color: #f5f5f5; border: 1px solid #ddd; padding: 12px 14px; border-radius: 6px; margin: 12px 0; font-family: "Courier New", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
+.button-center { text-align: left; margin: 15px 0; }
+.copy-btn-pastel { background-color: #90EE90; color: #2E7D32; padding: 10px 16px; border: none; border-radius: 12px; cursor: pointer; font-size: 14px; margin: 10px 0; font-weight: 500; }
+.copy-btn-pastel { background-color: #7FDD7F; transform: translateY(-1px); }
 </style>
 
 <script>
-
-function getFirstSessionValue(keys, fallback = '') {
-
-for (const key of keys) {
-
-const value = sessionStorage.getItem(key);
-
-if (value && value.trim() !== '') return value.trim();
-
-}
-
-return fallback;
-
-}
-
-function setTextForClass(className, value) {
-
-document.querySelectorAll('.' + className).forEach(function(element) {
-
-element.textContent = value;
-
-});
-
-}
-
+function setTextForClass(className, value) { document.querySelectorAll("." + className).forEach(function(element) { element.textContent = value; }); }
 function updateLabValues() {
-
-const instanceIPElement = document.getElementById('computeInstanceIP');
-const adminPasswordElement = document.getElementById('adbAdminPassword');
-
-const instanceIP = (instanceIPElement ? instanceIPElement.value : '').trim() || 'INSTANCE_IP';
-const adminPassword = (adminPasswordElement ? adminPasswordElement.value : '').trim() || 'ADB_ADMIN_PASSWORD';
-
-document.querySelectorAll('.instance-ip-value').forEach(function(element) {
-
-element.textContent = instanceIP;
-
-});
-
-setTextForClass('instance-ip-value', instanceIP);
-setTextForClass('adb-admin-password', adminPassword);
-
-if (instanceIPElement && instanceIPElement.value.trim()) sessionStorage.setItem('computePublicIP', instanceIPElement.value.trim());
-if (adminPasswordElement && adminPasswordElement.value.trim()) sessionStorage.setItem('adbAdminPassword', adminPasswordElement.value.trim());
-
-const warning = document.getElementById('configWarning');
-const missing = !instanceIPElement || !instanceIPElement.value.trim() || !adminPasswordElement || !adminPasswordElement.value.trim();
-
-if (warning) warning.style.display = missing ? 'block' : 'none';
-
+const input = document.getElementById("computeInstanceIP");
+const instanceIP = (input ? input.value : "").trim() || "INSTANCE_IP";
+setTextForClass("instance-ip-value", instanceIP);
+if (input && input.value.trim()) sessionStorage.setItem("computePublicIP", input.value.trim());
 }
-
 function loadPreviousLabValues() {
-
-try {
-
-const savedIP = getFirstSessionValue(['computePublicIP', 'computeInstanceIP']);
-const savedPassword = getFirstSessionValue(['adbAdminPassword']);
-
-const instanceIPElement = document.getElementById('computeInstanceIP');
-const adminPasswordElement = document.getElementById('adbAdminPassword');
-
-if (savedIP && instanceIPElement) instanceIPElement.value = savedIP;
-if (savedPassword && adminPasswordElement) adminPasswordElement.value = savedPassword;
-
+const input = document.getElementById("computeInstanceIP");
+const savedIP = sessionStorage.getItem("computePublicIP");
+if (input && savedIP) input.value = savedIP;
 updateLabValues();
-
-} catch (error) {
-
-console.error('Error loading environment values:', error);
-
 }
-
-}
-
-function fallbackCopyTextToClipboard(text, callback) {
-
-const textArea = document.createElement('textarea');
-
-textArea.value = text;
-
-textArea.style.position = 'fixed';
-
-textArea.style.left = '-999999px';
-
-textArea.style.top = '-999999px';
-
-document.body.appendChild(textArea);
-
-textArea.focus();
-
-textArea.select();
-
-try {
-
-document.execCommand('copy');
-
-} catch (error) {
-
-console.error('Fallback copy failed:', error);
-
-}
-
-document.body.removeChild(textArea);
-
-if (callback) callback();
-
-}
-
 function copyBlock(elementId, button) {
-
 const element = document.getElementById(elementId);
-
 if (!element) return;
-
 const text = element.innerText;
-
-if (elementId === 'deployCloudBank') {
-
-const instanceIPElement = document.getElementById('computeInstanceIP');
-
-const instanceIP = instanceIPElement ? instanceIPElement.value.trim() : '';
-
-if (!instanceIP) {
-
-alert('Enter the Compute Instance Public IP before copying the deployment script.');
-
-return;
-
+const originalText = button ? button.innerHTML : "";
+const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
+if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
+else { const area = document.createElement("textarea"); area.value = text; document.body.appendChild(area); area.select(); document.execCommand("copy"); document.body.removeChild(area); done(); }
 }
-
-}
-
-const originalText = button ? button.innerHTML : '';
-
-const done = function() {
-
-if (button) {
-
-button.innerHTML = '✅ Copied!';
-
-button.style.backgroundColor = '#A8E6A8';
-
-setTimeout(function() {
-
-    button.innerHTML = originalText;
-
-    button.style.backgroundColor = '#90EE90';
-
-}, 2000);
-
-}
-
-};
-
-if (navigator.clipboard && navigator.clipboard.writeText) {
-
-navigator.clipboard.writeText(text).then(done).catch(function() {
-
-fallbackCopyTextToClipboard(text, done);
-
-});
-
-} else {
-
-fallbackCopyTextToClipboard(text, done);
-
-}
-
-}
-
-function getComputeIP() {
-
-const element = document.getElementById('computeInstanceIP');
-
-return element ? element.value.trim() : '';
-
-}
-
-function openURL(type) {
-
-const instanceIP = getComputeIP();
-
-if (!instanceIP) {
-
-alert('Please enter your compute instance IP address first!');
-
-return;
-
-}
-
-const urls = {
-
-frontend: `http://${instanceIP}:3000`,
-
-swagger: `http://${instanceIP}:8080/swagger-ui.html`,
-
-zipkin: `http://${instanceIP}:9411`
-
-};
-
-if (urls[type]) window.open(urls[type], '_blank');
-
-}
-
-function copyURL(type, button) {
-
-const instanceIP = getComputeIP();
-
-if (!instanceIP) {
-
-alert('Please enter your compute instance IP address first!');
-
-return;
-
-}
-
-const urls = {
-
-frontend: `http://${instanceIP}:3000`,
-
-swagger: `http://${instanceIP}:8080/swagger-ui.html`,
-
-zipkin: `http://${instanceIP}:9411`
-
-};
-
-const text = urls[type];
-
-if (!text) return;
-
-const originalText = button ? button.innerHTML : '';
-
-const done = function() {
-
-if (button) {
-
-button.innerHTML = '✅ Copied!';
-
-button.style.backgroundColor = '#A8E6A8';
-
-setTimeout(function() {
-
-    button.innerHTML = originalText;
-
-    button.style.backgroundColor = '#90EE90';
-
-}, 2000);
-
-}
-
-};
-
-if (navigator.clipboard && navigator.clipboard.writeText) {
-
-navigator.clipboard.writeText(text).then(done).catch(function() {
-
-fallbackCopyTextToClipboard(text, done);
-
-});
-
-} else {
-
-fallbackCopyTextToClipboard(text, done);
-
-}
-
-}
-
-if (document.readyState === 'loading') {
-
-document.addEventListener('DOMContentLoaded', loadPreviousLabValues);
-
-} else {
-
-loadPreviousLabValues();
-
-}
-
-window.addEventListener('load', loadPreviousLabValues);
-
+if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadPreviousLabValues); else loadPreviousLabValues();
 </script>
 
-## Task 2: Open CloudBank and Saga Monitoring
+## Task 4: Open CloudBank and Saga Monitoring (Pending)
 
 ---
 
-Keep the CloudBank UI and Zipkin open while running the Saga scenarios. The same compute instance IP entered in Task 1 is reused automatically.
+Do not open these endpoints until Task 3 succeeds locally on a suitable VM. After that, use the same Compute public IP.
 
 ### Step 1: Open CloudBank
-
-Use the CloudBank UI to initiate the distributed transactions used in Task 3.
 
 <pre class="interactive-command">
 
@@ -804,27 +403,9 @@ Use the CloudBank UI to initiate the distributed transactions used in Task 3.
 
 </pre>
 
-<div class="button-center">
-
-<button onclick="openURL('frontend')" class="copy-btn-pastel">🌐 Open CloudBank UI</button>
-
-<button onclick="copyURL('frontend', this)" class="copy-btn-pastel">📋 Copy CloudBank URL</button>
-
-</div>
-
 Use this interface to execute the success, compensation, and recovery scenarios.
 
-**Expected Interface:**
-
-![CloudBank UI](./images/lab5-frontend.png "CloudBank Flask frontend interface")
-
----
-
-Optional: Swagger API documentation remains available on port 8080 at /swagger-ui.html if you want to inspect the REST endpoints.
-
 ### Step 2: Open Zipkin
-
-Use Zipkin to correlate the Saga database state with calls between CloudBank, BankChicago, BankMex, and the coordinator.
 
 <pre class="interactive-command">
 
@@ -832,354 +413,79 @@ Use Zipkin to correlate the Saga database state with calls between CloudBank, Ba
 
 </pre>
 
-<div class="button-center">
+Optional Swagger API documentation: http://INSTANCE_IP:8080.
 
-<button onclick="openURL('zipkin')" class="copy-btn-pastel">🔍 Open Zipkin Monitoring</button>
+If the VM responds on localhost but not publicly, check the VNIC public IP, Internet Gateway/route table, Security List or NSG, and the OS firewall. Do not add duplicate ingress rules if a stateful TCP rule already exists.
 
-<button onclick="copyURL('zipkin', this)" class="copy-btn-pastel">📋 Copy Zipkin URL</button>
-
-</div>
-
-For each scenario, compare the latest trace with the Saga state returned by Oracle Database.
-
-**Expected Interface:**
-
-![Zipkin Tracing](./images/lab5-zipkin.png "Zipkin distributed tracing interface")
-
-## Task 3: Explore Oracle Sagas
+## Task 5: Explore Oracle Sagas
 
 ---
 
-Run the following three scenarios to compare successful execution, compensation, and participant recovery. Keep CloudBank and Zipkin open. For SQL verification, open SQLcl once in **Cloud Shell** with `sql /nolog` and keep the session open. At the `SQL>` prompt, run the following command once and enter the same ADB `ADMIN` password selected in Lab 2:
-
-```sql
-<copy>
-ACCEPT ADMIN_PASSWORD CHAR PROMPT 'Enter the ADB ADMIN password (suggested password: Welcome_123#): ' HIDE
-</copy>
-```
-
-The CloudBank application-schema password remains fixed as `Welcome_123#`.
+Run these scenarios only after CloudBank, the Java services, ADB, and Zipkin are available.
 
 ### Scenario 1: Successful Distributed Saga
 
-Execute an inter-bank transfer so that the Saga spans BankChicago and BankMex.
+Select **Inter-Bank Transfer**.
 
-**Via CloudBank UI:**
+Source account: BANKA-ACC-001; target account: BANKB-ACC-001; amount: 500.00.
 
-1. Select **"Inter-Bank Transfer"**
+Execute the transfer.
 
-2. Source account: BANKA-ACC-001
-
-3. Target account: BANKB-ACC-001
-
-4. Amount: 500.00
-
-5. Execute the transfer
-
-**Expected Saga Flow:**
-
-1. **Begin Saga** - CloudBankCoordinator starts the distributed Saga
-
-2. **BankChicago Debit** - Source participant processes the debit
-
-3. **BankMex Credit** - Destination participant processes the credit
-
-4. **Confirm** - Participants confirm successful work
-
-5. **Commit Saga** - The Saga reaches a successful final outcome
-
-**Verify the Saga:**
-
-<pre id="verifySuccessfulSaga" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
-
-SELECT saga_id, status, coordinator, start_time, saga_source
-
-FROM (
-
-SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
-
-FROM DBA_SAGAS
-
-WHERE is_initiator = 'YES'
-
-UNION ALL
-
-SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'HISTORY' AS saga_source
-
-FROM DBA_HIST_SAGAS
-
-WHERE is_initiator = 'YES'
-
-)
-
-ORDER BY start_time DESC
-
-FETCH FIRST 1 ROW ONLY;</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('verifySuccessfulSaga', this)" class="copy-btn-pastel">📋 Copy Saga Verification</button>
-
-</div>
-
-**What to Observe:**
-
-- The latest completed Saga appears in DBA_HIST_SAGAS with a successful final status such as Committed
-
-- Zipkin shows the distributed request path between the participating services
-
-- The database view and trace describe the same transaction lifecycle
+Expected outcome: debit, credit, participant confirmation, and a Saga with final status Committed or an equivalent completed state.
 
 ### Scenario 2: Saga Compensation
 
-Trigger a business failure by requesting more than the available source balance.
+Check the balance of BANKA-ACC-001.
 
-**Via CloudBank UI:**
+Start an inter-bank transfer above the available balance.
 
-1. Review the balance of BANKA-ACC-001
+Execute the transfer.
 
-2. Start an **Inter-Bank Transfer** to BANKB-ACC-001
-
-3. Enter an amount greater than the available balance
-
-4. Execute the transfer
-
-**Expected Saga Flow:**
-
-1. **Begin Saga** - The distributed transaction starts
-
-2. **BankChicago Validation** - The source participant checks available funds
-
-3. **Failure** - The requested amount cannot be processed
-
-4. **Compensation** - The Saga follows the failure/compensation path
-
-5. **Consistency** - No partial successful transfer remains
-
-**Verify Saga and Business State:**
-
-<pre id="verifyCompensation" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
-
-SELECT saga_id, status, coordinator, start_time, saga_source
-
-FROM (
-
-SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
-
-FROM DBA_SAGAS
-
-WHERE is_initiator = 'YES'
-
-UNION ALL
-
-SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'HISTORY' AS saga_source
-
-FROM DBA_HIST_SAGAS
-
-WHERE is_initiator = 'YES'
-
-)
-
-ORDER BY start_time DESC
-
-FETCH FIRST 1 ROW ONLY;
-
-CONNECT bankchicago/Welcome_123#@'oraclesagademo_medium'
-
-SELECT account_id, balance
-
-FROM accounts
-
-WHERE account_id = 'BANKA-ACC-001';</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('verifyCompensation', this)" class="copy-btn-pastel">📋 Copy Compensation Verification</button>
-
-</div>
-
-**What to Observe:**
-
-- ADMIN is used to inspect Saga metadata
-
-- bankchicago is used to inspect the participant's business data
-
-- Zipkin shows where the failure occurred and how the distributed flow differs from Scenario 1
+Expected outcome: business failure, compensation, and no partial transfer remaining.
 
 ### Scenario 3: Participant Failure and Recovery
 
-Simulate BankMex becoming unavailable while an inter-bank Saga is being processed.
+Start an inter-bank transfer.
 
-### Step 1: Start the Saga and Stop BankMex
+Stop a participant according to the course instructions.
 
-Run the following block from **Cloud Shell**. The technical container name still uses bankb, while the registered Saga participant is BankMex.
+Restore it and observe recovery or compensation.
 
-<pre id="simulateCrash" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
+Use SQLcl to compare the latest database state with the Zipkin trace. Enter the ADMIN password interactively; do not place it in a command or evidence.
 
-set -e
-
-BANKB_CONTAINER="$(podman ps --format '{{.Names}}' | grep -i bankb | head -n 1)"
-
-if [ -z "$BANKB_CONTAINER" ]; then
-
-echo "ERROR: BankMex container was not found."
-
-exit 1
-
-fi
-
-curl -sS -X POST "http://localhost:8080/transfer/inter-bank" -H "Content-Type: application/json" -d '{"sourceAccount":"BANKA-ACC-001","targetAccount":"BANKB-ACC-001","amount":1.00,"currency":"USD"}' > /tmp/lab5-crash-transfer.out 2>&1 &
-
-TRANSFER_PID=$!
-
-sleep 1
-
-podman stop "$BANKB_CONTAINER"
-
-wait "$TRANSFER_PID" || true
-
-cat /tmp/lab5-crash-transfer.out || true
-
-podman ps -a --filter "name=$BANKB_CONTAINER"
-
-REMOTE</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('simulateCrash', this)" class="copy-btn-pastel">📋 Copy Failure Simulation</button>
-
-</div>
-
-### Step 2: Observe the Incomplete Saga
-
-Use the same SQLcl session from the previous scenarios:
-
-<pre id="verifyCrashState" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
-
-SELECT RAWTOHEX(id) AS saga_id,
-
-coordinator,
-
-participant,
-
-status,
-
-start_time
-
-FROM DBA_INCOMPLETE_SAGAS
-
-ORDER BY start_time DESC
-
-FETCH FIRST 1 ROW ONLY;</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('verifyCrashState', this)" class="copy-btn-pastel">📋 Copy Incomplete Saga Query</button>
-
-</div>
-
-This view shows the participant and failure state for an incomplete Saga while recovery is still required.
-
-### Step 3: Restart BankMex
-
-Run the following block from **Cloud Shell**:
-
-<pre id="restartBankMex" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' <<'REMOTE'
-
-set -e
-
-BANKB_CONTAINER="$(podman ps -a --format '{{.Names}}' | grep -i bankb | head -n 1)"
-
-if [ -z "$BANKB_CONTAINER" ]; then
-
-echo "ERROR: BankMex container was not found."
-
-exit 1
-
-fi
-
-podman start "$BANKB_CONTAINER"
-
-sleep 5
-
-podman ps --filter "name=$BANKB_CONTAINER"
-
-REMOTE</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('restartBankMex', this)" class="copy-btn-pastel">📋 Copy Restart Script</button>
-
-</div>
-
-**Verify the Final Saga State:**
-
-<pre id="verifyRecoveryFinal" class="interactive-command"><code>CONNECT ADMIN/"&ADMIN_PASSWORD"@'oraclesagademo_medium'
+<pre id="verifySagaState" class="interactive-command"><code>CONNECT ADMIN@oraclesagademo_medium
 
 SELECT saga_id, status, coordinator, start_time, saga_source
-
 FROM (
-
 SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
-
-FROM DBA_SAGAS
-
-WHERE is_initiator = 'YES'
-
+FROM DBA_SAGAS WHERE is_initiator = 'YES'
 UNION ALL
-
-SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'HISTORY' AS saga_source
-
-FROM DBA_HIST_SAGAS
-
-WHERE is_initiator = 'YES'
-
+SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
+FROM DBA_HIST_SAGAS WHERE is_initiator = 'YES'
 )
-
 ORDER BY start_time DESC
-
-FETCH FIRST 1 ROW ONLY;
-
-UNDEFINE ADMIN_PASSWORD</code></pre>
+FETCH FIRST 10 ROWS ONLY;
+</code></pre>
 
 <div class="button-center">
 
-<button onclick="copyBlock('verifyRecoveryFinal', this)" class="copy-btn-pastel">📋 Copy Final Saga Verification</button>
+<button onclick="copyBlock('verifySagaState', this)" class="copy-btn-pastel">📋 Copy Saga Verification</button>
 
 </div>
 
-**What to Observe:**
+### Known L5 corrections included in this version
 
-- The Saga cannot complete normally while BankMex is unavailable
+- Missing Java Dockerfiles are created.
 
-- The incomplete state is visible while the participant is down
+- The runtime uses a self-contained multi-stage build.
 
-- After BankMex returns, the workflow reaches a consistent final outcome
+- The actual profiles are adbssagasetup and adbs.
 
-- Compare the recovery trace in Zipkin with the successful Saga from Scenario 1
+- The SQLcl alias environment variable and cleanup-service indentation are corrected.
 
----
+- Public ports match this lab: UI 3000, Swagger 8080, Zipkin 9411.
 
-✅ **Congratulations!** You have executed a successful distributed Saga, observed compensation, and validated participant failure and recovery with Oracle Sagas.
+- ADB setup is explicitly a one-time action.
 
-**Next Lab:** Continue to **Lab 6 — Extended Lab** to manually add a Saga participant to the topology created in the previous labs.
+- Public deployment is blocked until enough Compute RAM is available.
 
----
-
-## Learn More
-
-- [Oracle Sagas Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)
-
-- [Oracle Database RESERVABLE Columns](https://docs.oracle.com/en/database/oracle/oracle-database/23/sqlrf/CREATE-TABLE.html)
-
-- [Podman Documentation](https://podman.io/)
-
-- [Distributed Tracing with Zipkin](https://zipkin.io/)
-
-## Acknowledgements
-
-* **Contributors** — Vinay Pandhariwal, Amit Ketkar, Pavas Navaney, Luis Cruz, Sebastian Gerritsen
-
-* **Created By/Date** — Vinay Pandhariwal, August 2025
-
-* **Last Updated By/Date** — Vinay Pandhariwal, August 2025

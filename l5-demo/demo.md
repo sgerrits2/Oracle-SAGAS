@@ -22,19 +22,6 @@ You will build the Java/Flask image, start the existing ADB-backed services, run
 
 Docker Engine is not required.
 
-### Required Oracle Saga participant names
-
-> **Important:** The application may use `BankA` and `BankB` in container names, source paths, environment variables, and database table names. Those are implementation labels, **not** Oracle Saga participant names. Saga registration, `sendRequest()` routing, callback matching, and trace interpretation must use the registered names below.
-
-| Incorrect legacy value | Registered Oracle Saga participant |
-| --- | --- |
-| `BankA` | `BankChicago` |
-| `BankB` | `BankMex` |
-
-This lab migrates the incorrect `BankA`/`BankB` values to the registered `BankChicago`/`BankMex` names wherever a Saga participant identity is required. The orchestrator constants and participant annotations in the bundled application already use these registered names.
-
----
-
 ## Task 1: Prepare and Validate Cloud Shell
 
 ### Step 1: Verify files and tools

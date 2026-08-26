@@ -269,10 +269,10 @@ These commands use the orchestrator API directly from Cloud Shell or the Compute
 
 ### Scenario 1: Successful transfer with curl
 
-The seeded example uses source account 1234560001 (`BankChicago`) and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
+The seeded example uses customer ID `1`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). The transfer API validates the customer ID, not the account UCID. Enter the transfer password only when prompted.
 
 <pre id="runSagaCurl" class="interactive-command"><code>API_BASE="http://127.0.0.1:8081/orchestrator"
-UCID="ORACLE001"
+UCID="1"
 FROM_ACCOUNT="1234560001"
 TO_ACCOUNT="1234560301"
 AMOUNT="10.00"

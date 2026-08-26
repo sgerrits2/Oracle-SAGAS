@@ -396,6 +396,46 @@ Success prints `HTTP status: 202`, an `Accepted` JSON response, and a new `Saga 
 
 The operation is asynchronous; save the returned saga ID and wait briefly before querying it.
 
+### Scenario 1 follow-up: Check the returned Saga status
+
+Wait about 10 seconds, then query the exact Saga ID returned by Scenario 1. The following shell command only opens SQLcl; when it prompts for the database password, type the ADB administrator password manually. It is **not** the transfer password (`cb1`).
+
+<pre id="openSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
+test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+cd /tmp
+SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('openSagaStatusSqlcl', this)" class="copy-btn-pastel">📋 Copy SQLcl Start</button>
+
+</div>
+
+After `Connected to:` appears, replace `PASTE_SAGA_ID_HERE` below with the value returned by the transfer response, then paste this query at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
+
+<pre id="checkReturnedSagaStatus" class="interactive-command"><code>SELECT saga_id, status, coordinator, start_time, saga_source
+FROM (
+  SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
+  FROM DBA_SAGAS
+  WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
+  UNION ALL
+  SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
+  FROM DBA_HIST_SAGAS
+  WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
+)
+ORDER BY start_time DESC;</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('checkReturnedSagaStatus', this)" class="copy-btn-pastel">📋 Copy Saga Status Query</button>
+
+</div>
+
+For a successful transfer, the Saga appears in either the active or history view with a completed status. Continue to Scenario 3 to show the corresponding orchestrator and bank ledger entries, plus the changed balances.
+
 ### Scenario 2: Expected validation rejection
 
 Repeat Scenario 1 with an amount greater than the available source balance. This exercises withdrawal validation; it is not evidence that a previously completed participant was compensated.

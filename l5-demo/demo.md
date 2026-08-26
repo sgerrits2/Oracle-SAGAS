@@ -294,50 +294,7 @@ If an endpoint works on the instance but not externally, verify the public IP, I
 
 ## Task 5: Run Sagas Without the UI
 
-These commands use the orchestrator API directly from Cloud Shell or the Compute host. They do not put the transfer password in shell history.
-
-### Optional: Align data from a legacy archive
-
-Run this one-time SQL block **only** when `cloudbank_customer` contains the legacy numeric customer IDs `1`, `2`, `3`, and `4`. Skip it when Task 1 setup was just completed or when the table already shows `ORACLE001` through `ORACLE004`. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
-
-<pre id="alignSeededIdentities" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
-ORCHESTRATOR_USER="$(sed -n 's/^ORCHESTRATOR_USERNAME=//p' .env)"
-TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ORCHESTRATOR_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ORCHESTRATOR_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
-export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-cd /tmp
-SQLPATH=/nonexistent sql -L "$ORCHESTRATOR_USER@$TNS_ALIAS"
-
-SELECT table_name
-FROM user_tables
-WHERE table_name = 'CLOUDBANK_CUSTOMER';
-
-UPDATE cloudbank_customer
-SET customer_id = CASE customer_id
-  WHEN '1' THEN 'ORACLE001'
-  WHEN '2' THEN 'ORACLE002'
-  WHEN '3' THEN 'ORACLE003'
-  WHEN '4' THEN 'ORACLE004'
-END
-WHERE customer_id IN ('1', '2', '3', '4');
-
-COMMIT;
-
-SELECT customer_id, bank
-FROM cloudbank_customer
-WHERE customer_id IN ('ORACLE001', 'ORACLE002', 'ORACLE003', 'ORACLE004')
-ORDER BY customer_id;
-
-EXIT
-</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('alignSeededIdentities', this)" class="copy-btn-pastel">📋 Copy Identity Alignment</button>
-
-</div>
-
-`0 rows updated` means the IDs were already aligned; it is successful and requires no further action.
+These commands use the orchestrator API directly from Cloud Shell or the Compute host. They do not put the transfer password in shell history. If your `cloudbank_customer` table has legacy numeric IDs (`1`–`4`) instead of `ORACLE001`–`ORACLE004`, complete **Task 6: Optional—Align Data from a Legacy Archive** before running Scenario 1.
 
 ### Scenario 1: Successful transfer with curl
 
@@ -414,17 +371,25 @@ SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
 
 </div>
 
-After `Connected to:` appears, replace `PASTE_SAGA_ID_HERE` below with the value returned by the transfer response, then paste this query at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
+<div class="input-section">
+
+<strong>Saga ID returned by Scenario 1:</strong>
+
+<input type="text" id="returnedSagaId" placeholder="Paste the 32-character Saga ID returned by the transfer" class="input-field" oninput="updateLabValues()"><br/>
+
+</div>
+
+After `Connected to:` appears, paste the Saga ID returned by Scenario 1 into the field above. The query below updates automatically; then copy it and paste it at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
 
 <pre id="checkReturnedSagaStatus" class="interactive-command"><code>SELECT saga_id, status, coordinator, start_time, saga_source
 FROM (
   SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
   FROM DBA_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
+  WHERE RAWTOHEX(id) = UPPER('<span class="saga-id-value">PASTE_SAGA_ID_HERE</span>')
   UNION
   SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
   FROM DBA_HIST_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
+  WHERE RAWTOHEX(id) = UPPER('<span class="saga-id-value">PASTE_SAGA_ID_HERE</span>')
 )
 ORDER BY start_time DESC;</code></pre>
 
@@ -503,6 +468,51 @@ SELECT account_number, balance_amount FROM bankb WHERE account_number = 12345603
 
 </div>
 
+---
+
+## Task 6 (Optional): Align Data from a Legacy Archive
+
+Run this one-time task **only** when `cloudbank_customer` contains the legacy numeric customer IDs `1`, `2`, `3`, and `4`. Skip it when Task 1 setup was just completed or when the table already shows `ORACLE001` through `ORACLE004`. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
+
+<pre id="alignSeededIdentities" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ORCHESTRATOR_USER="$(sed -n 's/^ORCHESTRATOR_USERNAME=//p' .env)"
+TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
+test -n "$ORCHESTRATOR_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ORCHESTRATOR_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+cd /tmp
+SQLPATH=/nonexistent sql -L "$ORCHESTRATOR_USER@$TNS_ALIAS"
+
+SELECT table_name
+FROM user_tables
+WHERE table_name = 'CLOUDBANK_CUSTOMER';
+
+UPDATE cloudbank_customer
+SET customer_id = CASE customer_id
+  WHEN '1' THEN 'ORACLE001'
+  WHEN '2' THEN 'ORACLE002'
+  WHEN '3' THEN 'ORACLE003'
+  WHEN '4' THEN 'ORACLE004'
+END
+WHERE customer_id IN ('1', '2', '3', '4');
+
+COMMIT;
+
+SELECT customer_id, bank
+FROM cloudbank_customer
+WHERE customer_id IN ('ORACLE001', 'ORACLE002', 'ORACLE003', 'ORACLE004')
+ORDER BY customer_id;
+
+EXIT
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('alignSeededIdentities', this)" class="copy-btn-pastel">📋 Copy Identity Alignment</button>
+
+</div>
+
+`0 rows updated` means the IDs were already aligned; it is successful and requires no further action.
+
 <style>
 .input-section { background-color: #f9f9f9; padding: 15px; margin: 12px 0; border-radius: 8px; border: 1px solid #ddd; }
 .input-field { width: 300px; max-width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; margin: 6px 0; box-sizing: border-box; }
@@ -518,16 +528,28 @@ function getComputeIP() {
   const input = document.getElementById("computeInstanceIP");
   return (input ? input.value : "").trim();
 }
+function getReturnedSagaId() {
+  const input = document.getElementById("returnedSagaId");
+  const sagaId = (input ? input.value : "").trim().toUpperCase();
+  return /^[0-9A-F]{32}$/.test(sagaId) ? sagaId : "";
+}
 function updateLabValues() {
-  const input = document.getElementById("computeInstanceIP");
+  const ipInput = document.getElementById("computeInstanceIP");
   const instanceIP = getComputeIP() || "INSTANCE_IP";
+  const sagaInput = document.getElementById("returnedSagaId");
+  const sagaId = getReturnedSagaId();
   setTextForClass("instance-ip-value", instanceIP);
-  if (input && input.value.trim()) sessionStorage.setItem("computePublicIP", input.value.trim());
+  setTextForClass("saga-id-value", sagaId || "PASTE_SAGA_ID_HERE");
+  if (ipInput && ipInput.value.trim()) sessionStorage.setItem("computePublicIP", ipInput.value.trim());
+  if (sagaInput && sagaId) sessionStorage.setItem("returnedSagaId", sagaId);
 }
 function loadPreviousLabValues() {
-  const input = document.getElementById("computeInstanceIP");
+  const ipInput = document.getElementById("computeInstanceIP");
+  const sagaInput = document.getElementById("returnedSagaId");
   const savedIP = sessionStorage.getItem("computePublicIP");
-  if (input && savedIP) input.value = savedIP;
+  const savedSagaId = sessionStorage.getItem("returnedSagaId");
+  if (ipInput && savedIP) ipInput.value = savedIP;
+  if (sagaInput && savedSagaId) sagaInput.value = savedSagaId;
   updateLabValues();
 }
 function copyBlock(elementId, button) {
@@ -539,7 +561,9 @@ function copyBlock(elementId, button) {
     .replace(/&amp;/g, "&")
     .replace(/<\/?span\b[^>]*>/gi, "");
   const instanceIP = getComputeIP();
-  const resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
+  const sagaId = getReturnedSagaId();
+  let resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
+  if (sagaId) resolvedText = resolvedText.replace(/PASTE_SAGA_ID_HERE/g, sagaId);
   const originalText = button ? button.innerHTML : "";
   const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(resolvedText).then(done);

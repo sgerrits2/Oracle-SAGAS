@@ -349,13 +349,15 @@ The seeded transfer uses customer/account UCID `ORACLE001`, source account 12345
   local from_account="1234560001"
   local to_account="1234560301"
   local amount="10.00"
-  local transfer_password transfer_response saga_id
+  local transfer_password payload transfer_response saga_id
 
   read -r -s -p 'Transfer password: ' transfer_password
   echo
+  payload=$(printf '{"ucid":"%s","fromAccountNumber":"%s","toAccountNumber":"%s","amount":"%s","password":"%s"}' \
+    "$ucid" "$from_account" "$to_account" "$amount" "$transfer_password")
   transfer_response=$(curl -fsS -X POST "$api_base/transfer" \
     -H 'Content-Type: application/json' \
-    --data "{\"ucid\":\"$ucid\",\"fromAccountNumber\":\"$from_account\",\"toAccountNumber\":\"$to_account\",\"amount\":\"$amount\",\"password\":\"$transfer_password\"}") || return 1
+    --data "$payload") || return 1
   unset transfer_password
   printf '%s\n' "$transfer_response"
 

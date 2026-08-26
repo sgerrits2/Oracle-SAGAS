@@ -421,7 +421,7 @@ FROM (
   SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
   FROM DBA_SAGAS
   WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
-  UNION ALL
+  UNION
   SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
   FROM DBA_HIST_SAGAS
   WHERE RAWTOHEX(id) = UPPER('PASTE_SAGA_ID_HERE')
@@ -434,7 +434,7 @@ ORDER BY start_time DESC;</code></pre>
 
 </div>
 
-For a successful transfer, the Saga appears in either the active or history view with a completed status. Continue to Scenario 3 to show the corresponding orchestrator and bank ledger entries, plus the changed balances.
+`SAGA_SOURCE` is a label added by this query, not a status: `ACTIVE` means the row came from `DBA_SAGAS`, while `HISTORY` means it came from `DBA_HIST_SAGAS`. A `Committed` row from the history view is successful completion. It is normal to briefly also see `Committing` in the active view while Oracle finishes lifecycle cleanup. The query uses `UNION` to avoid duplicate identical history rows. Continue to Scenario 3 to show the corresponding orchestrator and bank ledger entries, plus the changed balances.
 
 ### Scenario 2: Expected validation rejection
 
@@ -456,7 +456,7 @@ FROM (
   SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
   FROM DBA_SAGAS
   WHERE RAWTOHEX(id) = UPPER('&amp;saga_id')
-  UNION ALL
+  UNION
   SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
   FROM DBA_HIST_SAGAS
   WHERE RAWTOHEX(id) = UPPER('&amp;saga_id')

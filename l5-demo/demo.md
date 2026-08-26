@@ -54,7 +54,7 @@ test -f osagaJavaBuilder || { echo "ERROR: osagaJavaBuilder is missing"; exit 1;
 test -f osagaJavaRuntime || { echo "ERROR: osagaJavaRuntime is missing"; exit 1; }
 test -d adbsSetup/adb_wallet || { echo "ERROR: ADB wallet is missing"; exit 1; }
 test -f .env || { echo "ERROR: .env is missing"; exit 1; }
-sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=&lt;configured&gt;/p' .env | sort
+sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=[configured]/p' .env | sort
 </code></pre>
 
 <div class="button-center">
@@ -111,7 +111,11 @@ The adbssagasetup profile is only for first-time schema creation. Do not run it 
 <pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
 
-podman ps -a --format 'table {{.Names}}\t{{.Status}}'
+if ! podman ps -a --format 'table {{.Names}}\t{{.Status}}'; then
+  echo 'Podman reported a stale rootless pause process; running podman system migrate.'
+  podman system migrate
+  podman ps -a --format 'table {{.Names}}\t{{.Status}}'
+fi
 echo 'If osagas-setup-adbs exists, inspect its final log lines:'
 podman logs --tail 30 osagas-setup-adbs 2&gt;/dev/null || true
 echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initialized.'
@@ -386,7 +390,10 @@ function loadPreviousLabValues() {
 function copyBlock(elementId, button) {
   const element = document.getElementById(elementId);
   if (!element) return;
-  const text = element.innerText;
+  const text = element.textContent
+    .replace(/&lt;/g, "<")
+    .replace(/&gt;/g, ">")
+    .replace(/&amp;/g, "&");
   const originalText = button ? button.innerHTML : "";
   const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);

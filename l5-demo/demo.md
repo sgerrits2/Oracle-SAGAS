@@ -269,10 +269,44 @@ These commands use the orchestrator API directly from Cloud Shell or the Compute
 
 ### Scenario 1: Successful transfer with curl
 
-The seeded example uses customer ID `1`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). The transfer API validates the customer ID, not the account UCID. Enter the transfer password only when prompted.
+For environments initialized before this revision, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. Freshly initialized environments already contain these values.
+
+<pre id="alignSeededIdentities" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+sql /nolog
+
+CONNECT &lt;ORCHESTRATOR_USERNAME&gt;@&lt;TNS_ALIAS&gt;
+
+MERGE INTO cloudbank_customer target
+USING (
+  SELECT '1' AS old_customer_id, 'ORACLE001' AS new_customer_id FROM dual
+  UNION ALL SELECT '2', 'ORACLE002' FROM dual
+  UNION ALL SELECT '3', 'ORACLE003' FROM dual
+  UNION ALL SELECT '4', 'ORACLE004' FROM dual
+) seeded
+ON (target.customer_id = seeded.old_customer_id)
+WHEN MATCHED THEN
+  UPDATE SET target.customer_id = seeded.new_customer_id;
+
+COMMIT;
+
+SELECT customer_id, bank
+FROM cloudbank_customer
+WHERE customer_id IN ('ORACLE001', 'ORACLE002', 'ORACLE003', 'ORACLE004')
+ORDER BY customer_id;
+
+EXIT
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('alignSeededIdentities', this)" class="copy-btn-pastel">📋 Copy Identity Alignment</button>
+
+</div>
+
+The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
 
 <pre id="runSagaCurl" class="interactive-command"><code>API_BASE="http://127.0.0.1:8081/orchestrator"
-UCID="1"
+UCID="ORACLE001"
 FROM_ACCOUNT="1234560001"
 TO_ACCOUNT="1234560301"
 AMOUNT="10.00"

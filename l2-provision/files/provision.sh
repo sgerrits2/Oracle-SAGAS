@@ -55,22 +55,16 @@ SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
 SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
-APP_ARCHIVE_URL="${APP_ARCHIVE_URL:-https://github.com/sgerrits2/Oracle-SAGAS/raw/main/l2-provision/files/oracle-saga-cloudbank.zip}"
-USER_SETUP_SQL_URL="${USER_SETUP_SQL_URL:-https://github.com/sgerrits2/Oracle-SAGAS/raw/main/l2-provision/files/create-cloudbank-users.sql}"
+APP_ARCHIVE_PATH="${APP_ARCHIVE_PATH:-./oracle-saga-cloudbank.zip}"
+USER_SETUP_SQL_PATH="${USER_SETUP_SQL_PATH:-./create-cloudbank-users.sql}"
 # -------------------------------------------------
 
-for REQUIRED_COMMAND in curl oci scp sql ssh ssh-keygen unzip; do
+for REQUIRED_COMMAND in oci scp sql ssh ssh-keygen unzip; do
   if ! command -v "$REQUIRED_COMMAND" >/dev/null 2>&1; then
     echo "ERROR: $REQUIRED_COMMAND is required. Run this script from OCI Cloud Shell."
     exit 1
   fi
 done
-
-download_file() {
-  local url="$1"
-  local destination="$2"
-  curl --fail --location --retry 3 --output "$destination" "$url"
-}
 
 wait_for_ssh() {
   local attempt
@@ -111,28 +105,42 @@ podman-compose --version
 podman system info >/dev/null
 test -d "$HOME/oracle-saga-cloudbank"
 test -f "$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet/tnsnames.ora"
+test -f "$HOME/oracle-saga-cloudbank/.env"
+test -f "$HOME/oracle-saga-cloudbank/osagaJavaBuilder"
+test -f "$HOME/oracle-saga-cloudbank/osagaJavaRuntime"
 
 echo "CloudBank package: READY"
 echo "ADB wallet: READY"
+echo "CloudBank runtime configuration: READY"
 echo "Podman environment: READY"
 REMOTE_VERIFY
 }
 
 prepare_cloudbank() {
-  local app_archive="$SETUP_DIR/oracle-saga-cloudbank.zip"
-  local user_setup_sql="$SETUP_DIR/create-cloudbank-users.sql"
+  local app_archive="$APP_ARCHIVE_PATH"
+  local user_setup_sql="$USER_SETUP_SQL_PATH"
   local app_dir="$SETUP_DIR/oracle-saga-cloudbank"
   local wallet_dir="$app_dir/adbsSetup/adb_wallet"
   local wallet_archive="$wallet_dir/SagasWallet.zip"
+  local preserved_env="$SETUP_DIR/.oracle-saga-cloudbank.env"
   local tns_alias
 
-  echo ">>> Downloading the CloudBank package and database user setup script..."
+  echo ">>> Validating the locally supplied CloudBank package and database user setup script..."
+  test -f "$app_archive" || { echo "ERROR: CloudBank archive not found: $app_archive"; exit 1; }
+  test -f "$user_setup_sql" || { echo "ERROR: User setup SQL not found: $user_setup_sql"; exit 1; }
   mkdir -p "$SETUP_DIR"
-  download_file "$APP_ARCHIVE_URL" "$app_archive"
-  download_file "$USER_SETUP_SQL_URL" "$user_setup_sql"
+
+  rm -f "$preserved_env"
+  if [[ -f "$app_dir/.env" ]] && grep -q '^TNS_ALIAS_CONTAINER=' "$app_dir/.env"; then
+    cp "$app_dir/.env" "$preserved_env"
+  fi
 
   echo ">>> Extracting the CloudBank package..."
   unzip -q -o "$app_archive" -d "$SETUP_DIR"
+  if [[ -f "$preserved_env" ]]; then
+    install -m 600 "$preserved_env" "$app_dir/.env"
+    rm -f "$preserved_env"
+  fi
   mkdir -p "$wallet_dir"
 
   echo ">>> Generating and extracting the Autonomous Database wallet..."
@@ -146,6 +154,30 @@ prepare_cloudbank() {
   if [[ -z "$tns_alias" ]]; then
     echo "ERROR: Could not find a _medium TNS alias in the generated wallet."
     exit 1
+  fi
+
+  if [[ ! -s "$app_dir/.env" ]] || ! grep -q '^TNS_ALIAS_CONTAINER=' "$app_dir/.env"; then
+    echo ">>> Generating the private CloudBank .env file..."
+    umask 077
+    cat > "$app_dir/.env" <<EOF
+TNS_ADMIN_CONTAINER=/opt/adb_wallet
+TNS_ALIAS_CONTAINER=$tns_alias
+ADBS_USERNAME=admin
+ADBS_ADMIN_PWD=$ADMIN_PASSWORD
+BANKA_USERNAME=bankchicago
+BANKA_PASSWORD=Welcome_123#
+BANKB_USERNAME=bankmex
+BANKB_PASSWORD=Welcome_123#
+ORCHESTRATOR_USERNAME=orchestratorhub
+ORCHESTRATOR_PASSWORD=Welcome_123#
+BROKER_USERNAME=brokerhub
+BROKER_PASSWORD=Welcome_123#
+ENABLE_ZIPKIN=true
+ZIPKIN_URL=http://zipkin:9411/api/v2/spans
+EOF
+    chmod 600 "$app_dir/.env"
+  else
+    echo ">>> Preserving the existing configured .env file."
   fi
 
   echo ">>> Creating the CloudBank database users..."
@@ -267,7 +299,8 @@ pull_image() { podman pull "$1"; }
 pull_image ghcr.io/oracle/oraclelinux:8 &
 pull_image container-registry.oracle.com/database/sqlcl:latest &
 pull_image docker.io/swaggerapi/swagger-ui:v5.20.7 &
-pull_image docker.io/library/maven:3.8.6-openjdk-11 &
+pull_image docker.io/library/maven:3.9.9-eclipse-temurin-17 &
+pull_image docker.io/library/eclipse-temurin:17-jre-jammy &
 pull_image ghcr.io/openzipkin/zipkin:latest &
 pull_image container-registry.oracle.com/database/free:latest &
 wait

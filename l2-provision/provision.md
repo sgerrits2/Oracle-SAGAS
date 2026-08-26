@@ -53,27 +53,21 @@ Paste the returned OCID below to automatically update the command used to run th
 </div>
 </div>
 
-### Step 2: Download and Run the Provisioning Script
+### Step 2: Copy the Provisioning Files to Cloud Shell and Run the Script
 
-Download the script below, upload it to OCI Cloud Shell, and run the command generated from the value entered in Step 1.
+This workflow does not download a script or application package from GitHub. Download these three workshop files, then upload them to the same directory in OCI Cloud Shell:
 
-[**Download Provisioning Script**](files/provision.sh?download=1)
+- [provision.sh](files/provision.sh?download=1)
+- [oracle-saga-cloudbank.zip](files/oracle-saga-cloudbank.zip?download=1)
+- [create-cloudbank-users.sql](files/create-cloudbank-users.sql?download=1)
 
-Alternatively, run the following commands to download the provisioning script directly into OCI Cloud Shell:
+You can also open `provision.sh` in this workshop, copy its complete contents, paste it into a Cloud Shell editor as `provision.sh`, and upload the ZIP and SQL file beside it. From that directory, paste the command below. The script validates the two local artifacts before it creates any OCI resources.
 
-```bash
-<copy>
-curl -fL -o provision.sh \
-https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/main/l2-provision/files/provision.sh
-
+<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">set -e
+test -f provision.sh
+test -f oracle-saga-cloudbank.zip
+test -f create-cloudbank-users.sql
 chmod +x provision.sh
-ls -l provision.sh
-</copy>
-```
-
-- These commands download the script directly into Cloud Shell, make it executable, and confirm that the file is available.
-
-<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">chmod +x provision.sh
 COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 <div class="button-center">
@@ -95,11 +89,12 @@ The script automatically:
 - Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
 - Opens the CloudBank application ports, including `3000`, `8080`, and `9411`.
 - Installs Podman and Podman Compose and pulls the required container images.
-- Downloads and extracts the CloudBank application package.
+- Validates and extracts the locally supplied CloudBank application package.
 - Generates and extracts the Autonomous Database wallet.
-- Executes the CloudBank user-creation SQL script and verifies all eight schemas.
+- Generates a private `.env` file from the new ADB wallet and configured database credentials, without printing its values.
+- Executes the locally supplied CloudBank user-creation SQL script and verifies all eight schemas.
 - Transfers the prepared application and wallet to the compute instance.
-- Waits for compute initialization and verifies SSH, Podman, Podman Compose, the wallet, and the transferred application.
+- Waits for compute initialization and verifies SSH, Podman, Podman Compose, the wallet, generated `.env`, Dockerfiles, and transferred application.
 
 Keep Cloud Shell open until the **PROVISIONING COMPLETE** summary appears.
 

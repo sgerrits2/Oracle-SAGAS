@@ -43,9 +43,7 @@ Run this in **Cloud Shell**. It lists only .env variable names.
 
 <pre id="prepareCloudShell" class="interactive-command"><code>set -e
 
-PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
-test -d "$PROJECT_DIR" || { echo "ERROR: project directory is missing"; exit 1; }
-cd "$PROJECT_DIR"
+cd "$HOME/cloudbank-setup/oracle-saga-cloudbank" || { echo "ERROR: project directory is missing"; exit 1; }
 
 python3 -m pip install --user podman-compose
 export PATH="$HOME/.local/bin:$PATH"

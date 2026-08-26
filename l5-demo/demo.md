@@ -341,23 +341,29 @@ EXIT
 
 The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
 
-<pre id="runSagaCurl" class="interactive-command"><code>API_BASE="http://127.0.0.1:8081/orchestrator"
-UCID="ORACLE001"
-FROM_ACCOUNT="1234560001"
-TO_ACCOUNT="1234560301"
-AMOUNT="10.00"
+<pre id="runSagaCurl" class="interactive-command"><code>run_cloudbank_transfer() {
+  local api_base="http://127.0.0.1:8081/orchestrator"
+  local ucid="ORACLE001"
+  local from_account="1234560001"
+  local to_account="1234560301"
+  local amount="10.00"
+  local transfer_password transfer_response saga_id
 
-read -r -s -p 'Transfer password: ' TRANSFER_PASSWORD
-echo
-TRANSFER_RESPONSE=$(curl -fsS -X POST "$API_BASE/transfer" \
-  -H 'Content-Type: application/json' \
-  --data "{\"ucid\":\"$UCID\",\"fromAccountNumber\":\"$FROM_ACCOUNT\",\"toAccountNumber\":\"$TO_ACCOUNT\",\"amount\":\"$AMOUNT\",\"password\":\"$TRANSFER_PASSWORD\"}")
-unset TRANSFER_PASSWORD
-printf '%s\n' "$TRANSFER_RESPONSE"
+  read -r -s -p 'Transfer password: ' transfer_password
+  echo
+  transfer_response=$(curl -fsS -X POST "$api_base/transfer" \
+    -H 'Content-Type: application/json' \
+    --data "{\"ucid\":\"$ucid\",\"fromAccountNumber\":\"$from_account\",\"toAccountNumber\":\"$to_account\",\"amount\":\"$amount\",\"password\":\"$transfer_password\"}") || return 1
+  unset transfer_password
+  printf '%s\n' "$transfer_response"
 
-SAGA_ID=$(printf '%s' "$TRANSFER_RESPONSE" | sed -nE 's/.*\"id\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\1/p')
-test -n "$SAGA_ID" || { echo 'ERROR: no saga ID was returned'; exit 1; }
-printf 'Saga ID: %s\n' "$SAGA_ID"
+  saga_id=$(printf '%s' "$transfer_response" | sed -nE 's/.*\"id\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\1/p')
+  test -n "$saga_id" || { echo 'ERROR: no saga ID was returned'; return 1; }
+  printf 'Saga ID: %s\n' "$saga_id"
+}
+
+run_cloudbank_transfer
+unset -f run_cloudbank_transfer
 </code></pre>
 
 <div class="button-center">

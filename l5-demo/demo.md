@@ -108,9 +108,13 @@ echo 'OK: Java runtime image contains all application artifacts'
 
 Lab 3 verifies the Broker, coordinator, and participants. It does **not** create the CloudBank application tables. Check ADB directly rather than using the existence or exit code of an old setup container as evidence.
 
-<pre id="verifyAdbSetup" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+<pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
+test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L &lt;ADBS_USERNAME&gt;@&lt;TNS_ALIAS&gt;
+SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"
 
 SELECT owner, object_type, object_name
 FROM dba_objects
@@ -294,11 +298,15 @@ These commands use the orchestrator API directly from Cloud Shell or the Compute
 
 ### Scenario 1: Successful transfer with curl
 
-For environments initialized from an older archive, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. The current archive seeds the matching UCIDs directly. Use the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; do not infer it from the Lab 3 participant-owner name.
+For environments initialized from an older archive, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
 
-<pre id="alignSeededIdentities" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+<pre id="alignSeededIdentities" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ORCHESTRATOR_USER="$(sed -n 's/^ORCHESTRATOR_USERNAME=//p' .env)"
+TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
+test -n "$ORCHESTRATOR_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ORCHESTRATOR_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L &lt;ORCHESTRATOR_USERNAME&gt;@&lt;TNS_ALIAS&gt;
+SQLPATH=/nonexistent sql -L "$ORCHESTRATOR_USER@$TNS_ALIAS"
 
 SELECT table_name
 FROM user_tables

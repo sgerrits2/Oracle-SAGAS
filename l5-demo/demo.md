@@ -6,7 +6,7 @@ This lab runs the CloudBank application with Podman and lets you observe Oracle 
 
 You will build the Java/Flask image, start the existing ADB-backed services, run a transfer through the UI or API, and verify the specific saga with SQLcl.
 
-> Keep passwords, wallet files, and .env values private. ADB initialization is a one-time operation; do not run it again when the schemas already exist.
+> Keep passwords, wallet files, and .env values private. The Lab 3 Saga topology and the CloudBank business schema are separate prerequisites. Before running the application, verify the business objects as instructed below; run ADB setup exactly once only when none of those objects exists.
 
 *Estimated time: 30–45 minutes*
 
@@ -104,17 +104,26 @@ echo 'OK: Java runtime image contains all application artifacts'
 
 </div>
 
-### Step 3: Confirm ADB is already initialized
+### Step 3: Verify or initialize the CloudBank business schema
 
-The adbssagasetup profile is only for first-time schema creation. Do not run it when ADB already contains the CloudBank schemas and seed data.
+Lab 3 verifies the Broker, coordinator, and participants. It does **not** create the CloudBank application tables. Check ADB directly rather than using the existence or exit code of an old setup container as evidence.
 
-<pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
-export PATH="$HOME/.local/bin:$PATH"
+<pre id="verifyAdbSetup" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+cd /tmp
+SQLPATH=/nonexistent sql -L &lt;ADBS_USERNAME&gt;@&lt;TNS_ALIAS&gt;
 
-podman ps -a --format 'table {{.Names}}\t{{.Status}}'
-echo 'If osagas-setup-adbs exists, inspect its final log lines:'
-podman logs --tail 30 osagas-setup-adbs 2&gt;/dev/null || true
-echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initialized.'
+SELECT owner, object_type, object_name
+FROM dba_objects
+WHERE object_name IN (
+  'SEQ_CLOUDBANK_CUSTOMER_ID', 'SEQ_CLOUDBANK_LOG_ID', 'TRG_CUSTOMER_ID',
+  'SEQ_ACCOUNTS_BANK_A_LOGS', 'SEQ_ACCOUNT_NUMBER_BANK_A',
+  'SEQ_ACCOUNTS_BANK_B_LOGS', 'SEQ_ACCOUNT_NUMBER_BANK_B',
+  'CLOUDBANK_CUSTOMER', 'CLOUDBANK_BOOK',
+  'BANKA', 'BANKA_BOOK', 'BANKB', 'BANKB_BOOK'
+)
+ORDER BY owner, object_type, object_name;
+
+EXIT
 </code></pre>
 
 <div class="button-center">
@@ -122,6 +131,22 @@ echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initia
 <button onclick="copyBlock('verifyAdbSetup', this)" class="copy-btn-pastel">📋 Copy ADB Setup Check</button>
 
 </div>
+
+- If the query returns the CloudBank, BankA, and BankB tables (and their sequences/trigger), the business schema is ready. Do **not** run setup again.
+- If it returns `no rows selected`, the business schema is absent. The Saga objects from Lab 3 can still be correct. Run the following command once from the project directory and wait for the table-creation output:
+
+<pre id="initializeAdbBusinessSchema" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+export PATH="$HOME/.local/bin:$PATH"
+COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-setup-adbs
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('initializeAdbBusinessSchema', this)" class="copy-btn-pastel">📋 Copy One-Time ADB Setup</button>
+
+</div>
+
+Do not use `-d`; the attached output must show each table creation and the final commits. If the inventory shows only some of the listed objects, stop and investigate rather than rerunning the non-idempotent setup.
 
 If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale rootless PID files with `find "$HOME/.local/share/containers/storage/overlay-containers" -type f \( -name pause.pid -o -name conmon.pid \) -print`; obtain support before deleting any Podman state.
 
@@ -166,7 +191,7 @@ Expected ports are Flask 3000, Swagger 8080, and Zipkin 9411. Java services rema
 
 ## Task 3: Deploy to the Existing Compute Instance
 
-Use the existing instance. ADB is already initialized, so deployment starts only the adbs services.
+Use the existing instance. Complete Task 1, Step 3 before deployment: the deployment starts only the `adbs` services and does not initialize missing ADB business tables.
 
 ### Step 1: Check the instance
 
@@ -269,12 +294,15 @@ These commands use the orchestrator API directly from Cloud Shell or the Compute
 
 ### Scenario 1: Successful transfer with curl
 
-For environments initialized before this revision, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. Freshly initialized environments already contain these values.
+For environments initialized from an older archive, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. The current archive seeds the matching UCIDs directly. Use the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; do not infer it from the Lab 3 participant-owner name.
 
 <pre id="alignSeededIdentities" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-sql /nolog
+cd /tmp
+SQLPATH=/nonexistent sql -L &lt;ORCHESTRATOR_USERNAME&gt;@&lt;TNS_ALIAS&gt;
 
-CONNECT &lt;ORCHESTRATOR_USERNAME&gt;@&lt;TNS_ALIAS&gt;
+SELECT table_name
+FROM user_tables
+WHERE table_name = 'CLOUDBANK_CUSTOMER';
 
 MERGE INTO cloudbank_customer target
 USING (
@@ -338,10 +366,11 @@ Repeat Scenario 1 with an amount greater than the available source balance. This
 
 ### Scenario 3: Query the specific saga with SQLcl
 
-Set the wallet path, start SQLcl, enter database passwords interactively, and paste the following. Replace placeholders with your configured alias and usernames; do not put passwords in commands or history.
+Set the wallet path, start SQLcl, enter database passwords interactively, and paste the following. Starting from `/tmp` with `SQLPATH=/nonexistent` prevents local startup scripts from delaying SQLcl. Replace placeholders with your configured alias and usernames; do not put passwords in commands or history.
 
 <pre id="verifySagaState" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-sql /nolog
+cd /tmp
+SQLPATH=/nonexistent sql /nolog
 
 CONNECT &lt;ADMIN_USERNAME&gt;@&lt;TNS_ALIAS&gt;
 ACCEPT saga_id CHAR PROMPT 'Saga ID: '

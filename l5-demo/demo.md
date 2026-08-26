@@ -123,7 +123,7 @@ echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initia
 
 </div>
 
-If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale rootless PID files with `find "$HOME/.local/share/containers/storage" -type f \( -name pause.pid -o -name conmon.pid \) -print`; obtain support before deleting any Podman state.
+If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale rootless PID files with `find "$HOME/.local/share/containers/storage/overlay-containers" -type f \( -name pause.pid -o -name conmon.pid \) -print`; obtain support before deleting any Podman state.
 
 ---
 

@@ -41,9 +41,7 @@ This lab migrates the incorrect `BankA`/`BankB` values to the registered `BankCh
 
 Run this in **Cloud Shell**. It lists only .env variable names.
 
-<pre id="prepareCloudShell" class="interactive-command"><code>set -e
-
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank" || { echo "ERROR: project directory is missing"; exit 1; }
+<pre id="prepareCloudShell" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank" || { echo "ERROR: project directory is missing"; exit 1; }
 
 python3 -m pip install --user podman-compose
 export PATH="$HOME/.local/bin:$PATH"

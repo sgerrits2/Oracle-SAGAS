@@ -443,7 +443,53 @@ After the normal shell prompt returns, run this command **separately**. At the p
 
 </div>
 
-Save the returned Saga ID, wait about 10 seconds, and enter that ID in the **Saga ID returned by Scenario 1** field above. The label is reused for both scenarios. Run the status query and then Scenario 3's ledger and balance queries.
+Save the returned Saga ID and wait about 10 seconds before checking its final state.
+
+### Scenario 2 follow-up: Check the rejected Saga status
+
+The following shell command only opens SQLcl. When it prompts for the database password, type the ADB administrator password manually; it is **not** the transfer password (`cb1`).
+
+<pre id="openRejectedSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
+test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+cd /tmp
+SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('openRejectedSagaStatusSqlcl', this)" class="copy-btn-pastel">📋 Copy SQLcl Start</button>
+
+</div>
+
+After `Connected to:` appears, paste the Saga ID returned by Scenario 2 into this field. The query below updates automatically; copy it and paste it at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
+
+<div class="input-section">
+
+<strong>Saga ID returned by Scenario 2:</strong>
+
+<input type="text" id="rejectedSagaId" placeholder="Paste the 32-character Saga ID returned by the rejection test" class="input-field" oninput="updateLabValues()"><br/>
+
+</div>
+
+<pre id="checkRejectedSagaStatus" class="interactive-command"><code>SELECT saga_id, status, coordinator, start_time, saga_source
+FROM (
+  SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
+  FROM DBA_SAGAS
+  WHERE RAWTOHEX(id) = UPPER('<span class="rejected-saga-id-value">PASTE_REJECTED_SAGA_ID_HERE</span>')
+  UNION
+  SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
+  FROM DBA_HIST_SAGAS
+  WHERE RAWTOHEX(id) = UPPER('<span class="rejected-saga-id-value">PASTE_REJECTED_SAGA_ID_HERE</span>')
+)
+ORDER BY start_time DESC;</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('checkRejectedSagaStatus', this)" class="copy-btn-pastel">📋 Copy Rejection Status Query</button>
+
+</div>
 
 Expected evidence:
 
@@ -582,23 +628,35 @@ function getReturnedSagaId() {
   const sagaId = (input ? input.value : "").trim().toUpperCase();
   return /^[0-9A-F]{32}$/.test(sagaId) ? sagaId : "";
 }
+function getRejectedSagaId() {
+  const input = document.getElementById("rejectedSagaId");
+  const sagaId = (input ? input.value : "").trim().toUpperCase();
+  return /^[0-9A-F]{32}$/.test(sagaId) ? sagaId : "";
+}
 function updateLabValues() {
   const ipInput = document.getElementById("computeInstanceIP");
   const instanceIP = getComputeIP() || "INSTANCE_IP";
   const sagaInput = document.getElementById("returnedSagaId");
   const sagaId = getReturnedSagaId();
+  const rejectedSagaInput = document.getElementById("rejectedSagaId");
+  const rejectedSagaId = getRejectedSagaId();
   setTextForClass("instance-ip-value", instanceIP);
   setTextForClass("saga-id-value", sagaId || "PASTE_SAGA_ID_HERE");
+  setTextForClass("rejected-saga-id-value", rejectedSagaId || "PASTE_REJECTED_SAGA_ID_HERE");
   if (ipInput && ipInput.value.trim()) sessionStorage.setItem("computePublicIP", ipInput.value.trim());
   if (sagaInput && sagaId) sessionStorage.setItem("returnedSagaId", sagaId);
+  if (rejectedSagaInput && rejectedSagaId) sessionStorage.setItem("rejectedSagaId", rejectedSagaId);
 }
 function loadPreviousLabValues() {
   const ipInput = document.getElementById("computeInstanceIP");
   const sagaInput = document.getElementById("returnedSagaId");
+  const rejectedSagaInput = document.getElementById("rejectedSagaId");
   const savedIP = sessionStorage.getItem("computePublicIP");
   const savedSagaId = sessionStorage.getItem("returnedSagaId");
+  const savedRejectedSagaId = sessionStorage.getItem("rejectedSagaId");
   if (ipInput && savedIP) ipInput.value = savedIP;
   if (sagaInput && savedSagaId) sagaInput.value = savedSagaId;
+  if (rejectedSagaInput && savedRejectedSagaId) rejectedSagaInput.value = savedRejectedSagaId;
   updateLabValues();
 }
 function copyBlock(elementId, button) {
@@ -611,8 +669,10 @@ function copyBlock(elementId, button) {
     .replace(/<\/?span\b[^>]*>/gi, "");
   const instanceIP = getComputeIP();
   const sagaId = getReturnedSagaId();
+  const rejectedSagaId = getRejectedSagaId();
   let resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
   if (sagaId) resolvedText = resolvedText.replace(/PASTE_SAGA_ID_HERE/g, sagaId);
+  if (rejectedSagaId) resolvedText = resolvedText.replace(/PASTE_REJECTED_SAGA_ID_HERE/g, rejectedSagaId);
   const originalText = button ? button.innerHTML : "";
   const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(resolvedText).then(done);

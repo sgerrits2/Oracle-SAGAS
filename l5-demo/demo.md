@@ -108,8 +108,7 @@ echo 'OK: Java runtime image contains all application artifacts'
 
 The adbssagasetup profile is only for first-time schema creation. Do not run it when ADB already contains the CloudBank schemas and seed data.
 
-<pre id="verifyAdbSetup" class="interactive-command"><code>set -e
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
 
 podman ps -a --format 'table {{.Names}}\t{{.Status}}'
@@ -130,8 +129,7 @@ echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initia
 
 Use the COMPOSE_PROFILES environment variable. It works with Cloud Shell and Compute versions of podman-compose; do not rely on --profile.
 
-<pre id="startLocalStack" class="interactive-command"><code>set -e
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="startLocalStack" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
 
 COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d --build
@@ -179,7 +177,6 @@ Use the existing instance. ADB is already initialized, so deployment starts only
 </div>
 
 <pre id="checkCompute" class="interactive-command"><code>ssh -o ConnectTimeout=10 -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
-set -e
 export PATH="$HOME/.local/bin:$PATH"
 free -h
 df -h /
@@ -198,8 +195,7 @@ REMOTE
 
 The archive includes hidden files such as .env and does not run ADB setup.
 
-<pre id="deployCloudBank" class="interactive-command"><code>set -e
-PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="deployCloudBank" class="interactive-command"><code>PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ARCHIVE="$HOME/oracle-saga-cloudbank-deploy.tar.gz"
 COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
 SSH_KEY="$HOME/.ssh/cloudbank_key"
@@ -210,7 +206,6 @@ tar -C "$PROJECT_PARENT" -czf "$ARCHIVE" "$PROJECT_NAME"
 scp -i "$SSH_KEY" "$ARCHIVE" "ubuntu@$COMPUTE_IP:~/"
 
 ssh -i "$SSH_KEY" "ubuntu@$COMPUTE_IP" 'bash -s' &lt;&lt;'REMOTE'
-set -e
 export PATH="$HOME/.local/bin:$PATH"
 DEPLOY_DIR="$HOME/oracle-saga-cloudbank"
 STAGING_DIR="$HOME/oracle-saga-cloudbank.staging"
@@ -238,7 +233,6 @@ REMOTE
 ### Step 3: Verify service endpoints
 
 <pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
-set -e
 for port in 3000 8080 9411; do
   printf 'localhost:%s -&gt; ' "$port"
   curl -4 -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port"
@@ -273,8 +267,7 @@ These commands use the orchestrator API directly from Cloud Shell or the Compute
 
 The seeded example uses source account 1234560001 (`BankChicago`) and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
 
-<pre id="runSagaCurl" class="interactive-command"><code>set -e
-API_BASE="http://127.0.0.1:8081/orchestrator"
+<pre id="runSagaCurl" class="interactive-command"><code>API_BASE="http://127.0.0.1:8081/orchestrator"
 UCID="ORACLE001"
 FROM_ACCOUNT="1234560001"
 TO_ACCOUNT="1234560301"

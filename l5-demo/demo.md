@@ -341,7 +341,7 @@ EXIT
 
 ### Scenario 1: Successful transfer with curl
 
-The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
+The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). This scenario is intentionally split into a definition step and an execution step. Paste the definition first; it does **not** start a transfer or prompt for a password. Then run the short execution command separately and type the transfer password manually when prompted. Do not paste a script while a hidden password prompt is active.
 
 <pre id="runSagaCurl" class="interactive-command"><code>run_cloudbank_transfer() {
   local api_base="http://127.0.0.1:8081/orchestrator"
@@ -349,25 +349,31 @@ The seeded transfer uses customer/account UCID `ORACLE001`, source account 12345
   local from_account="1234560001"
   local to_account="1234560301"
   local amount="10.00"
-  local transfer_password payload transfer_response saga_id
+  local transfer_password payload transfer_response saga_id http_status response_file
 
   read -r -s -p 'Transfer password: ' transfer_password
   echo
   payload=$(printf '{"ucid":"%s","fromAccountNumber":"%s","toAccountNumber":"%s","amount":"%s","password":"%s"}' \
     "$ucid" "$from_account" "$to_account" "$amount" "$transfer_password")
-  transfer_response=$(curl -fsS -X POST "$api_base/transfer" \
+  response_file=$(mktemp)
+  http_status=$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "$api_base/transfer" \
     -H 'Content-Type: application/json' \
-    --data "$payload") || return 1
+    --data "$payload")
   unset transfer_password
+  transfer_response=$(cat "$response_file")
+  rm -f "$response_file"
+  printf 'HTTP status: %s\n' "$http_status"
   printf '%s\n' "$transfer_response"
+
+  if [ "$http_status" != '202' ]; then
+    echo 'Transfer was not accepted. Verify that the typed transfer password is correct, then retry.'
+    return 1
+  fi
 
   saga_id=$(printf '%s' "$transfer_response" | sed -nE 's/.*\"id\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\1/p')
   test -n "$saga_id" || { echo 'ERROR: no saga ID was returned'; return 1; }
   printf 'Saga ID: %s\n' "$saga_id"
 }
-
-run_cloudbank_transfer
-unset -f run_cloudbank_transfer
 </code></pre>
 
 <div class="button-center">
@@ -375,6 +381,18 @@ unset -f run_cloudbank_transfer
 <button onclick="copyBlock('runSagaCurl', this)" class="copy-btn-pastel">📋 Copy API Transfer</button>
 
 </div>
+
+After the paste finishes and the normal shell prompt returns, run this command **separately**. When `Transfer password:` appears, type the password manually (the characters will not be displayed) and press Enter. For the seeded `ORACLE001` user, the transfer password is `cb1`.
+
+<pre id="executeSagaCurl" class="interactive-command"><code>run_cloudbank_transfer</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('executeSagaCurl', this)" class="copy-btn-pastel">📋 Copy Transfer Execution</button>
+
+</div>
+
+Success prints `HTTP status: 202`, an `Accepted` JSON response, and a new `Saga ID`. Save that ID for Scenario 3. If the status is `401`, the password entry did not match; re-run only the one-line execution command and type `cb1` manually. When the demonstration is complete, remove the temporary shell function with `unset -f run_cloudbank_transfer`.
 
 The operation is asynchronous; save the returned saga ID and wait briefly before querying it.
 

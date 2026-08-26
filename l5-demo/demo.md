@@ -253,9 +253,9 @@ REMOTE
 
 ## Task 4: Open CloudBank and Monitoring
 
-- CloudBank UI: http://INSTANCE_IP:3000
-- Swagger UI: http://INSTANCE_IP:8080
-- Zipkin: http://INSTANCE_IP:9411
+- CloudBank UI: http://<span class="instance-ip-value">INSTANCE_IP</span>:3000
+- Swagger UI: http://<span class="instance-ip-value">INSTANCE_IP</span>:8080
+- Zipkin: http://<span class="instance-ip-value">INSTANCE_IP</span>:9411
 
 If an endpoint works on the instance but not externally, verify the public IP, Internet Gateway route, security-list/NSG rule, and host firewall.
 
@@ -373,9 +373,13 @@ SELECT account_number, balance_amount FROM bankb WHERE account_number = 12345603
 
 <script>
 function setTextForClass(className, value) { document.querySelectorAll("." + className).forEach(function(element) { element.textContent = value; }); }
+function getComputeIP() {
+  const input = document.getElementById("computeInstanceIP");
+  return (input ? input.value : "").trim();
+}
 function updateLabValues() {
   const input = document.getElementById("computeInstanceIP");
-  const instanceIP = (input ? input.value : "").trim() || "INSTANCE_IP";
+  const instanceIP = getComputeIP() || "INSTANCE_IP";
   setTextForClass("instance-ip-value", instanceIP);
   if (input && input.value.trim()) sessionStorage.setItem("computePublicIP", input.value.trim());
 }
@@ -392,10 +396,12 @@ function copyBlock(elementId, button) {
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
     .replace(/&amp;/g, "&");
+  const instanceIP = getComputeIP();
+  const resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
   const originalText = button ? button.innerHTML : "";
   const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
-  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(text).then(done);
-  else { const area = document.createElement("textarea"); area.value = text; document.body.appendChild(area); area.select(); document.execCommand("copy"); document.body.removeChild(area); done(); }
+  if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(resolvedText).then(done);
+  else { const area = document.createElement("textarea"); area.value = resolvedText; document.body.appendChild(area); area.select(); document.execCommand("copy"); document.body.removeChild(area); done(); }
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadPreviousLabValues); else loadPreviousLabValues();
 </script>

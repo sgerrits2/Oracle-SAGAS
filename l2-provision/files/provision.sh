@@ -55,16 +55,24 @@ SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
 SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
-APP_ARCHIVE_PATH="${APP_ARCHIVE_PATH:-./oracle-saga-cloudbank.zip}"
-USER_SETUP_SQL_PATH="${USER_SETUP_SQL_PATH:-./create-cloudbank-users.sql}"
+LAB_BRANCH="${LAB_BRANCH:-lab5_test_lacruz}"
+REPOSITORY_RAW_URL="${REPOSITORY_RAW_URL:-https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/${LAB_BRANCH}}"
+APP_ARCHIVE_URL="${APP_ARCHIVE_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/oracle-saga-cloudbank.zip}"
+USER_SETUP_SQL_URL="${USER_SETUP_SQL_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/create-cloudbank-users.sql}"
 # -------------------------------------------------
 
-for REQUIRED_COMMAND in oci scp sql ssh ssh-keygen unzip; do
+for REQUIRED_COMMAND in curl oci scp sql ssh ssh-keygen unzip; do
   if ! command -v "$REQUIRED_COMMAND" >/dev/null 2>&1; then
     echo "ERROR: $REQUIRED_COMMAND is required. Run this script from OCI Cloud Shell."
     exit 1
   fi
 done
+
+download_file() {
+  local url="$1"
+  local destination="$2"
+  curl --fail --location --retry 3 --output "$destination" "$url"
+}
 
 wait_for_ssh() {
   local attempt
@@ -117,18 +125,18 @@ REMOTE_VERIFY
 }
 
 prepare_cloudbank() {
-  local app_archive="$APP_ARCHIVE_PATH"
-  local user_setup_sql="$USER_SETUP_SQL_PATH"
+  local app_archive="$SETUP_DIR/oracle-saga-cloudbank.zip"
+  local user_setup_sql="$SETUP_DIR/create-cloudbank-users.sql"
   local app_dir="$SETUP_DIR/oracle-saga-cloudbank"
   local wallet_dir="$app_dir/adbsSetup/adb_wallet"
   local wallet_archive="$wallet_dir/SagasWallet.zip"
   local preserved_env="$SETUP_DIR/.oracle-saga-cloudbank.env"
   local tns_alias
 
-  echo ">>> Validating the locally supplied CloudBank package and database user setup script..."
-  test -f "$app_archive" || { echo "ERROR: CloudBank archive not found: $app_archive"; exit 1; }
-  test -f "$user_setup_sql" || { echo "ERROR: User setup SQL not found: $user_setup_sql"; exit 1; }
+  echo ">>> Downloading CloudBank package and database user setup script from branch: $LAB_BRANCH"
   mkdir -p "$SETUP_DIR"
+  download_file "$APP_ARCHIVE_URL" "$app_archive"
+  download_file "$USER_SETUP_SQL_URL" "$user_setup_sql"
 
   rm -f "$preserved_env"
   if [[ -f "$app_dir/.env" ]] && grep -q '^TNS_ALIAS_CONTAINER=' "$app_dir/.env"; then

@@ -312,16 +312,14 @@ SELECT table_name
 FROM user_tables
 WHERE table_name = 'CLOUDBANK_CUSTOMER';
 
-MERGE INTO cloudbank_customer target
-USING (
-  SELECT '1' AS old_customer_id, 'ORACLE001' AS new_customer_id FROM dual
-  UNION ALL SELECT '2', 'ORACLE002' FROM dual
-  UNION ALL SELECT '3', 'ORACLE003' FROM dual
-  UNION ALL SELECT '4', 'ORACLE004' FROM dual
-) seeded
-ON (target.customer_id = seeded.old_customer_id)
-WHEN MATCHED THEN
-  UPDATE SET target.customer_id = seeded.new_customer_id;
+UPDATE cloudbank_customer
+SET customer_id = CASE customer_id
+  WHEN '1' THEN 'ORACLE001'
+  WHEN '2' THEN 'ORACLE002'
+  WHEN '3' THEN 'ORACLE003'
+  WHEN '4' THEN 'ORACLE004'
+END
+WHERE customer_id IN ('1', '2', '3', '4');
 
 COMMIT;
 
@@ -338,6 +336,8 @@ EXIT
 <button onclick="copyBlock('alignSeededIdentities', this)" class="copy-btn-pastel">📋 Copy Identity Alignment</button>
 
 </div>
+
+`0 rows updated` means the IDs were already aligned; it is successful and requires no further action.
 
 The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
 

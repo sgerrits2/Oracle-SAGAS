@@ -259,41 +259,109 @@ BEGIN
 END;
 /
 
--- 6. Verify the broker first, then the registered participants using USER_SAGA views
-CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+-- 6. Verify through USER_SAGA views in each object's owning schema.
+-- USER_SAGA views show objects owned by the current schema only.
+
+-- Broker first
+CONNECT &BROKER_SCHEMA/&BROKER_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+PROMPT === BrokerHub: broker ===
 
 SELECT name AS broker_name
 FROM   user_saga_brokers
 WHERE  UPPER(name) = UPPER('&BROKER_NAME');
 
-SELECT name        AS participant_name,
+DECLARE
+  entity_count PLS_INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO entity_count
+  FROM user_saga_brokers
+  WHERE UPPER(name) = UPPER('&BROKER_NAME');
+
+  IF entity_count != 1 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Saga verification failed: CloudBankBroker is missing.');
+  END IF;
+END;
+/
+
+-- CloudBank participant and coordinator
+CONNECT &ORCHESTRATOR_SCHEMA/&ORCHESTRATOR_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+PROMPT === OrchestratorHub: CloudBank and coordinator ===
+
+SELECT name AS participant_name,
        coordinator AS coordinator_name,
        broker_name,
        type
 FROM   user_saga_participants
-ORDER BY name;
+WHERE  UPPER(name) IN ('CLOUDBANK', 'CLOUDBANKCOORDINATOR')
+ORDER BY CASE UPPER(name)
+           WHEN 'CLOUDBANK' THEN 1
+           WHEN 'CLOUDBANKCOORDINATOR' THEN 2
+         END;
 
 DECLARE
-  configured_entities PLS_INTEGER;
+  entity_count PLS_INTEGER;
 BEGIN
-  SELECT COUNT(*)
-  INTO   configured_entities
-  FROM   user_saga_participants
-  WHERE  UPPER(name) IN (
-           'BANKCHICAGO', 'BANKMEX', 'CLOUDBANK', 'CLOUDBANKCOORDINATOR'
-         )
-  AND    UPPER(broker_name) = UPPER('&BROKER_NAME');
+  SELECT COUNT(*) INTO entity_count
+  FROM user_saga_participants
+  WHERE UPPER(name) IN ('CLOUDBANK', 'CLOUDBANKCOORDINATOR')
+    AND UPPER(broker_name) = UPPER('&BROKER_NAME');
 
-  IF configured_entities < 2 THEN
-    RAISE_APPLICATION_ERROR(
-      -20001,
-      'Saga verification failed: expected at least the broker-linked CloudBank entities but found ' ||
-      configured_entities
-    );
+  IF entity_count != 2 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Saga verification failed: CloudBank participant or coordinator is missing.');
+  END IF;
+END;
+/
+
+-- BankChicago participant
+CONNECT &BANKA_SCHEMA/&BANKA_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+PROMPT === BankChicago: participant ===
+
+SELECT name AS participant_name,
+       coordinator AS coordinator_name,
+       broker_name,
+       type
+FROM   user_saga_participants
+WHERE  UPPER(name) = 'BANKCHICAGO';
+
+DECLARE
+  entity_count PLS_INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO entity_count
+  FROM user_saga_participants
+  WHERE UPPER(name) = 'BANKCHICAGO'
+    AND UPPER(broker_name) = UPPER('&BROKER_NAME');
+
+  IF entity_count != 1 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Saga verification failed: BankChicago is missing.');
+  END IF;
+END;
+/
+
+-- BankMex participant
+CONNECT &BANKB_SCHEMA/&BANKB_SCHEMA_PASSWORD@'&DATABASE_CONNECTION_TNS_NAME'
+PROMPT === BankMex: participant ===
+
+SELECT name AS participant_name,
+       coordinator AS coordinator_name,
+       broker_name,
+       type
+FROM   user_saga_participants
+WHERE  UPPER(name) = 'BANKMEX';
+
+DECLARE
+  entity_count PLS_INTEGER;
+BEGIN
+  SELECT COUNT(*) INTO entity_count
+  FROM user_saga_participants
+  WHERE UPPER(name) = 'BANKMEX'
+    AND UPPER(broker_name) = UPPER('&BROKER_NAME');
+
+  IF entity_count != 1 THEN
+    RAISE_APPLICATION_ERROR(-20001, 'Saga verification failed: BankMex is missing.');
   END IF;
 
   DBMS_OUTPUT.PUT_LINE(
-    'SUCCESS: Broker, Coordinator, and the configured Saga participants are present.'
+    'SUCCESS: Broker, Coordinator, and all configured Saga participants are present.'
   );
 END;
 /
@@ -301,33 +369,40 @@ END;
 UNDEFINE ADMIN_PASSWORD</span>
 </pre>
 
+> If the broker, coordinator, and participants were already created successfully, do not rerun Steps 1–5. Copy and run only Step 6 to recheck the topology.
+
 **✅ Expected output:**
 
 ```text
-SQL> SELECT name AS broker_name
-    FROM user_saga_brokers
-    WHERE UPPER(name) = UPPER('CloudBankBroker');
+=== BrokerHub: broker ===
 
 BROKER_NAME
 --------------------
 CLOUDBANKBROKER
 
-SQL> SELECT name        AS participant_name,
-           coordinator AS coordinator_name,
-           broker_name,
-           type
-    FROM user_saga_participants
-    ORDER BY name;
+=== OrchestratorHub: CloudBank and coordinator ===
 
 PARTICIPANT_NAME       COORDINATOR_NAME          BROKER_NAME         TYPE
---------------------   ----------------------   -----------------   --------------
+---------------------  ------------------------  -----------------   -----------
 CLOUDBANK              CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
-CLOUDBANKCOORDINATOR   CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Coordinator
+CLOUDBANKCOORDINATOR                            CLOUDBANKBROKER     Coordinator
 
-SUCCESS: Broker, Coordinator, and the configured Saga participants are present.
+=== BankChicago: participant ===
+
+PARTICIPANT_NAME       COORDINATOR_NAME          BROKER_NAME         TYPE
+---------------------  ------------------------  -----------------   -----------
+BANKCHICAGO            CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
+
+=== BankMex: participant ===
+
+PARTICIPANT_NAME       COORDINATOR_NAME          BROKER_NAME         TYPE
+---------------------  ------------------------  -----------------   -----------
+BANKMEX                CLOUDBANKCOORDINATOR      CLOUDBANKBROKER     Participant
+
+SUCCESS: Broker, Coordinator, and all configured Saga participants are present.
 ```
 
-This ordering matches the script execution: the broker is displayed first, followed by the participants and the final verification message.
+This ordering uses only `USER_SAGA_*` views: the broker is displayed first, followed by the objects owned by OrchestratorHub, BankChicago, and BankMex.
 
 ### In one sentence
 

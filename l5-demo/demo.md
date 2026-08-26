@@ -111,11 +111,7 @@ The adbssagasetup profile is only for first-time schema creation. Do not run it 
 <pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
 
-if ! podman ps -a --format 'table {{.Names}}\t{{.Status}}'; then
-  echo 'Podman reported a stale rootless pause process; running podman system migrate.'
-  podman system migrate
-  podman ps -a --format 'table {{.Names}}\t{{.Status}}'
-fi
+podman ps -a --format 'table {{.Names}}\t{{.Status}}'
 echo 'If osagas-setup-adbs exists, inspect its final log lines:'
 podman logs --tail 30 osagas-setup-adbs 2&gt;/dev/null || true
 echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initialized.'
@@ -126,6 +122,8 @@ echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initia
 <button onclick="copyBlock('verifyAdbSetup', this)" class="copy-btn-pastel">📋 Copy ADB Setup Check</button>
 
 </div>
+
+If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` automatically**. Close the Cloud Shell session and start a new one, then rerun this check. Cloud Shell uses an ephemeral VM but preserves your home directory. If a fresh session still fails, stop here and use `podman system reset` only after confirming that deleting all local containers, images, networks, volumes, and build cache is acceptable.
 
 ---
 

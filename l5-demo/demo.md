@@ -123,7 +123,7 @@ echo 'Do not run COMPOSE_PROFILES=adbssagasetup unless ADB has never been initia
 
 </div>
 
-If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` automatically**. Close the Cloud Shell session and start a new one, then rerun this check. Cloud Shell uses an ephemeral VM but preserves your home directory. If a fresh session still fails, stop here and use `podman system reset` only after confirming that deleting all local containers, images, networks, volumes, and build cache is acceptable.
+If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale pause-PID path with `find "${XDG_RUNTIME_DIR:-/run/user/$(id -u)}" -type f -path '*/libpod/tmp/pause.pid' -print`; obtain support before deleting any Podman state.
 
 ---
 

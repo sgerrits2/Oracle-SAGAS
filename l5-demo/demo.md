@@ -178,7 +178,7 @@ Use the existing instance. ADB is already initialized, so deployment starts only
 
 </div>
 
-<pre id="checkCompute" class="interactive-command"><code>ssh -o ConnectTimeout=10 -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+<pre id="checkCompute" class="interactive-command"><code>ssh -o ConnectTimeout=10 -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
 export PATH="$HOME/.local/bin:$PATH"
 free -h
 df -h /
@@ -199,7 +199,7 @@ The archive includes hidden files such as .env and does not run ADB setup.
 
 <pre id="deployCloudBank" class="interactive-command"><code>PROJECT_DIR="$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ARCHIVE="$HOME/oracle-saga-cloudbank-deploy.tar.gz"
-COMPUTE_IP="<span class="instance-ip-value">INSTANCE_IP</span>"
+COMPUTE_IP="INSTANCE_IP"
 SSH_KEY="$HOME/.ssh/cloudbank_key"
 PROJECT_PARENT="$(dirname "$PROJECT_DIR")"
 PROJECT_NAME="$(basename "$PROJECT_DIR")"
@@ -234,7 +234,7 @@ REMOTE
 
 ### Step 3: Verify service endpoints
 
-<pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@<span class="instance-ip-value">INSTANCE_IP</span> 'bash -s' &lt;&lt;'REMOTE'
+<pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
 for port in 3000 8080 9411; do
   printf 'localhost:%s -&gt; ' "$port"
   curl -4 -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port"
@@ -395,7 +395,8 @@ function copyBlock(elementId, button) {
   const text = element.textContent
     .replace(/&lt;/g, "<")
     .replace(/&gt;/g, ">")
-    .replace(/&amp;/g, "&");
+    .replace(/&amp;/g, "&")
+    .replace(/<\/?span\b[^>]*>/gi, "");
   const instanceIP = getComputeIP();
   const resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
   const originalText = button ? button.innerHTML : "";

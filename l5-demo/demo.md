@@ -296,9 +296,9 @@ If an endpoint works on the instance but not externally, verify the public IP, I
 
 These commands use the orchestrator API directly from Cloud Shell or the Compute host. They do not put the transfer password in shell history.
 
-### Scenario 1: Successful transfer with curl
+### Optional: Align data from a legacy archive
 
-For environments initialized from an older archive, first run the one-time identity alignment below. It maps the original numeric customer IDs to the seeded account UCIDs, which both the orchestrator and banking participants validate. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
+Run this one-time SQL block **only** when `cloudbank_customer` contains the legacy numeric customer IDs `1`, `2`, `3`, and `4`. Skip it when Task 1 setup was just completed or when the table already shows `ORACLE001` through `ORACLE004`. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
 
 <pre id="alignSeededIdentities" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ORCHESTRATOR_USER="$(sed -n 's/^ORCHESTRATOR_USERNAME=//p' .env)"
@@ -338,6 +338,8 @@ EXIT
 </div>
 
 `0 rows updated` means the IDs were already aligned; it is successful and requires no further action.
+
+### Scenario 1: Successful transfer with curl
 
 The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Enter the transfer password only when prompted.
 

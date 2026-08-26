@@ -390,7 +390,69 @@ ORDER BY start_time DESC;</code></pre>
 
 ### Scenario 2: Expected validation rejection
 
-Repeat Scenario 1 with an amount greater than the available source balance. This exercises withdrawal validation; it is not evidence that a previously completed participant was compensated.
+This scenario deliberately requests more than the source account can cover. It exercises the withdrawal-check validation before a debit or deposit is performed; it is **not** a compensation demonstration. The API initially returns `202` because the request was accepted for asynchronous processing. The later Saga result must be a rollback/non-committed outcome, and both account balances must remain unchanged.
+
+Paste this definition first. It does not submit a transfer or prompt for a password.
+
+<pre id="runRejectedSagaCurl" class="interactive-command"><code>run_insufficient_funds_transfer() {
+  local api_base="http://127.0.0.1:8081/orchestrator"
+  local ucid="ORACLE001"
+  local from_account="1234560001"
+  local to_account="1234560301"
+  local amount="999999.00"
+  local transfer_password payload transfer_response saga_id http_status response_file
+
+  read -r -s -p 'Transfer password: ' transfer_password
+  echo
+  payload=$(printf '{"ucid":"%s","fromAccountNumber":"%s","toAccountNumber":"%s","amount":"%s","password":"%s"}' \
+    "$ucid" "$from_account" "$to_account" "$amount" "$transfer_password")
+  response_file=$(mktemp)
+  http_status=$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "$api_base/transfer" \
+    -H 'Content-Type: application/json' \
+    --data "$payload")
+  unset transfer_password
+  transfer_response=$(cat "$response_file")
+  rm -f "$response_file"
+  printf 'HTTP status: %s\n' "$http_status"
+  printf '%s\n' "$transfer_response"
+
+  if [ "$http_status" != '202' ]; then
+    echo 'The request was not accepted for validation. Verify the typed transfer password, then retry.'
+    return 1
+  fi
+
+  saga_id=$(printf '%s' "$transfer_response" | sed -nE 's/.*"id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
+  test -n "$saga_id" || { echo 'ERROR: no saga ID was returned'; return 1; }
+  printf 'Saga ID: %s\n' "$saga_id"
+}
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('runRejectedSagaCurl', this)" class="copy-btn-pastel">📋 Copy Rejection Test Definition</button>
+
+</div>
+
+After the normal shell prompt returns, run this command **separately**. At the password prompt, type `cb1` manually and press Enter.
+
+<pre id="executeRejectedSagaCurl" class="interactive-command"><code>run_insufficient_funds_transfer</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('executeRejectedSagaCurl', this)" class="copy-btn-pastel">📋 Copy Rejection Test Execution</button>
+
+</div>
+
+Save the returned Saga ID, wait about 10 seconds, and enter that ID in the **Saga ID returned by Scenario 1** field above. The label is reused for both scenarios. Run the status query and then Scenario 3's ledger and balance queries.
+
+Expected evidence:
+
+- The initial HTTP response is `202 Accepted`; this confirms the validation Saga started, not that money moved.
+- The Saga later has a rollback/non-committed terminal result instead of `Committed`.
+- The orchestrator ledger records the rejected transfer workflow.
+- No successful debit appears for BankChicago, no successful deposit appears for BankMex, and both balances are unchanged.
+
+When finished, remove the temporary function with `unset -f run_insufficient_funds_transfer`.
 
 ### Scenario 3: Query the specific saga with SQLcl
 

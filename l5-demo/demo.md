@@ -67,23 +67,35 @@ sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=&lt;configured&gt;/p' .env | sort
 
 The archive provides osagaJavaBuilder and osagaJavaRuntime. The runtime compiles the Maven modules in its own build stage, avoiding a remote lookup for a local builder image.
 
-<pre id="validateFiles" class="interactive-command"><code>set -e
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="validateFiles" class="interactive-command"><code>(
+cd "$HOME/cloudbank-setup/oracle-saga-cloudbank" || { echo "ERROR: project directory is missing"; exit 1; }
 
-grep -q 'maven:3.9.9-eclipse-temurin-17' osagaJavaBuilder
-grep -q 'eclipse-temurin:17-jre-jammy' osagaJavaRuntime
-grep -qxF 'Werkzeug&gt;=2.3.7,&lt;3.0' CloudBank/Website/requirements.txt
-grep -q 'image: docker.io/swaggerapi/swagger-ui:v5.20.7' osagaAdbsSetup.yaml
-grep -q '\$\${TNS_ALIAS}' osagaAdbsSetup.yaml
-! grep -q '\$\${TNS_ALIAS_CONTAINER}' osagaAdbsSetup.yaml
-grep -q '^  osagas-cleanup-adbs:' osagaAdbsSetup.yaml
-grep -q '"3000:8084"' osagaAdbsSetup.yaml
-grep -q '"8080:8080"' osagaAdbsSetup.yaml
+require_contains() {
+  if grep -q -- "$2" "$3"; then printf 'OK: %s\n' "$1"; else printf 'ERROR: %s\n' "$1"; exit 1; fi
+}
+require_exact_line() {
+  if grep -qxF -- "$2" "$3"; then printf 'OK: %s\n' "$1"; else printf 'ERROR: %s\n' "$1"; exit 1; fi
+}
+require_absent() {
+  if grep -q -- "$2" "$3"; then printf 'ERROR: %s\n' "$1"; exit 1; else printf 'OK: %s\n' "$1"; fi
+}
 
-podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder .
-podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime .
+require_contains 'Java builder base image' 'maven:3.9.9-eclipse-temurin-17' osagaJavaBuilder
+require_contains 'Java runtime base image' 'eclipse-temurin:17-jre-jammy' osagaJavaRuntime
+require_exact_line 'Werkzeug compatibility pin' 'Werkzeug&gt;=2.3.7,&lt;3.0' CloudBank/Website/requirements.txt
+require_contains 'Swagger UI image' 'image: docker.io/swaggerapi/swagger-ui:v5.20.7' osagaAdbsSetup.yaml
+require_contains 'ADB TNS alias variable' '\$\${TNS_ALIAS}' osagaAdbsSetup.yaml
+require_absent 'obsolete container TNS alias is absent' '\$\${TNS_ALIAS_CONTAINER}' osagaAdbsSetup.yaml
+require_contains 'ADB cleanup service' '^  osagas-cleanup-adbs:' osagaAdbsSetup.yaml
+require_contains 'Website port mapping' '"3000:8084"' osagaAdbsSetup.yaml
+require_contains 'Swagger UI port mapping' '"8080:8080"' osagaAdbsSetup.yaml
+
+podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder . || exit 1
+podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime . || exit 1
 podman run --rm --entrypoint /bin/sh osaga-runtime:1.0 -c \
-  'test -f /opt/app/bankA.jar &amp;&amp; test -f /opt/app/bankB.jar &amp;&amp; test -f /opt/app/orchestrator.jar &amp;&amp; test -f /opt/app/flask_ui/app.py'
+  'test -f /opt/app/bankA.jar &amp;&amp; test -f /opt/app/bankB.jar &amp;&amp; test -f /opt/app/orchestrator.jar &amp;&amp; test -f /opt/app/flask_ui/app.py' || exit 1
+echo 'OK: Java runtime image contains all application artifacts'
+)
 </code></pre>
 
 <div class="button-center">

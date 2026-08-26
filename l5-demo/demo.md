@@ -187,6 +187,8 @@ podman-compose --version
 REMOTE
 </code></pre>
 
+If SSH reports that the remote host identification changed, first verify in the OCI Console that `INSTANCE_IP` belongs to the intended instance. If that instance was rebuilt or replaced, remove only its old saved key with `ssh-keygen -R INSTANCE_IP`, then reconnect and verify the new fingerprint. Do not bypass host-key verification for an unconfirmed instance.
+
 <div class="button-center">
 
 <button onclick="copyBlock('checkCompute', this)" class="copy-btn-pastel">📋 Copy Compute Check</button>

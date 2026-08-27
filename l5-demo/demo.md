@@ -76,6 +76,18 @@ require_absent 'obsolete container TNS alias is absent' '\$\${TNS_ALIAS_CONTAINE
 require_contains 'ADB cleanup service' '^  osagas-cleanup-adbs:' osagaAdbsSetup.yaml
 require_contains 'Website port mapping' '"3000:8084"' osagaAdbsSetup.yaml
 require_contains 'Swagger UI port mapping' '"8080:8080"' osagaAdbsSetup.yaml
+require_exact_line 'BankA reduced listeners' 'osaga.banka.numListeners=1' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankA reduced publishers' 'osaga.banka.numPublishers=1' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankA reduced pool size' 'osaga.banka.maxpool=5' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankA reduced initial pool size' 'osaga.banka.initialPoolSize=2' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankB reduced listeners' 'osaga.bankb.numListeners=1' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'BankB reduced publishers' 'osaga.bankb.numPublishers=1' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'BankB reduced pool size' 'osaga.bankb.maxpool=5' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'BankB reduced initial pool size' 'osaga.bankb.initialPoolSize=2' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced listeners' 'osaga.cloudbank.numListeners=1' CloudBank/orchestrator/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced publishers' 'osaga.cloudbank.numPublishers=1' CloudBank/orchestrator/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced pool size' 'osaga.cloudbank.maxpool=5' CloudBank/orchestrator/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced initial pool size' 'osaga.cloudbank.initialPoolSize=2' CloudBank/orchestrator/src/main/resources/application.properties
 
 podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder . || exit 1
 podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime . || exit 1
@@ -269,13 +281,99 @@ REMOTE
 
 ---
 
-## Task 4: Open CloudBank and Monitoring
+## Task 4: Configure and Open the CloudBank UI
 
-- CloudBank UI: http://<span class="instance-ip-value">INSTANCE_IP</span>:3000
+Flask is the CloudBank UI. Swagger UI and Zipkin are optional for the API and SQL scenarios in Task 5. On a constrained Compute instance, leave optional services stopped unless you specifically need them.
+
+### Step 1: Start and verify Flask on the Compute instance
+
+The command starts Flask only when it is not already running, then verifies the local UI endpoint and shows container status.
+
+<pre id="startFlaskUi" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
+flask_state=$(podman inspect --format '{{.State.Status}}' flask 2&gt;/dev/null || true)
+if [ "$flask_state" != 'running' ]; then
+  podman start flask
+fi
+
+for attempt in $(seq 1 30); do
+  if curl -fsS http://127.0.0.1:3000/ &gt;/dev/null; then
+    echo 'Flask UI is ready on localhost:3000.'
+    break
+  fi
+  if [ "$attempt" -eq 30 ]; then
+    echo 'ERROR: Flask did not become ready.'
+    exit 1
+  fi
+  sleep 2
+done
+
+podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+free -h
+REMOTE
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('startFlaskUi', this)" class="copy-btn-pastel">📋 Copy Flask Start and Check</button>
+
+</div>
+
+### Step 2: Allow external access to Flask
+
+Provisioning configures both the OCI security list and a persistent host-firewall rule for TCP 3000. For an instance created with an earlier version of the provisioning script, run the following one-time repair. It inserts the allow rule before a catch-all `REJECT` rule when present. The command persists the rule if `netfilter-persistent` is available.
+
+<pre id="allowFlaskUi" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
+if ! sudo iptables -C INPUT -p tcp --dport 3000 -m conntrack --ctstate NEW -j ACCEPT 2&gt;/dev/null; then
+  reject_line=$(sudo iptables -L INPUT -n --line-numbers | awk '$4 == "REJECT" { print $1; exit }')
+  if [ -n "$reject_line" ]; then
+    sudo iptables -I INPUT "$reject_line" -p tcp --dport 3000 -m conntrack --ctstate NEW -j ACCEPT
+  else
+    sudo iptables -A INPUT -p tcp --dport 3000 -m conntrack --ctstate NEW -j ACCEPT
+  fi
+fi
+
+if command -v netfilter-persistent &gt;/dev/null; then
+  sudo netfilter-persistent save
+else
+  echo 'WARNING: TCP 3000 is allowed until the next reboot; install a persistent firewall service or reprovision with this branch.'
+fi
+
+sudo iptables -L INPUT -n -v --line-numbers
+REMOTE
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('allowFlaskUi', this)" class="copy-btn-pastel">📋 Copy Flask Firewall Configuration</button>
+
+</div>
+
+### Step 3: Verify the public UI and sign in
+
+Run this from Cloud Shell. `--max-time` prevents an unresponsive endpoint from waiting indefinitely.
+
+<pre id="verifyFlaskPublicUi" class="interactive-command"><code>curl -I --connect-timeout 5 --max-time 15 http://INSTANCE_IP:3000/
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('verifyFlaskPublicUi', this)" class="copy-btn-pastel">📋 Copy Public Flask Check</button>
+
+</div>
+
+Expected output includes `HTTP/1.1 200 OK`. Then open http://<span class="instance-ip-value">INSTANCE_IP</span>:3000 in a browser and use these CloudBank customer credentials:
+
+```text
+User ID:  ORACLE001
+Password: cb1
+```
+
+Optional endpoints:
+
 - Swagger UI: http://<span class="instance-ip-value">INSTANCE_IP</span>:8080
 - Zipkin: http://<span class="instance-ip-value">INSTANCE_IP</span>:9411
 
-If an endpoint works on the instance but not externally, verify the public IP, Internet Gateway route, security-list/NSG rule, and host firewall.
+If an endpoint works on the instance but not externally, verify the current public IP, Internet Gateway route, security-list/NSG rule, and host firewall.
 
 ---
 

@@ -50,6 +50,27 @@ sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=[configured]/p' .env | sort
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+The exact versions may differ. Confirm these key results:
+
+```text
+...:oracle-saga-cloudbank (... )$
+CloudBank/bankb/pom.xml
+CloudBank/banka/pom.xml
+CloudBank/orchestrator/pom.xml
+CloudBank/Website/app.py
+
+ADBS_ADMIN_PWD=[configured]
+ORCHESTRATOR_PASSWORD=[configured]
+TNS_ADMIN_CONTAINER=[configured]
+TNS_ALIAS_CONTAINER=[configured]
+```
+
+The four `test` commands are silent when successful. Continue if there is no `ERROR:` message and every displayed `.env` value is `[configured]`.
+</details>
+
 ### Step 2: Validate and build the supplied files
 
 The archive provides osagaJavaBuilder and osagaJavaRuntime. The runtime compiles the Maven modules in its own build stage, avoiding a remote lookup for a local builder image.
@@ -91,17 +112,42 @@ echo 'OK: Java runtime image contains all application artifacts'
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+The first build can download images and dependencies, so intermediate output varies. Confirm these final lines:
+
+```text
+OK: Java builder base image
+OK: Java runtime base image
+OK: Werkzeug compatibility pin
+OK: Swagger UI image
+OK: ADB TNS alias variable
+OK: obsolete container TNS alias is absent
+OK: ADB cleanup service
+OK: Website port mapping
+OK: Swagger UI port mapping
+
+Successfully tagged localhost/osaga-builder:1.0
+Successfully tagged localhost/osaga-runtime:1.0
+OK: Java runtime image contains all application artifacts
+```
+
+Continue only if every check is `OK:` and the final artifact message appears without an `ERROR:` message.
+</details>
+
 ### Step 3: Verify or initialize the CloudBank business schema
 
 Lab 3 verifies the Broker, coordinator, and participants. It does **not** create the CloudBank application tables. Check ADB directly rather than using the existence or exit code of an old setup container as evidence.
 
 <pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+ADBS_ADMIN_PWD="$(sed -n 's/^ADBS_ADMIN_PWD=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+test -n "$ADBS_USER" &amp;&amp; test -n "$ADBS_ADMIN_PWD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME, ADBS_ADMIN_PWD, or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
 export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"
+SQLPATH=/nonexistent sql -L "$ADBS_USER/\"$ADBS_ADMIN_PWD\"@$TNS_ALIAS"
 
 SELECT owner, object_type, object_name
 FROM dba_objects
@@ -123,6 +169,35 @@ EXIT
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+On a new database, the expected result is:
+
+```text
+no rows selected
+```
+
+After successful setup, the query returns these objects:
+
+```text
+OWNER             OBJECT_TYPE  OBJECT_NAME
+BANKCHICAGO       SEQUENCE     SEQ_ACCOUNTS_BANK_A_LOGS
+BANKCHICAGO       SEQUENCE     SEQ_ACCOUNT_NUMBER_BANK_A
+BANKCHICAGO       TABLE        BANKA
+BANKCHICAGO       TABLE        BANKA_BOOK
+BANKMEX           SEQUENCE     SEQ_ACCOUNTS_BANK_B_LOGS
+BANKMEX           SEQUENCE     SEQ_ACCOUNT_NUMBER_BANK_B
+BANKMEX           TABLE        BANKB
+BANKMEX           TABLE        BANKB_BOOK
+ORCHESTRATORHUB   SEQUENCE     SEQ_CLOUDBANK_CUSTOMER_ID
+ORCHESTRATORHUB   SEQUENCE     SEQ_CLOUDBANK_LOG_ID
+ORCHESTRATORHUB   TABLE        CLOUDBANK_BOOK
+ORCHESTRATORHUB   TABLE        CLOUDBANK_CUSTOMER
+ORCHESTRATORHUB   TRIGGER      TRG_CUSTOMER_ID
+```
+</details>
+
 - If the query returns the CloudBank, BankA, and BankB tables (and their sequences/trigger), the business schema is ready. Do **not** run setup again.
 - If it returns `no rows selected`, the business schema is absent. The Saga objects from Lab 3 can still be correct. Run the following command once from the project directory and wait for the table-creation output:
 
@@ -137,9 +212,19 @@ COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-s
 
 </div>
 
-Do not use `-d`; the attached output must show each table creation and the final commits. If the inventory shows only some of the listed objects, stop and investigate rather than rerunning the non-idempotent setup.
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
 
-If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale rootless PID files with `find "$HOME/.local/share/containers/storage/overlay-containers" -type f \( -name pause.pid -o -name conmon.pid \) -print`; obtain support before deleting any Podman state.
+```text
+[osagas-setup-adbs] | Connected! Now running setup script...
+[osagas-setup-adbs] | Table CLOUDBANK_CUSTOMER created.
+[osagas-setup-adbs] | Table BANKA created.
+[osagas-setup-adbs] | Table BANKB created.
+[osagas-setup-adbs] | Commit complete.
+```
+
+Image downloads and additional creation messages vary. The setup is successful only when no `ORA-` error is printed.
+</details>
 
 ---
 
@@ -342,15 +427,16 @@ The operation is asynchronous; save the returned saga ID and wait briefly before
 
 ### Scenario 1 follow-up: Check the returned Saga status
 
-Wait about 10 seconds, then query the exact Saga ID returned by Scenario 1. The following shell command only opens SQLcl; when it prompts for the database password, type the ADB administrator password manually. It is **not** the transfer password (`cb1`).
+Wait about 10 seconds, then query the exact Saga ID returned by Scenario 1. The following command opens SQLcl using the configured ADB credentials without displaying the password. It is **not** the transfer password (`cb1`).
 
 <pre id="openSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+ADBS_ADMIN_PWD="$(sed -n 's/^ADBS_ADMIN_PWD=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+test -n "$ADBS_USER" &amp;&amp; test -n "$ADBS_ADMIN_PWD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME, ADBS_ADMIN_PWD, or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
 export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
+SQLPATH=/nonexistent sql -L "$ADBS_USER/\"$ADBS_ADMIN_PWD\"@$TNS_ALIAS"</code></pre>
 
 <div class="button-center">
 
@@ -447,15 +533,16 @@ Save the returned Saga ID and wait about 10 seconds before checking its final st
 
 ### Scenario 2 follow-up: Check the rejected Saga status
 
-The following shell command only opens SQLcl. When it prompts for the database password, type the ADB administrator password manually; it is **not** the transfer password (`cb1`).
+The following command opens SQLcl using the configured ADB credentials without displaying the password. It is **not** the transfer password (`cb1`).
 
 <pre id="openRejectedSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
+ADBS_ADMIN_PWD="$(sed -n 's/^ADBS_ADMIN_PWD=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+test -n "$ADBS_USER" &amp;&amp; test -n "$ADBS_ADMIN_PWD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME, ADBS_ADMIN_PWD, or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
 export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
+SQLPATH=/nonexistent sql -L "$ADBS_USER/\"$ADBS_ADMIN_PWD\"@$TNS_ALIAS"</code></pre>
 
 <div class="button-center">
 
@@ -571,11 +658,12 @@ Run this one-time task **only** when `cloudbank_customer` contains the legacy nu
 
 <pre id="alignSeededIdentities" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ORCHESTRATOR_USER="$(sed -n 's/^ORCHESTRATOR_USERNAME=//p' .env)"
+ORCHESTRATOR_PWD="$(sed -n 's/^ORCHESTRATOR_PASSWORD=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ORCHESTRATOR_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ORCHESTRATOR_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
+test -n "$ORCHESTRATOR_USER" &amp;&amp; test -n "$ORCHESTRATOR_PWD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ORCHESTRATOR_USERNAME, ORCHESTRATOR_PASSWORD, or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
 export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L "$ORCHESTRATOR_USER@$TNS_ALIAS"
+SQLPATH=/nonexistent sql -L "$ORCHESTRATOR_USER/\"$ORCHESTRATOR_PWD\"@$TNS_ALIAS"
 
 SELECT table_name
 FROM user_tables

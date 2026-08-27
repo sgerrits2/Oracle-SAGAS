@@ -99,16 +99,16 @@ require_contains 'Website port mapping' '"3000:8084"' osagaAdbsSetup.yaml
 require_contains 'Swagger UI port mapping' '"8080:8080"' osagaAdbsSetup.yaml
 require_exact_line 'BankA reduced listeners' 'osaga.banka.numListeners=1' CloudBank/banka/src/main/resources/application.properties
 require_exact_line 'BankA reduced publishers' 'osaga.banka.numPublishers=1' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankA pool size' 'osaga.banka.maxpool=10' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankA initial pool size' 'osaga.banka.initialPoolSize=5' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankA reduced pool size' 'osaga.banka.maxpool=5' CloudBank/banka/src/main/resources/application.properties
+require_exact_line 'BankA reduced initial pool size' 'osaga.banka.initialPoolSize=2' CloudBank/banka/src/main/resources/application.properties
 require_exact_line 'BankB reduced listeners' 'osaga.bankb.numListeners=1' CloudBank/bankb/src/main/resources/application.properties
 require_exact_line 'BankB reduced publishers' 'osaga.bankb.numPublishers=1' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'BankB pool size' 'osaga.bankb.maxpool=10' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'BankB initial pool size' 'osaga.bankb.initialPoolSize=5' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'BankB reduced pool size' 'osaga.bankb.maxpool=5' CloudBank/bankb/src/main/resources/application.properties
+require_exact_line 'BankB reduced initial pool size' 'osaga.bankb.initialPoolSize=2' CloudBank/bankb/src/main/resources/application.properties
 require_exact_line 'Orchestrator reduced listeners' 'osaga.cloudbank.numListeners=1' CloudBank/orchestrator/src/main/resources/application.properties
 require_exact_line 'Orchestrator reduced publishers' 'osaga.cloudbank.numPublishers=1' CloudBank/orchestrator/src/main/resources/application.properties
-require_exact_line 'Orchestrator pool size' 'osaga.cloudbank.maxpool=10' CloudBank/orchestrator/src/main/resources/application.properties
-require_exact_line 'Orchestrator initial pool size' 'osaga.cloudbank.initialPoolSize=5' CloudBank/orchestrator/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced pool size' 'osaga.cloudbank.maxpool=5' CloudBank/orchestrator/src/main/resources/application.properties
+require_exact_line 'Orchestrator reduced initial pool size' 'osaga.cloudbank.initialPoolSize=2' CloudBank/orchestrator/src/main/resources/application.properties
 
 podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder . || exit 1
 podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime . || exit 1

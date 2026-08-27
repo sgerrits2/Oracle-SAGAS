@@ -438,6 +438,22 @@ REMOTE
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+```text
+run-parts: executing .../15-ip4tables save
+run-parts: executing .../25-ip6tables save
+
+Chain INPUT (policy ACCEPT ...)
+num  target  prot  ...
+1    ACCEPT  tcp   ... tcp dpt:3000 ctstate NEW
+...  REJECT  ...
+```
+
+Rule numbers and packet counts vary. The TCP 3000 `ACCEPT` rule must appear before `REJECT`.
+</details>
+
 ### Step 3: Verify the public UI and sign in
 
 Run this from Cloud Shell. `--max-time` prevents an unresponsive endpoint from waiting indefinitely.

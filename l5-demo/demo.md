@@ -467,7 +467,18 @@ Run this from Cloud Shell. `--max-time` prevents an unresponsive endpoint from w
 
 </div>
 
-Expected output includes `HTTP/1.1 200 OK`. Then open http://<span class="instance-ip-value">INSTANCE_IP</span>:3000 in a browser and use these CloudBank customer credentials:
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+```text
+HTTP/1.1 200 OK
+Content-Type: text/html; charset=utf-8
+Content-Length: ...
+Date: ...
+```
+</details>
+
+**Then open the CloudBank UI:** http://<span class="instance-ip-value">INSTANCE_IP</span>:3000 in a browser. Use these CloudBank customer credentials:
 
 ```text
 User ID:  ORACLE001

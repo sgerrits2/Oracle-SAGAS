@@ -218,6 +218,8 @@ Use the existing instance. Complete Task 1, Step 3 before deployment: the deploy
 
 ### Step 1: Check the instance
 
+In the OCI Console, open the navigation menu (☰) in the upper-left corner, then select **Compute** → **Instances**. Open `oracle-saga-compute-instance` and copy its **Public IP address** field.
+
 <div class="input-section">
 
 <strong>Compute Instance Public IP:</strong>
@@ -235,13 +237,30 @@ podman-compose --version
 REMOTE
 </code></pre>
 
-If SSH reports that the remote host identification changed, first verify in the OCI Console that `INSTANCE_IP` belongs to the intended instance. If that instance was rebuilt or replaced, remove only its old saved key with `ssh-keygen -R INSTANCE_IP`, then reconnect and verify the new fingerprint. Do not bypass host-key verification for an unconfirmed instance.
+If SSH reports a changed host key, first confirm that `INSTANCE_IP` is the intended instance. If it was rebuilt, remove its old key with `ssh-keygen -R INSTANCE_IP`, then reconnect. Do not bypass host-key verification.
 
 <div class="button-center">
 
 <button onclick="copyBlock('checkCompute', this)" class="copy-btn-pastel">📋 Copy Compute Check</button>
 
 </div>
+
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+Memory and disk values vary by instance. Confirm that `free -h` and `df -h /` return system information, followed by Podman and Podman Compose versions:
+
+```text
+total        used        free      shared  buff/cache   available
+Mem:           ...
+
+Filesystem      Size  Used Avail Use% Mounted on
+/dev/sda1        ...
+
+podman version 4.9.x
+podman-compose version 1.6.0
+```
+</details>
 
 ### Step 2: Package and deploy
 

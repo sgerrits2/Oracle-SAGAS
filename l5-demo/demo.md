@@ -214,7 +214,7 @@ Local ports: Flask 3000, Swagger 8080, Zipkin 9411, and Java APIs 8081–8083.
 
 ## Task 3: Deploy to the Existing Compute Instance
 
-Use the existing instance. Complete Task 1, Step 3 before deployment: the deployment starts only the `adbs` services and does not initialize missing ADB business tables.
+Before deployment, complete Task 1, Step 3 to initialize the CloudBank business schema.
 
 ### Step 1: Check the instance
 
@@ -301,12 +301,31 @@ REMOTE
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+The archive transfer reaches `100%`. A first deployment downloads images and packages, so build details vary. Confirm the final image tag and created containers:
+
+```text
+oracle-saga-cloudbank-deploy.tar.gz  100%  ...
+Successfully tagged localhost/osaga-runtime:1.0
+zipkin
+bankA
+bankB
+orchestrator
+flask
+swagger-ui
+```
+
+No `ERROR:` message should appear.
+</details>
+
 ### Step 3: Verify service endpoints
 
 <pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
 for port in 3000 8080 9411; do
   printf 'localhost:%s -&gt; ' "$port"
-  curl -4 -fsS -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port"
+  curl -4 -fsS --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port"
 done
 podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 REMOTE
@@ -317,6 +336,26 @@ REMOTE
 <button onclick="copyBlock('verifyEndpoints', this)" class="copy-btn-pastel">📋 Copy Endpoint Verification</button>
 
 </div>
+
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+```text
+localhost:3000 -&gt; 200
+localhost:8080 -&gt; 200
+localhost:9411 -&gt; 200
+
+NAMES         STATUS
+zipkin        Up ...
+bankA         Up ...
+bankB         Up ...
+orchestrator  Up ...
+flask         Up ...
+swagger-ui    Up ...
+```
+
+After an instance reboot, containers may show `Created` and return `000` until started again. The time limits prevent this verification from waiting indefinitely.
+</details>
 
 ---
 

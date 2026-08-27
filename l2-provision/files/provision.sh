@@ -298,8 +298,26 @@ cat > "$CLOUD_INIT_FILE" <<'CLOUD_INIT'
 set -euo pipefail
 
 apt-get update -y
-apt-get install -y podman curl wget pipx
+DEBIAN_FRONTEND=noninteractive apt-get install -y podman curl wget pipx iptables-persistent
 systemctl enable --now podman.socket
+
+allow_inbound_tcp() {
+  local port="$1" reject_line
+  if iptables -C INPUT -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null; then
+    return
+  fi
+  reject_line=$(iptables -L INPUT -n --line-numbers | awk '$4 == "REJECT" { print $1; exit }')
+  if [ -n "$reject_line" ]; then
+    iptables -I INPUT "$reject_line" -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT
+  else
+    iptables -A INPUT -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT
+  fi
+}
+
+for port in 3000 8080 8081 8082 8083 8084 8085 9411; do
+  allow_inbound_tcp "$port"
+done
+netfilter-persistent save
 
 sudo -u ubuntu env PATH="/home/ubuntu/.local/bin:$PATH" bash <<'USER_SETUP'
 pipx install podman-compose

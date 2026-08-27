@@ -396,6 +396,18 @@ REMOTE
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+Brief `Connection reset by peer` messages can occur while Flask starts. Continue when this message appears:
+
+```text
+Flask UI is ready on localhost:3000.
+```
+
+`podman ps -a` shows `flask` as `Up` with `0.0.0.0:3000-&gt;8084/tcp`. The Java services may also be `Up`; `swagger-ui` can remain `Created` because it is optional. `free -h` prints the instance memory summary.
+</details>
+
 ### Step 2: Allow external access to Flask
 
 Provisioning configures both the OCI security list and a persistent host-firewall rule for TCP 3000. For an instance created with an earlier version of the provisioning script, run the following one-time repair. It inserts the allow rule before a catch-all `REJECT` rule when present. The command persists the rule if `netfilter-persistent` is available.

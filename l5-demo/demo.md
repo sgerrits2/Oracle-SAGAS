@@ -188,7 +188,27 @@ curl -fsS http://127.0.0.1:9411/health || podman logs --tail 100 zipkin
 
 </div>
 
-Expected ports are Flask 3000, Swagger 8080, and Zipkin 9411. Java services remain on 8081–8083 for direct API use. Swagger derives API URLs from the page host, so it does not target the browser's localhost.
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+Startup retries can briefly report a connection reset. Continue when every endpoint reaches `OK`:
+
+```text
+Waiting for http://127.0.0.1:8081/orchestrator/version OK
+Waiting for http://127.0.0.1:8082/banka/version OK
+Waiting for http://127.0.0.1:8083/bankb/version OK
+Waiting for http://127.0.0.1:3000/ OK
+Waiting for http://127.0.0.1:8080/ OK
+```
+
+`podman ps` then lists `zipkin`, `bankA`, `bankB`, `orchestrator`, `flask`, and `swagger-ui` as `Up`. The final health check returns:
+
+```json
+{ "status" : "UP" }
+```
+</details>
+
+Local ports: Flask 3000, Swagger 8080, Zipkin 9411, and Java APIs 8081–8083.
 
 ---
 

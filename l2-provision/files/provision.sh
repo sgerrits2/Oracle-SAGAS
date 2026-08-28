@@ -180,7 +180,7 @@ ORCHESTRATOR_USERNAME=orchestratorhub
 ORCHESTRATOR_PASSWORD=Welcome_123#
 BROKER_USERNAME=brokerhub
 BROKER_PASSWORD=Welcome_123#
-ENABLE_ZIPKIN=true
+ENABLE_ZIPKIN=false
 ZIPKIN_URL=http://zipkin:9411/api/v2/spans
 EOF
     chmod 600 "$app_dir/.env"

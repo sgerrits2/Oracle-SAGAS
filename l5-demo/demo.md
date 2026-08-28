@@ -18,7 +18,7 @@ You will build the Java/Flask image, start the existing ADB-backed services, run
 - ADB wallet: adbsSetup/adb_wallet
 - A configured .env file. Do not overwrite or publish it.
 - Podman 4.9+ and podman-compose.
-- OCI ingress for TCP 22, 3000, 8080, and 9411 when accessing public endpoints.
+- OCI ingress for TCP 22 and 3000. TCP 8080 and 9411 are needed only when using the optional Swagger UI and Zipkin services.
 
 Docker Engine is not required.
 
@@ -76,6 +76,13 @@ require_absent 'obsolete container TNS alias is absent' '\$\${TNS_ALIAS_CONTAINE
 require_contains 'ADB cleanup service' '^  osagas-cleanup-adbs:' osagaAdbsSetup.yaml
 require_contains 'Website port mapping' '"3000:8084"' osagaAdbsSetup.yaml
 require_contains 'Swagger UI port mapping' '"8080:8080"' osagaAdbsSetup.yaml
+if [ "$(grep -c '^      - optional$' osagaAdbsSetup.yaml)" -eq 2 ]; then
+  echo 'OK: Swagger UI and Zipkin use the optional profile'
+else
+  echo 'ERROR: Swagger UI and Zipkin must both use the optional profile'
+  exit 1
+fi
+require_absent 'BankA does not require Zipkin' '^      - zipkin$' osagaAdbsSetup.yaml
 require_exact_line 'BankA reduced listeners' 'osaga.banka.numListeners=1' CloudBank/banka/src/main/resources/application.properties
 require_exact_line 'BankA reduced publishers' 'osaga.banka.numPublishers=1' CloudBank/banka/src/main/resources/application.properties
 require_exact_line 'BankA reduced pool size' 'osaga.banka.maxpool=5' CloudBank/banka/src/main/resources/application.properties
@@ -161,6 +168,7 @@ Use the COMPOSE_PROFILES environment variable. It works with Cloud Shell and Com
 
 <pre id="startLocalStack" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
+export ENABLE_ZIPKIN=false
 
 COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d --build
 
@@ -168,8 +176,7 @@ for endpoint in \
   'http://127.0.0.1:8081/orchestrator/version' \
   'http://127.0.0.1:8082/banka/version' \
   'http://127.0.0.1:8083/bankb/version' \
-  'http://127.0.0.1:3000/' \
-  'http://127.0.0.1:8080/'; do
+  'http://127.0.0.1:3000/'; do
   printf 'Waiting for %s ' "$endpoint"
   for attempt in $(seq 1 30); do
     if curl -fsS "$endpoint" &gt;/dev/null; then echo 'OK'; break; fi
@@ -179,7 +186,6 @@ for endpoint in \
 done
 
 podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-curl -fsS http://127.0.0.1:9411/health || podman logs --tail 100 zipkin
 </code></pre>
 
 <div class="button-center">
@@ -198,17 +204,12 @@ Waiting for http://127.0.0.1:8081/orchestrator/version OK
 Waiting for http://127.0.0.1:8082/banka/version OK
 Waiting for http://127.0.0.1:8083/bankb/version OK
 Waiting for http://127.0.0.1:3000/ OK
-Waiting for http://127.0.0.1:8080/ OK
 ```
 
-`podman ps` then lists `zipkin`, `bankA`, `bankB`, `orchestrator`, `flask`, and `swagger-ui` as `Up`. The final health check returns:
-
-```json
-{ "status" : "UP" }
-```
+`podman ps` then lists `bankA`, `bankB`, `orchestrator`, and `flask` as `Up`. Swagger UI and Zipkin are not started by the default profile.
 </details>
 
-Local ports: Flask 3000, Swagger 8080, Zipkin 9411, and Java APIs 8081–8083.
+Core ports are Flask 3000 and Java APIs 8081–8083. Swagger 8080 and Zipkin 9411 are optional.
 
 ---
 
@@ -290,6 +291,8 @@ mv "$STAGING_DIR/oracle-saga-cloudbank" "$DEPLOY_DIR"
 rmdir "$STAGING_DIR"
 cd "$DEPLOY_DIR"
 chmod 600 .env
+export ENABLE_ZIPKIN=false
+podman rm -f swagger-ui zipkin 2&gt;/dev/null || true
 COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d --build
 sudo loginctl enable-linger ubuntu
 REMOTE
@@ -309,23 +312,25 @@ The archive transfer reaches `100%`. A first deployment downloads images and pac
 ```text
 oracle-saga-cloudbank-deploy.tar.gz  100%  ...
 Successfully tagged localhost/osaga-runtime:1.0
-zipkin
 bankA
 bankB
 orchestrator
 flask
-swagger-ui
 ```
 
-No `ERROR:` message should appear.
+No `ERROR:` message should appear. Swagger UI and Zipkin are omitted from the default deployment.
 </details>
 
 ### Step 3: Verify service endpoints
 
 <pre id="verifyEndpoints" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
-for port in 3000 8080 9411; do
-  printf 'localhost:%s -&gt; ' "$port"
-  curl -4 -fsS --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}\n' "http://127.0.0.1:$port"
+for endpoint in \
+  'http://127.0.0.1:8081/orchestrator/version' \
+  'http://127.0.0.1:8082/banka/version' \
+  'http://127.0.0.1:8083/bankb/version' \
+  'http://127.0.0.1:3000/'; do
+  printf '%s -&gt; ' "$endpoint"
+  curl -4 -fsS --connect-timeout 5 --max-time 15 -o /dev/null -w '%{http_code}\n' "$endpoint"
 done
 podman ps -a --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 REMOTE
@@ -341,17 +346,16 @@ REMOTE
 <summary><strong>Expected output ‼️</strong></summary>
 
 ```text
-localhost:3000 -&gt; 200
-localhost:8080 -&gt; 200
-localhost:9411 -&gt; 200
+http://127.0.0.1:8081/orchestrator/version -&gt; 200
+http://127.0.0.1:8082/banka/version -&gt; 200
+http://127.0.0.1:8083/bankb/version -&gt; 200
+http://127.0.0.1:3000/ -&gt; 200
 
 NAMES         STATUS
-zipkin        Up ...
 bankA         Up ...
 bankB         Up ...
 orchestrator  Up ...
 flask         Up ...
-swagger-ui    Up ...
 ```
 
 After an instance reboot, containers may show `Created` and return `000` until started again. The time limits prevent this verification from waiting indefinitely.
@@ -405,7 +409,7 @@ Brief `Connection reset by peer` messages can occur while Flask starts. Continue
 Flask UI is ready on localhost:3000.
 ```
 
-`podman ps -a` shows `flask` as `Up` with `0.0.0.0:3000-&gt;8084/tcp`. The Java services may also be `Up`; `swagger-ui` can remain `Created` because it is optional. `free -h` prints the instance memory summary.
+`podman ps -a` shows `flask` as `Up` with `0.0.0.0:3000-&gt;8084/tcp`. The Java services may also be `Up`; optional `swagger-ui` and `zipkin` containers are not listed unless you started them. `free -h` prints the instance memory summary.
 </details>
 
 ### Step 2: Allow external access to Flask
@@ -484,6 +488,25 @@ Date: ...
 User ID:  ORACLE001
 Password: cb1
 ```
+
+### Optional: Start Swagger UI and Zipkin
+
+Skip this section on the 1 GB Always Free instance. On an instance with additional memory, start both optional services with:
+
+<pre id="startOptionalServices" class="interactive-command"><code>ssh -i "$HOME/.ssh/cloudbank_key" ubuntu@INSTANCE_IP 'bash -s' &lt;&lt;'REMOTE'
+cd "$HOME/oracle-saga-cloudbank"
+export PATH="$HOME/.local/bin:$PATH"
+export ENABLE_ZIPKIN=true
+COMPOSE_PROFILES=adbs,optional podman-compose -f osagaAdbsSetup.yaml up -d
+podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
+REMOTE
+</code></pre>
+
+<div class="button-center">
+
+<button onclick="copyBlock('startOptionalServices', this)" class="copy-btn-pastel">📋 Copy Optional Services Start</button>
+
+</div>
 
 Optional endpoints:
 

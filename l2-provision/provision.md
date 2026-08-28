@@ -87,7 +87,7 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 The script automatically:
 
 - Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
-- Opens the CloudBank application ports, including `3000`, `8080`, and `9411`, in both the OCI security list and the Compute host firewall.
+- Opens the core CloudBank UI port `3000` and the direct Java API ports in both the OCI security list and the Compute host firewall. Ports `8080` and `9411` are also opened for the optional Swagger UI and Zipkin services.
 - Installs Podman and Podman Compose and pulls the required container images.
 - Downloads and extracts the CloudBank application package from the selected branch.
 - Generates and extracts the Autonomous Database wallet.

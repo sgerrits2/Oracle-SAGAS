@@ -28,7 +28,7 @@ This LiveLab, **Oracle Sagas: Simplifying Distributed Application Development**,
 
 5. **Oracle Sagas in Action: The CloudBank Application**
     - Deploy and interact with a complete Saga-based application.
-    - Use Postman or Swagger to test APIs, simulate normal transactions, failure handling, and crash recovery.
+    - Use the Flask UI or direct API calls to simulate normal transactions, failure handling, and crash recovery; Swagger UI is available as an optional tool.
     - Monitor and validate saga states and compensating actions in real time.
 
 6. **Lab 6: Extended Lab**

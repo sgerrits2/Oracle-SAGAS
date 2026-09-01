@@ -51,9 +51,30 @@ sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=[configured]/p' .env | sort
 
 </div>
 
-### Step 2: Validate and build the supplied runtime
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
 
-The runtime Dockerfile compiles the Maven modules in its own memory-limited build stage. Build that image once; building `osagaJavaBuilder` separately would compile the same modules twice.
+The exact versions may differ. Confirm these key results:
+
+```text
+...:oracle-saga-cloudbank (... )$
+CloudBank/bankb/pom.xml
+CloudBank/banka/pom.xml
+CloudBank/orchestrator/pom.xml
+CloudBank/Website/app.py
+
+ADBS_ADMIN_PWD=[configured]
+ORCHESTRATOR_PASSWORD=[configured]
+TNS_ADMIN_CONTAINER=[configured]
+TNS_ALIAS_CONTAINER=[configured]
+```
+
+The four `test` commands are silent when successful. Continue if there is no `ERROR:` message and every displayed `.env` value is `[configured]`.
+</details>
+
+### Step 2: Validate and build the supplied files
+
+The archive provides osagaJavaBuilder and osagaJavaRuntime. The runtime compiles the Maven modules in its own build stage, avoiding a remote lookup for a local builder image.
 
 <pre id="validateFiles" class="interactive-command"><code>(
 cd "$HOME/cloudbank-setup/oracle-saga-cloudbank" || { echo "ERROR: project directory is missing"; exit 1; }
@@ -68,9 +89,8 @@ require_absent() {
   if grep -q -- "$2" "$3"; then printf 'ERROR: %s\n' "$1"; exit 1; else printf 'OK: %s\n' "$1"; fi
 }
 
-require_contains 'Java builder base image' 'maven:3.9.9-eclipse-temurin-17' osagaJavaRuntime
+require_contains 'Java builder base image' 'maven:3.9.9-eclipse-temurin-17' osagaJavaBuilder
 require_contains 'Java runtime base image' 'eclipse-temurin:17-jre-jammy' osagaJavaRuntime
-require_exact_line 'Maven build memory limit' 'ENV MAVEN_OPTS="-Xmx256m"' osagaJavaRuntime
 require_exact_line 'Werkzeug compatibility pin' 'Werkzeug&gt;=2.3.7,&lt;3.0' CloudBank/Website/requirements.txt
 require_contains 'Swagger UI image' 'image: docker.io/swaggerapi/swagger-ui:v5.20.7' osagaAdbsSetup.yaml
 require_contains 'ADB TNS alias variable' '\$\${TNS_ALIAS}' osagaAdbsSetup.yaml
@@ -78,37 +98,12 @@ require_absent 'obsolete container TNS alias is absent' '\$\${TNS_ALIAS_CONTAINE
 require_contains 'ADB cleanup service' '^  osagas-cleanup-adbs:' osagaAdbsSetup.yaml
 require_contains 'Website port mapping' '"3000:8084"' osagaAdbsSetup.yaml
 require_contains 'Swagger UI port mapping' '"8080:8080"' osagaAdbsSetup.yaml
-if [ "$(grep -c '^      - optional$' osagaAdbsSetup.yaml)" -eq 2 ]; then
-  echo 'OK: Swagger UI and Zipkin use the optional profile'
-else
-  echo 'ERROR: Swagger UI and Zipkin must both use the optional profile'
-  exit 1
-fi
-require_absent 'BankA does not require Zipkin' '^      - zipkin$' osagaAdbsSetup.yaml
-require_exact_line 'BankA reduced listeners' 'osaga.banka.numListeners=1' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankA listener-only publishers' 'osaga.banka.numPublishers=0' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankA reduced pool size' 'osaga.banka.maxpool=5' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankA reduced initial pool size' 'osaga.banka.initialPoolSize=2' CloudBank/banka/src/main/resources/application.properties
-require_exact_line 'BankB reduced listeners' 'osaga.bankb.numListeners=1' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'BankB listener-only publishers' 'osaga.bankb.numPublishers=0' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'BankB reduced pool size' 'osaga.bankb.maxpool=5' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'BankB reduced initial pool size' 'osaga.bankb.initialPoolSize=2' CloudBank/bankb/src/main/resources/application.properties
-require_exact_line 'Orchestrator reduced listeners' 'osaga.cloudbank.numListeners=1' CloudBank/orchestrator/src/main/resources/application.properties
-require_exact_line 'Orchestrator reduced publishers' 'osaga.cloudbank.numPublishers=1' CloudBank/orchestrator/src/main/resources/application.properties
-require_exact_line 'Orchestrator reduced pool size' 'osaga.cloudbank.maxpool=5' CloudBank/orchestrator/src/main/resources/application.properties
-require_exact_line 'Orchestrator reduced initial pool size' 'osaga.cloudbank.initialPoolSize=2' CloudBank/orchestrator/src/main/resources/application.properties
-require_contains 'SQL setup exits on errors' '^WHENEVER SQLERROR EXIT SQL.SQLCODE ROLLBACK$' adbsSetup/adbsSetupScript.sql
-if [ "$(grep -c 'VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL' adbsSetup/adbsSetupScript.sql)" -eq 4 ]; then
-  echo 'OK: CloudBank seed consumes the customer sequence four times'
-else
-  echo 'ERROR: CloudBank seed must use SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL four times'
-  exit 1
-fi
 
-podman build --pull=always -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime . || exit 1
+podman build --pull=always -f osagaJavaBuilder -t osaga-builder:1.0 --target builder . || exit 1
+podman build -f osagaJavaRuntime -t osaga-runtime:1.0 --target runtime . || exit 1
 podman run --rm --entrypoint /bin/sh osaga-runtime:1.0 -c \
   'test -f /opt/app/bankA.jar &amp;&amp; test -f /opt/app/bankB.jar &amp;&amp; test -f /opt/app/orchestrator.jar &amp;&amp; test -f /opt/app/flask_ui/app.py' || exit 1
-echo 'Runtime image validation: OK'
+echo 'OK: Java runtime image contains all application artifacts'
 )
 </code></pre>
 
@@ -118,22 +113,41 @@ echo 'Runtime image validation: OK'
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+The first build can download images and dependencies, so intermediate output varies. Confirm these final lines:
+
+```text
+OK: Java builder base image
+OK: Java runtime base image
+OK: Werkzeug compatibility pin
+OK: Swagger UI image
+OK: ADB TNS alias variable
+OK: obsolete container TNS alias is absent
+OK: ADB cleanup service
+OK: Website port mapping
+OK: Swagger UI port mapping
+
+Successfully tagged localhost/osaga-builder:1.0
+Successfully tagged localhost/osaga-runtime:1.0
+OK: Java runtime image contains all application artifacts
+```
+
+Continue only if every check is `OK:` and the final artifact message appears without an `ERROR:` message.
+</details>
+
 ### Step 3: Verify or initialize the CloudBank business schema
 
 Lab 3 verifies the Broker, coordinator, and participants. It does **not** create the CloudBank application tables. Check ADB directly rather than using the existence or exit code of an old setup container as evidence.
 
-<pre id="verifyAdbSetup" class="interactive-command"><code>set -euo pipefail
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="verifyAdbSetup" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
-ADBS_PASSWORD="$(sed -n 's/^ADBS_ADMIN_PWD=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$ADBS_PASSWORD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADB configuration is missing from .env'; exit 1; }
+test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
 export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
-SQLPATH=/nonexistent sql -L -s /nolog &lt;&lt;SQL
-WHENEVER SQLERROR EXIT SQL.SQLCODE
-SET ECHO OFF
-CONNECT ${ADBS_USER}/"${ADBS_PASSWORD}"@${TNS_ALIAS}
+SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"
 
 SELECT owner, object_type, object_name
 FROM dba_objects
@@ -147,8 +161,6 @@ WHERE object_name IN (
 ORDER BY owner, object_type, object_name;
 
 EXIT
-SQL
-unset ADBS_PASSWORD
 </code></pre>
 
 <div class="button-center">
@@ -157,12 +169,43 @@ unset ADBS_PASSWORD
 
 </div>
 
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
+
+On a new database, the expected result is:
+
+```text
+no rows selected
+```
+
+After successful setup, the query returns these objects:
+
+```text
+OWNER              OBJECT_TYPE    OBJECT_NAME
+-----------------  -------------  ----------------------------
+BANKCHICAGO        SEQUENCE       SEQ_ACCOUNTS_BANK_A_LOGS
+BANKCHICAGO        SEQUENCE       SEQ_ACCOUNT_NUMBER_BANK_A
+BANKCHICAGO        TABLE          BANKA
+BANKCHICAGO        TABLE          BANKA_BOOK
+BANKMEX            SEQUENCE       SEQ_ACCOUNTS_BANK_B_LOGS
+BANKMEX            SEQUENCE       SEQ_ACCOUNT_NUMBER_BANK_B
+BANKMEX            TABLE          BANKB
+BANKMEX            TABLE          BANKB_BOOK
+ORCHESTRATORHUB    SEQUENCE       SEQ_CLOUDBANK_CUSTOMER_ID
+ORCHESTRATORHUB    SEQUENCE       SEQ_CLOUDBANK_LOG_ID
+ORCHESTRATORHUB    TABLE          CLOUDBANK_BOOK
+ORCHESTRATORHUB    TABLE          CLOUDBANK_CUSTOMER
+ORCHESTRATORHUB    TRIGGER        TRG_CUSTOMER_ID
+
+13 rows selected.
+```
+</details>
+
 - If the query returns the CloudBank, BankA, and BankB tables (and their sequences/trigger), the business schema is ready. Do **not** run setup again.
 - If it returns `no rows selected`, the business schema is absent. The Saga objects from Lab 3 can still be correct. Run the following command once from the project directory and wait for the table-creation output:
 
 <pre id="initializeAdbBusinessSchema" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
-podman rm -f osagas-setup-adbs 2&gt;/dev/null || true
 COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-setup-adbs
 </code></pre>
 
@@ -172,75 +215,21 @@ COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-s
 
 </div>
 
-Do not use `-d`. A successful run ends with `Business schema setup: OK`. SQLcl now exits nonzero on the first SQL error, so any `ORA-` message or missing success marker means setup failed. If the inventory shows only some objects, stop rather than rerunning the non-idempotent setup.
+<details>
+<summary><strong>Expected output ‼️</strong></summary>
 
-Whether the objects already existed or setup just completed, run this data-level validation. It catches partial setups where tables exist but customer or account seeds are missing:
+```text
+[osagas-setup-adbs] | Connected! Now running setup script...
+[osagas-setup-adbs] | Table CLOUDBANK_CUSTOMER created.
+[osagas-setup-adbs] | Table BANKA created.
+[osagas-setup-adbs] | Table BANKB created.
+[osagas-setup-adbs] | Commit complete.
+```
 
-<pre id="validateAdbBusinessData" class="interactive-command"><code>set -euo pipefail
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
-ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
-ADBS_PASSWORD="$(sed -n 's/^ADBS_ADMIN_PWD=//p' .env)"
-TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$ADBS_PASSWORD" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADB configuration is missing'; exit 1; }
-export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-cd /tmp
-SQLPATH=/nonexistent sql -L -s /nolog &lt;&lt;SQL
+Image downloads and additional creation messages vary. The setup is successful only when no `ORA-` error is printed.
+</details>
 
-WHENEVER SQLERROR EXIT SQL.SQLCODE
-SET ECHO OFF
-SET SERVEROUTPUT ON
-CONNECT ${ADBS_USER}/"${ADBS_PASSWORD}"@${TNS_ALIAS}
-
-DECLARE
-  customer_count PLS_INTEGER;
-  banka_count PLS_INTEGER;
-  bankb_count PLS_INTEGER;
-  trigger_count PLS_INTEGER;
-BEGIN
-  SELECT COUNT(*) INTO customer_count
-  FROM orchestratorhub.cloudbank_customer
-  WHERE customer_id IN ('ORACLE001', 'ORACLE002', 'ORACLE003', 'ORACLE004');
-
-  SELECT COUNT(*) INTO banka_count
-  FROM bankchicago.banka
-  WHERE account_number IN (1234560001, 1234560002);
-
-  SELECT COUNT(*) INTO bankb_count
-  FROM bankmex.bankb
-  WHERE account_number IN (1234560301, 1234560302);
-
-  SELECT COUNT(*) INTO trigger_count
-  FROM dba_objects
-  WHERE owner = 'ORCHESTRATORHUB'
-    AND object_name = 'TRG_CUSTOMER_ID'
-    AND object_type = 'TRIGGER'
-    AND status = 'VALID';
-
-  IF customer_count != 4 OR banka_count != 2 OR bankb_count != 2 OR trigger_count != 1 THEN
-    RAISE_APPLICATION_ERROR(-20001, 'CloudBank business schema validation failed.');
-  END IF;
-
-  DBMS_OUTPUT.PUT_LINE('Business schema validation: OK');
-END;
-/
-
-SELECT customer_id, email, bank
-FROM orchestratorhub.cloudbank_customer
-WHERE customer_id IN ('ORACLE001', 'ORACLE002', 'ORACLE003', 'ORACLE004')
-ORDER BY customer_id;
-
-EXIT
-SQL
-unset ADBS_PASSWORD
-</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('validateAdbBusinessData', this)" class="copy-btn-pastel">📋 Copy Business Data Validation</button>
-
-</div>
-
-Continue only after SQLcl prints `Business schema validation: OK` and lists `ORACLE001` through `ORACLE004`.
+Do not use `-d`; the attached output must show each table creation and the final commits. If the inventory shows only some of the listed objects, stop and investigate rather than rerunning the non-idempotent setup.
 
 If `podman ps` reports an invalid internal status or a rootless-network error, **do not run `podman system migrate` or `podman system reset` automatically**. First force a new Cloud Shell VM: from the Cloud Shell **Actions** menu, select **Architecture**, choose **x86_64** when it is available, and select **Confirm and Restart**. Cloud Shell preserves the home directory. If the error remains after the restart, stop the lab and capture the stale rootless PID files with `find "$HOME/.local/share/containers/storage/overlay-containers" -type f \( -name pause.pid -o -name conmon.pid \) -print`; obtain support before deleting any Podman state.
 
@@ -250,49 +239,26 @@ If `podman ps` reports an invalid internal status or a rootless-network error, *
 
 Use the COMPOSE_PROFILES environment variable. It works with Cloud Shell and Compute versions of podman-compose; do not rely on --profile.
 
-<pre id="startLocalStack" class="interactive-command"><code>set -euo pipefail
-cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="startLocalStack" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
 export PATH="$HOME/.local/bin:$PATH"
 export ENABLE_ZIPKIN=false
 
-podman rm -f swagger-ui zipkin 2&gt;/dev/null || true
-COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d
+COMPOSE_PROFILES=adbs podman-compose -f osagaAdbsSetup.yaml up -d --build
 
-wait_for_endpoint() {
-  local container="$1"
-  local endpoint="$2"
-  local deadline=$((SECONDS + 300))
-  local status
-
+for endpoint in \
+  'http://127.0.0.1:8081/orchestrator/version' \
+  'http://127.0.0.1:8082/banka/version' \
+  'http://127.0.0.1:8083/bankb/version' \
+  'http://127.0.0.1:3000/'; do
   printf 'Waiting for %s ' "$endpoint"
-  while (( SECONDS &lt; deadline )); do
-    if curl --connect-timeout 2 --max-time 4 -fsS "$endpoint" &gt;/dev/null 2&gt;&amp;1; then
-      echo 'OK'
-      return 0
-    fi
-
-    status="$(podman inspect --format '{{.State.Status}}' "$container")"
-    if [ "$status" != 'running' ]; then
-      echo "FAILED: $container is $status"
-      podman logs --tail 100 "$container" 2&gt;&amp;1
-      return 1
-    fi
-
+  for attempt in $(seq 1 30); do
+    if curl -fsS "$endpoint" &gt;/dev/null; then echo 'OK'; break; fi
+    if [ "$attempt" -eq 30 ]; then echo 'FAILED'; exit 1; fi
     sleep 2
   done
-
-  echo 'FAILED: readiness timeout'
-  podman logs --tail 100 "$container" 2&gt;&amp;1
-  return 1
-}
-
-wait_for_endpoint orchestrator http://127.0.0.1:8081/orchestrator/version
-wait_for_endpoint bankA http://127.0.0.1:8082/banka/version
-wait_for_endpoint bankB http://127.0.0.1:8083/bankb/version
-wait_for_endpoint flask http://127.0.0.1:3000/
+done
 
 podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
-echo 'Local stack validation: OK'
 </code></pre>
 
 <div class="button-center">

@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c)2025 Oracle and/or its affiliates.
+ Licensed under The Universal Permissive License (UPL), Version 1.0
+ as shown at https://oss.oracle.com/licenses/upl/
+ -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <title>All-In-One API Docs</title>
+    <link rel="stylesheet" href="./swagger-ui.css" />
+</head>
+
+<body>
+    <div id="swagger-ui"></div>
+
+    <script src="./swagger-ui-bundle.js"></script>
+    <script src="./swagger-ui-standalone-preset.js"></script>
+    <script>
+        window.onload = () => {
+            const apiBase = window.location.protocol + "//" + window.location.hostname;
+            SwaggerUIBundle({
+                urls: [
+                    { url: apiBase + ":8082/banka/openapi.json", name: "Bank A" },
+                    { url: apiBase + ":8083/bankb/openapi.json", name: "Bank B" },
+                    { url: apiBase + ":8081/orchestrator/openapi.json", name: "Orchestrator" },
+                    { url: apiBase + ":3000/swagger.json", name: "Flask App" }
+                ],
+                dom_id: "#swagger-ui",
+                deepLinking: true,
+                presets: [
+                    SwaggerUIBundle.presets.apis,
+                    SwaggerUIStandalonePreset
+                ],
+                layout: "StandaloneLayout"
+            });
+        };
+    </script>
+</body>
+
+</html>

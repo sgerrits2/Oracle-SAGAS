@@ -1,0 +1,24 @@
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-17 AS builder
+
+ENV MAVEN_OPTS="-Xmx256m"
+WORKDIR /workspace
+COPY CloudBank ./CloudBank
+
+RUN mvn -q -f /workspace/CloudBank/banka/pom.xml package -DskipTests && \
+    mvn -q -f /workspace/CloudBank/bankb/pom.xml package -DskipTests && \
+    mvn -q -f /workspace/CloudBank/orchestrator/pom.xml package -DskipTests
+
+FROM docker.io/library/eclipse-temurin:17-jre-jammy AS runtime
+
+WORKDIR /opt/app
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends python3 python3-pip && \
+    rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /workspace/CloudBank/banka/target/banka-1.jar /opt/app/bankA.jar
+COPY --from=builder /workspace/CloudBank/bankb/target/bankb-1.jar /opt/app/bankB.jar
+COPY --from=builder /workspace/CloudBank/orchestrator/target/orchestrator-1.jar /opt/app/orchestrator.jar
+COPY CloudBank/Website /opt/app/flask_ui
+RUN pip3 install --no-cache-dir -r /opt/app/flask_ui/requirements.txt
+
+EXPOSE 8081 8082 8083 8084 8085

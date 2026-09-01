@@ -55,7 +55,7 @@ SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
 SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
-LAB_BRANCH="${LAB_BRANCH:-lab5_test_lacruz}"
+LAB_BRANCH="${LAB_BRANCH:-lab5_test_sgerrits}"
 REPOSITORY_RAW_URL="${REPOSITORY_RAW_URL:-https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/${LAB_BRANCH}}"
 APP_ARCHIVE_URL="${APP_ARCHIVE_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/oracle-saga-cloudbank.zip}"
 USER_SETUP_SQL_URL="${USER_SETUP_SQL_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/create-cloudbank-users.sql}"
@@ -111,6 +111,9 @@ export PATH="$HOME/.local/bin:$PATH"
 podman --version
 podman-compose --version
 podman system info >/dev/null
+grep -q '^/swapfile ' /etc/fstab
+swapon --show=NAME --noheadings | grep -qx '/swapfile'
+test "$(loginctl show-user ubuntu -p Linger --value)" = "yes"
 test -d "$HOME/oracle-saga-cloudbank"
 test -f "$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet/tnsnames.ora"
 test -f "$HOME/oracle-saga-cloudbank/.env"
@@ -121,6 +124,7 @@ echo "CloudBank package: READY"
 echo "ADB wallet: READY"
 echo "CloudBank runtime configuration: READY"
 echo "Podman environment: READY"
+echo "Swap and rootless-container persistence: READY"
 REMOTE_VERIFY
 }
 
@@ -251,14 +255,7 @@ SECURITY_LIST_ID=$(oci network security-list create \
   --egress-security-rules '[{"destination":"0.0.0.0/0","protocol":"all","destinationType":"CIDR_BLOCK"}]' \
   --ingress-security-rules '[
     {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":22,"max":22}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":3000,"max":3000}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8080,"max":8080}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8081,"max":8081}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8082,"max":8082}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8083,"max":8083}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8084,"max":8084}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":8085,"max":8085}}},
-    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":9411,"max":9411}}}
+    {"source":"0.0.0.0/0","protocol":"6","isStateless":false,"tcpOptions":{"destinationPortRange":{"min":3000,"max":3000}}}
   ]' \
   --wait-for-state AVAILABLE \
   --query 'data.id' --raw-output)
@@ -300,13 +297,28 @@ set -euo pipefail
 apt-get update -y
 DEBIAN_FRONTEND=noninteractive apt-get install -y podman curl wget pipx iptables-persistent
 systemctl enable --now podman.socket
+loginctl enable-linger ubuntu
+
+if [ ! -f /swapfile ]; then
+  fallocate -l 2G /swapfile
+  chmod 600 /swapfile
+  mkswap /swapfile
+fi
+if ! swapon --show=NAME --noheadings | grep -qx '/swapfile'; then
+  swapon /swapfile
+fi
+if ! grep -qE '^/swapfile[[:space:]]' /etc/fstab; then
+  echo '/swapfile none swap sw 0 0' >> /etc/fstab
+fi
 
 allow_inbound_tcp() {
   local port="$1" reject_line
-  if iptables -C INPUT -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null; then
-    return
-  fi
-  reject_line=$(iptables -L INPUT -n --line-numbers | awk '$4 == "REJECT" { print $1; exit }')
+
+  while iptables -C INPUT -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT 2>/dev/null; do
+    iptables -D INPUT -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT
+  done
+
+  reject_line=$(iptables -L INPUT -n --line-numbers | awk '$2 == "REJECT" { print $1; exit }')
   if [ -n "$reject_line" ]; then
     iptables -I INPUT "$reject_line" -p tcp --dport "$port" -m conntrack --ctstate NEW -j ACCEPT
   else
@@ -314,22 +326,14 @@ allow_inbound_tcp() {
   fi
 }
 
-for port in 3000 8080 8081 8082 8083 8084 8085 9411; do
-  allow_inbound_tcp "$port"
-done
+allow_inbound_tcp 3000
 netfilter-persistent save
 
 sudo -u ubuntu env PATH="/home/ubuntu/.local/bin:$PATH" bash <<'USER_SETUP'
 pipx install podman-compose
-pull_image() { podman pull "$1"; }
-pull_image ghcr.io/oracle/oraclelinux:8 &
-pull_image container-registry.oracle.com/database/sqlcl:latest &
-pull_image docker.io/swaggerapi/swagger-ui:v5.20.7 &
-pull_image docker.io/library/maven:3.9.9-eclipse-temurin-17 &
-pull_image docker.io/library/eclipse-temurin:17-jre-jammy &
-pull_image ghcr.io/openzipkin/zipkin:latest &
-pull_image container-registry.oracle.com/database/free:latest &
-wait
+podman pull container-registry.oracle.com/database/sqlcl:latest
+podman pull docker.io/library/maven:3.9.9-eclipse-temurin-17
+podman pull docker.io/library/eclipse-temurin:17-jre-jammy
 USER_SETUP
 CLOUD_INIT
 
@@ -378,5 +382,5 @@ echo "Instance IP:    $PUBLIC_IP"
 echo "SSH:            ssh -i $SSH_PRIVATE_KEY_PATH ubuntu@$PUBLIC_IP"
 echo "CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank"
 echo "CloudBank local: $APP_DIR"
-echo "Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, TRANSFER = READY"
+echo "Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY"
 echo "============================================================"

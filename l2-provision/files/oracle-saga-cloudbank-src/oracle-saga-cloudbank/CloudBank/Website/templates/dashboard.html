@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c)2025 Oracle and/or its affiliates.
+ Licensed under The Universal Permissive License (UPL), Version 1.0
+ as shown at https://oss.oracle.com/licenses/upl/
+ -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CloudBank - Dashboard</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.1/css/all.min.css">
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        
+        body {
+            background-color: #f0f0f0;
+        }
+        /* Oracle's primary color */
+
+        .navbar-custom {
+            background-color:
+                {% if user_data.bank|lower == 'bankchicago' %}
+                    #F80000D0
+                {% elif user_data.bank|lower == 'bankmex' %}
+                    #312D2A
+                {% else %}
+                    #F80000D0 /* fallback/oracle red */
+                {% endif %}
+                ;
+        }
+
+        .card.bankchicago { border-left: 4px solid rgba(248, 0, 0, 0.8); }
+        .card.bankmex { border-left: 4px solid rgba(49,45,42,0.5); }
+        
+        .navbar-custom .navbar-brand,
+        .navbar-custom .nav-link,
+        .navbar-custom .btn-logout,
+        .navbar-text {
+            color: #ffffff;
+        }
+        
+        .account-card {
+            background-color: #ffffff;
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 5px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, .1);
+        }
+        
+        .divider {
+            border-top: 1px solid #ccc;
+            margin: 10px 0;
+        }
+        
+        .account-info {
+            font-size: 18px;
+        }
+        
+        .balance {
+            font-weight: bold;
+            font-size: 22px;
+        }
+
+        .ml-auto {
+            margin-left: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <nav class="navbar navbar-expand-lg navbar-custom">
+        <a class="navbar-brand" href="#">
+            <img src="{{ url_for('static', filename='images/oracle-blk.png') }}" alt="Oracle Logo" style="height: 30px; margin-right: 20px;"> CLOUDBANK
+        </a>
+        <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNav" aria-controls="navbarNavAltMarkup" aria-expanded="false" aria-label="Toggle navigation">
+            <i class="fas fa-arrow-down" style="color: black;"></i> 
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+            <div class="navbar-nav">
+                <a class="nav-item nav-link" href="{{ url_for('dashboard') }}">Home</a>
+                <a class="nav-item nav-link" href="{{ url_for('transfer') }}">Transfer</a>
+                <a class="nav-item nav-link" href="{{ url_for('account_details') }}">Account</a>
+            </div>
+        </div>
+        <div id="notificationBell" class="navbar-nav nav-item ml-auto" style="color: #fff; cursor: pointer;">
+            <i class="fas fa-bell"></i>
+            <span class="badge badge-danger" id="notificationBadge" style="position: absolute; top: -10px; right: -10px; display: none; color: white;">!</span>
+        </div>
+        <div class="d-flex align-items-center ml-3">
+            <span class="navbar-text" id="navbarBank">{{ user_data.bank }}</span>
+            <button class="btn btn-outline-light btn-logout ml-2" onclick="location.href='/logout'">
+                Logout
+            </button>
+        </div>
+    </nav>
+
+    <!-- Modal -->
+    <div class="modal fade" id="usernameModal" tabindex="-1" aria-labelledby="usernameModalLabel" aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="usernameModalLabel">SAGA INITIATED SUCCESSFULLY</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    Request ID: <span id="generatedSagaId"></span>.<br>
+                    <span id="generatedReason"></span>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal fade" id="notificationModal" tabindex="-1" role="dialog" aria-labelledby="notificationModalLabel" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="notificationModalLabel">Notifications</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                <span aria-hidden="true">&times;</span>
+              </button>
+                </div>
+                <div class="modal-body">
+                    <div id="notificationsContainer">No new notifications.</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="container mt-4">
+        <div class="d-flex justify-content-between align-items-center">
+            <h2>
+                Good {{ 'morning' if datetime.now().hour < 12 else 'evening' }}, {{ user_data.fullName|title }}! </h2>
+                    <form id="refresh-form" action="{{ url_for('refresh_dashboard') }}" method="POST">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </form>
+        </div>
+        <div class="divider"></div>
+    
+        <div class="row">
+            {% for acct_type in ['CHECKING','SAVING'] %}
+            {% set accounts = user_data[acct_type] %}
+            <div class="col-md-6 mb-4 d-flex">
+                <div class="card p-3 shadow-sm rounded {{ user_data.bank|lower }} w-100">
+                    <div class="d-flex justify-content-between align-items-center mb-2">
+                        <h5 class="mb-0">{{ acct_type.title() }}</h5>
+                        <a href="{{ url_for('create_bank_account') }}" class="btn btn-sm btn-outline-primary">+ Create
+                            New</a>
+                    </div>
+                    <hr>
+                    {% if accounts %}
+                    {% for acct in accounts %}
+                    <div class="d-flex justify-content-between">
+                        <div>Account: {{ acct.account_number }}</div>
+                        <div class="font-weight-bold">
+                            ${{ '%.2f'|format(acct.balance_amount) }}
+                        </div>
+                    </div>
+                    {% if not loop.last %}
+                    <hr>{% endif %}
+                    {% endfor %}
+                    {% else %}
+                    <div class="text-center text-muted py-5">
+                        No {{ acct_type.title() }} accounts available.
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <div class="divider"></div>
+    </div>
+
+    
+    <!-- === TRANSACTION HISTORY SECTION === -->
+    <div class="container mt-5 mb-5">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h3>Transaction History</h3>
+            <button id="refresh-history" class="btn btn-primary">
+                <i class="fas fa-sync-alt"></i> Refresh
+            </button>
+        </div>
+
+        <div class="divider"></div>
+    
+        <ul class="nav nav-tabs" id="transTabs" role="tablist">
+            <li class="nav-item">
+                <a class="nav-link active" data-toggle="tab" href="#historyTab" role="tab">
+                    CloudBank Logs
+                </a>
+            </li>
+            <li class="nav-item">
+                <a class="nav-link" data-toggle="tab" href="#participantTab" role="tab">
+                    {{ user_data.bank }} Logs
+                </a>
+            </li>
+        </ul>
+    
+        <div class="tab-content">
+            
+            <div class="tab-pane fade show active" id="historyTab" role="tabpanel">
+                <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                    <table class="table table-sm table-striped" id="historyTable">
+                        <thead>
+                            <tr>
+                                <th>Txn ID (Saga ID)</th>
+                                <th>Operation</th>
+                                <th>Txn Type</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+    
+            
+            <div class="tab-pane fade" id="participantTab" role="tabpanel">
+                <div class="table-responsive" style="max-height:300px; overflow-y:auto;">
+                    <table class="table table-sm table-striped" id="participantTable">
+                        <thead>
+                            <tr>
+                                <th>Txn ID (Saga ID)</th>
+                                <th>Operation</th>
+                                <th>Txn Type</th>
+                                <th>Amount</th>
+                                <th>Acct #</th>
+                                <th>Status</th>
+                                <th>Created At</th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div class="divider"></div>
+    </div>
+
+    </div>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+<script src="https://cdn.socket.io/4.6.1/socket.io.min.js"></script>
+<script>
+    $(document).ready(function () {
+        const socket = io({
+            transports: ['websocket'],
+            path: '/socket.io'
+        });
+
+        socket.on('connect', function () {
+            console.log('🟢 WS connected! SID=', socket.id);
+        });
+
+        socket.on('new_notification', function (data) {
+            $('#notificationBell i').css('color', 'yellow');
+            $('#notificationBadge').show();
+            console.log('🔔 received:', data);
+
+            var notificationContent = $('#notificationsContainer').html();
+            if (notificationContent == "No new notifications.") {
+                $('#notificationsContainer').html('');
+            }
+            $('#notificationsContainer').append('<p>' + data.message + '</p><div class = "divider"> </div>');
+
+            $('#notificationModal').modal('show');
+        });
+
+
+        $('#notificationBell').click(function () {
+            $('#notificationBadge').hide();
+            $('#notificationBell i').css('color', '#fff');
+            $('#notificationModal').modal('show');
+        });
+    });
+</script>
+<script>
+    $(function () {
+        const cloudbankLogsUrl = "{{ url_for('cloudbank_logs') }}";
+        const participantLogsUrl = "{{ url_for('participant_logs') }}";
+
+        function loadHistory() {
+            $.getJSON(cloudbankLogsUrl)
+                .done(arr => {
+                    console.log('payload:', arr);
+                    const rows = Array.isArray(arr.data?.data)
+                        ? arr.data.data
+                        : [];
+                    const $b = $('#historyTable tbody').empty();
+                    if (rows.length === 0) {
+                        $b.append(` 
+              <tr>
+                <td colspan="5" class="text-center text-muted">
+                  No transaction history available.
+                </td>
+              </tr>
+              `);
+                    } else {
+                        rows.forEach(r => {
+                            $b.append(`
+             <tr>
+               <td>${r.sagaId}</td>
+               <td>${r.operationType}</td>
+               <td>${r.transferType}</td>
+               <td>${r.operationStatus}</td>
+               <td>${new Date(r.createdAt).toLocaleString()}</td>
+             </tr>`);
+                        });
+                    }
+                })
+                .fail((xhr, status, err) => {
+                    console.error('loadHistory failed:', status, err);
+                });
+        }
+
+        function loadParticipantLogs() {
+            $.getJSON(participantLogsUrl)
+                .done(arr => {
+                    console.log('participant payload:', arr);
+                    const rows = Array.isArray(arr.data?.data)
+                        ? arr.data.data
+                        : [];
+                    const $b = $('#participantTable tbody').empty();
+                    if (rows.length === 0) {
+                        $b.append(`
+              <tr>
+                <td colspan="7" class="text-center text-muted">
+                  No transaction history available
+                </td>
+              </tr>
+              `);
+                    } else {
+                        rows.forEach(r => {
+                            $b.append(`
+             <tr>
+               <td>${r.sagaId}</td>
+               <td>${r.operationType}</td>
+               <td>${r.transactionType || ''}</td>
+               <td>${r.transactionAmount || ''}</td>
+               <td>${r.accountNumber || ''}</td>
+               <td>${r.operationStatus}</td>
+               <td>${new Date(r.createdAt).toLocaleString()}</td>
+             </tr>`);
+                        });
+                    }
+                })
+                .fail((xhr, status, err) => {
+                    console.error('loadParticipantLogs failed:', status, err);
+                });
+        }
+
+        loadHistory();
+        $('#transTabs a[href="#participantTab"]').on('shown.bs.tab', loadParticipantLogs);
+        $('#transTabs a[href="#historyTab"]').on('shown.bs.tab', loadHistory);
+        $('#refresh-history').click(function () {
+            $('#refresh-form').submit();
+            const active = $('#transTabs .nav-link.active').attr('href');
+            console.log("ACTIVE tab ", active);
+            if (active === '#participantTab') {
+                loadParticipantLogs();
+            } else {
+                loadHistory();
+            }
+        });
+
+        $('#usernameModal, #notificationModal').on('hidden.bs.modal', () => {
+            $('#refresh-form').submit();
+            const active = $('#transTabs .nav-link.active').attr('href');
+            if (active === '#participantTab') {
+                loadParticipantLogs();
+            } else {
+                loadHistory();
+            }
+        });
+    });
+</script>
+<script type="text/javascript">
+    function showSuccessModal(sagaId, reason) {
+        document.getElementById('generatedSagaId').innerText = sagaId;
+        document.getElementById('generatedReason').innerText = reason;
+        $('#usernameModal').modal('show');
+    }
+</script>
+<script>
+    $(function () {
+        {% if saga_id and reason %}
+        showSuccessModal('{{ saga_id }}', '{{ reason }}');
+        {% endif %}
+
+    });
+</script>
+</body>
+
+</html>

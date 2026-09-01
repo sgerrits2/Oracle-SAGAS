@@ -1,0 +1,10 @@
+   ____   _____         _____           _____
+  / __ \ / ____|  /\   / ____|   /\    / ____|
+ | |  | | (___   /  \ | |  __   /  \  | (___
+ | |  | |\___ \ / /\ \| | |_ | / /\ \  \___ \
+ | |__| |____) / ____ \ |__| |/ ____ \ ____) |
+  \____/|_____/_/    \_\_____/_/    \_\_____/
+
+Welcome to Oracle Saga's
+${application.title} ${application.version}
+Powered by Spring Boot ${spring-boot.version}

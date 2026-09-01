@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c)2025 Oracle and/or its affiliates.
+ Licensed under The Universal Permissive License (UPL), Version 1.0
+ as shown at https://oss.oracle.com/licenses/upl/
+ -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Oracle CloudBank</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --primary-dark: #1F1F1F;
+            --link-blue: #0052CC;
+        }
+
+        html,
+        body {
+            height: 100%;
+            margin: 0;
+            background: url('/static/images/redwood_bg.jpg') no-repeat center center fixed;
+            background-size: cover;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: "Segoe UI", Arial, sans-serif;
+        }
+
+        .login-wrapper {
+            width: 100%;
+            max-width: 480px;
+            padding: 1rem;
+            margin: auto;
+        }
+
+        .oracle-card {
+            background-color: rgba(255, 255, 255, 0.95);
+            border: none;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+            margin-bottom: 1rem;
+        }
+
+        .oracle-btn {
+            background-color: var(--primary-dark);
+            color: #FFF;
+            font-weight: 600;
+            padding: 0.6rem;
+            border-radius: 4px;
+            border: none;
+        }
+
+        .oracle-btn:hover {
+            background-color: #333333;
+        }
+
+        .text-link {
+            color: var(--link-blue);
+            font-size: 0.9rem;
+        }
+
+        .text-link:hover {
+            color: #003F99;
+            text-decoration: underline;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-wrapper">
+        <div class="card oracle-card">
+            <div class="card-body text-center px-5 py-4">
+                <h3 class="mb-4 font-weight-bold">Welcome to CloudBank</h3>
+                <a href="{{ url_for('login') }}" class="btn oracle-btn btn-block mb-3">
+                    Login
+                </a>
+                <p>
+                    <a href="{{ url_for('create_new_account') }}" class="text-link">
+                        Create a new account
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+</body>
+
+</html>

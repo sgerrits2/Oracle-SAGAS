@@ -55,19 +55,19 @@ Paste the returned OCID below to automatically update the command used to run th
 
 ### Step 2: Download and Run the Provisioning Script from This Branch
 
-This lab is branch-aware. The command below downloads `provision.sh` from `lab5_test_lacruz`, and that script downloads the matching CloudBank ZIP and user-setup SQL from the same branch. This keeps the provisioning script and application package in sync.
+This lab is branch-aware. The command below downloads `provision.sh` from `lab5_test_sgerrits`, and that script downloads the matching CloudBank ZIP and user-setup SQL from the same branch. This keeps the provisioning script and application package in sync.
 
 To use a different branch, replace the `LAB_BRANCH` value in both commands with its exact Git branch name.
 
 ```bash
 <copy>
-LAB_BRANCH='lab5_test_lacruz'
+LAB_BRANCH='lab5_test_sgerrits'
 curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/${LAB_BRANCH}/l2-provision/files/provision.sh"
 chmod +x provision.sh
 </copy>
 ```
 
-<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">LAB_BRANCH='lab5_test_lacruz'
+<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">LAB_BRANCH='lab5_test_sgerrits'
 COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 <div class="button-center">
@@ -87,8 +87,9 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 The script automatically:
 
 - Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
-- Opens the core CloudBank UI port `3000` and the direct Java API ports in both the OCI security list and the Compute host firewall. Ports `8080` and `9411` are also opened for the optional Swagger UI and Zipkin services.
-- Installs Podman and Podman Compose and pulls the required container images.
+- Opens only SSH port `22` and the CloudBank UI port `3000` in the OCI security list. The Java APIs remain private on the Compute host; Swagger UI and Zipkin remain optional and private by default.
+- Installs Podman and Podman Compose and pulls only the images required by the default ADB-backed deployment.
+- Configures a persistent 2 GB swap file and enables lingering for the rootless `ubuntu` Podman user, which keeps the 1 GB instance stable across builds and SSH disconnects.
 - Downloads and extracts the CloudBank application package from the selected branch.
 - Generates and extracts the Autonomous Database wallet.
 - Generates a private `.env` file from the new ADB wallet and configured database credentials, without printing its values.
@@ -110,7 +111,7 @@ Instance OCID:  ocid1.instance...
 Instance IP:    <PUBLIC_IP>
 SSH:            ssh -i <SSH_PRIVATE_KEY> ubuntu@<PUBLIC_IP>
 CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank
-Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, TRANSFER = READY
+Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY
 ============================================================
 ```
 
@@ -242,7 +243,7 @@ function updateProvisionCommand() {
 
   if (!command) return;
 
-  command.textContent = `LAB_BRANCH='lab5_test_lacruz'\nCOMPARTMENT_ID='${ocid || 'YOUR_COMPARTMENT_OCID'}' ./provision.sh`;
+  command.textContent = `LAB_BRANCH='lab5_test_sgerrits'\nCOMPARTMENT_ID='${ocid || 'YOUR_COMPARTMENT_OCID'}' ./provision.sh`;
 }
 
 async function copyProvisionCommand() {

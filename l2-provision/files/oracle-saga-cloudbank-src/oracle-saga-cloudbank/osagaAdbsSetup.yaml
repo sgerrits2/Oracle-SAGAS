@@ -1,0 +1,193 @@
+
+# Copyright (c) 2025 Oracle and/or its affiliates.
+# Licensed under the Universal Permissive License v 1.0 as shown at https://oss.oracle.com/licenses/upl.
+
+services:
+
+  zipkin:
+    image: ghcr.io/openzipkin/zipkin
+    container_name: zipkin
+    ports:
+      - "9411:9411"
+    profiles:
+      - optional
+
+  osaga-builder:
+    build:
+      context: .
+      dockerfile: osagaJavaBuilder
+      target: builder
+    image: osaga-builder:1.0
+    profiles:
+      - build
+
+  osaga-runtime:
+    build:
+      context: .
+      dockerfile: osagaJavaRuntime
+      target: runtime
+    image: osaga-runtime:1.0
+    profiles:
+      - build
+
+  bankA:
+    build:
+      context: .
+      dockerfile: osagaJavaRuntime
+      target: runtime
+    image: osaga-runtime:1.0
+    container_name: bankA
+    volumes:
+      - ./adbsSetup/adb_wallet:/opt/adb_wallet:ro
+    environment:
+      OSAGA_BANKA_CONN_TYPE: adbs
+      OSAGA_BANKA_TNS_ADMIN: ${TNS_ADMIN_CONTAINER}
+      OSAGA_BANKA_TNS_ALIAS: ${TNS_ALIAS_CONTAINER}
+      OSAGA_BANKA_USERNAME: ${BANKA_USERNAME}
+      OSAGA_BANKA_PASSWORD: ${BANKA_PASSWORD}
+      ENABLE_ZIPKIN: ${ENABLE_ZIPKIN}
+      ZIPKIN_URL_EXTENDED: ${ZIPKIN_URL}
+    command: ["java","-jar","/opt/app/bankA.jar"]
+    ports: ["8082:8082"]
+    profiles:
+      - adbs
+
+  bankB:
+    image: osaga-runtime:1.0
+    container_name: bankB
+    volumes:
+      - ./adbsSetup/adb_wallet:/opt/adb_wallet:ro
+    environment:
+      OSAGA_BANKB_CONN_TYPE: adbs
+      OSAGA_BANKB_TNS_ADMIN: ${TNS_ADMIN_CONTAINER}
+      OSAGA_BANKB_TNS_ALIAS: ${TNS_ALIAS_CONTAINER}
+      OSAGA_BANKB_USERNAME: ${BANKB_USERNAME}
+      OSAGA_BANKB_PASSWORD: ${BANKB_PASSWORD}
+      ENABLE_ZIPKIN: ${ENABLE_ZIPKIN}
+      ZIPKIN_URL_EXTENDED: ${ZIPKIN_URL}
+    depends_on:
+      - bankA
+    command: ["java","-jar","/opt/app/bankB.jar"]
+    ports: ["8083:8083"]
+    profiles:
+      - adbs
+  
+  orchestrator:
+    image: osaga-runtime:1.0
+    container_name: orchestrator
+    volumes:
+      - ./adbsSetup/adb_wallet:/opt/adb_wallet:ro
+    environment:
+      OSAGA_CLOUDBANK_CONN_TYPE: adbs
+      OSAGA_CLOUDBANK_TNS_ADMIN: ${TNS_ADMIN_CONTAINER}
+      OSAGA_CLOUDBANK_TNS_ALIAS: ${TNS_ALIAS_CONTAINER}
+      OSAGA_CLOUDBANK_USERNAME: ${ORCHESTRATOR_USERNAME}
+      OSAGA_CLOUDBANK_PASSWORD: ${ORCHESTRATOR_PASSWORD}
+      ENABLE_ZIPKIN: ${ENABLE_ZIPKIN}
+      ZIPKIN_URL_EXTENDED: ${ZIPKIN_URL}
+    depends_on:
+      - bankA
+      - bankB
+    command: ["java","-jar","/opt/app/orchestrator.jar"]
+    ports: ["8081:8081"]
+    profiles:
+      - adbs
+
+  flask:
+    image: osaga-runtime:1.0
+    container_name: flask
+    depends_on:
+      - orchestrator
+    working_dir: /opt/app/flask_ui
+    environment:
+      FLASK_APP: app.py
+    command: ["python3","/opt/app/flask_ui/app.py"]
+    ports: ["3000:8084"]
+    profiles:
+      - adbs
+
+  swagger-ui:
+    image: docker.io/swaggerapi/swagger-ui:v5.20.7
+    container_name: swagger-ui
+    depends_on:
+      - bankA
+      - bankB
+      - orchestrator
+      - flask
+    ports: ["8080:8080"]
+    volumes:
+      - ./swagger-ui-config/index.html:/usr/share/nginx/html/index.html:Z
+    profiles:
+      - optional
+  
+  osagas-setup-adbs:
+    image: container-registry.oracle.com/database/sqlcl:latest
+    container_name: osagas-setup-adbs
+    environment:
+      TNS_ADMIN: ${TNS_ADMIN_CONTAINER}
+      TNS_ALIAS: ${TNS_ALIAS_CONTAINER}
+      ADBS_USERNAME: ${ADBS_USERNAME}
+      ADBS_ADMIN_PWD: ${ADBS_ADMIN_PWD}
+      OSAGA_BANKA_USERNAME: ${BANKA_USERNAME}
+      OSAGA_BANKA_PASSWORD: ${BANKA_PASSWORD}
+      OSAGA_BANKB_USERNAME: ${BANKB_USERNAME}
+      OSAGA_BANKB_PASSWORD: ${BANKB_PASSWORD}
+      ORCHESTRATOR_USERNAME: ${ORCHESTRATOR_USERNAME}
+      ORCHESTRATOR_PASSWORD: ${ORCHESTRATOR_PASSWORD}
+      BROKER_USERNAME: ${BROKER_USERNAME}
+      BROKER_PASSWORD: ${BROKER_PASSWORD}
+    volumes:
+      - ./adbsSetup/adb_wallet:/opt/adb_wallet:ro
+      - ./adbsSetup/adbsSetupScript.sql:/setupScript.sql:ro
+    entrypoint: 
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        echo "Waiting for ADB-S alias $${TNS_ALIAS}…"
+        until sql -L -s admin/$${ADBS_ADMIN_PWD}@$${TNS_ALIAS} <<< exit >/dev/null 2>&1; do
+          echo "Retrying Connection <<< exit"
+          sleep 3             
+        done
+        echo "Connected! Now running setup script..."
+        sql -L -s $${ADBS_USERNAME}/$${ADBS_ADMIN_PWD}@$${TNS_ALIAS} \
+          @/setupScript.sql \
+            $${TNS_ALIAS} $${BROKER_USERNAME} $${BROKER_PASSWORD} $${ORCHESTRATOR_USERNAME} $${ORCHESTRATOR_PASSWORD} $${OSAGA_BANKA_USERNAME} $${OSAGA_BANKA_PASSWORD} $${OSAGA_BANKB_USERNAME} $${OSAGA_BANKB_PASSWORD}
+    profiles:
+      - adbssagasetup
+
+  osagas-cleanup-adbs:
+    image: container-registry.oracle.com/database/sqlcl:latest
+    container_name: osagas-cleanup-adbs
+    environment:
+      TNS_ADMIN: ${TNS_ADMIN_CONTAINER}
+      TNS_ALIAS: ${TNS_ALIAS_CONTAINER}
+      ADBS_USERNAME: ${ADBS_USERNAME}
+      ADBS_ADMIN_PWD: ${ADBS_ADMIN_PWD}
+      OSAGA_BANKA_USERNAME: ${BANKA_USERNAME}
+      OSAGA_BANKA_PASSWORD: ${BANKA_PASSWORD}
+      OSAGA_BANKB_USERNAME: ${BANKB_USERNAME}
+      OSAGA_BANKB_PASSWORD: ${BANKB_PASSWORD}
+      ORCHESTRATOR_USERNAME: ${ORCHESTRATOR_USERNAME}
+      ORCHESTRATOR_PASSWORD: ${ORCHESTRATOR_PASSWORD}
+      BROKER_USERNAME: ${BROKER_USERNAME}
+      BROKER_PASSWORD: ${BROKER_PASSWORD}
+    volumes:
+      - ./adbsSetup/adb_wallet:/opt/adb_wallet:ro
+      - ./adbsSetup/adbsSagaCleanup.sql:/cleanupScript.sql:ro
+    entrypoint: 
+      - bash
+      - -c
+      - |
+        set -euo pipefail
+        echo "Waiting for ADB-S alias $${TNS_ALIAS}…"
+        until sql -L -s $${ADBS_USERNAME}/$${ADBS_ADMIN_PWD}@$${TNS_ALIAS} <<< exit >/dev/null 2>&1; do
+          echo "Retrying Connection <<< exit"
+          sleep 3             
+        done
+        echo "Connected! Now running Cleanup script..."
+        sql -L -s $${ADBS_USERNAME}/$${ADBS_ADMIN_PWD}@$${TNS_ALIAS} \
+          @/cleanupScript.sql \
+            $${BROKER_USERNAME} $${BROKER_PASSWORD} $${ORCHESTRATOR_USERNAME} $${ORCHESTRATOR_PASSWORD} $${OSAGA_BANKA_USERNAME} $${OSAGA_BANKA_PASSWORD} $${OSAGA_BANKB_USERNAME} $${OSAGA_BANKB_PASSWORD}
+    profiles:
+      - adbssagacleanup

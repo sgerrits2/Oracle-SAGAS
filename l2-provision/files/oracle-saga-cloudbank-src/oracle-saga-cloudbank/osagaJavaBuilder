@@ -1,0 +1,9 @@
+FROM docker.io/library/maven:3.9.9-eclipse-temurin-17 AS builder
+
+ENV MAVEN_OPTS="-Xmx256m"
+WORKDIR /workspace
+COPY CloudBank ./CloudBank
+
+RUN mvn -q -f /workspace/CloudBank/banka/pom.xml package -DskipTests && \
+    mvn -q -f /workspace/CloudBank/bankb/pom.xml package -DskipTests && \
+    mvn -q -f /workspace/CloudBank/orchestrator/pom.xml package -DskipTests

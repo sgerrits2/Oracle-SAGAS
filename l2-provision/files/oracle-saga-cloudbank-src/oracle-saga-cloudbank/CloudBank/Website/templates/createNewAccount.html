@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<!--
+ Copyright (c)2025 Oracle and/or its affiliates.
+ Licensed under The Universal Permissive License (UPL), Version 1.0
+ as shown at https://oss.oracle.com/licenses/upl/
+ -->
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>CloudBank - Create New Account</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.bundle.min.js"></script>
+    <script type="text/javascript">
+        function showErrorModal(reason) {
+            document.getElementById('generatedError').innerText = reason;
+            $('#errorModal').modal('show');
+        }
+    </script>
+    <style>
+        :root {
+        --primary-dark: #1F1F1F;
+        --link-blue:    #0052CC;
+        }
+        html, body {
+        height: 100%; margin: 0;
+        background: url('/static/images/redwood_bg.jpg') no-repeat center center fixed;
+        background-size: cover;
+        display: flex; align-items: center; justify-content: center;
+        font-family: "Segoe UI", Arial, sans-serif;
+        }
+        .login-wrapper {
+        width: 100%; max-width: 900px; padding: 1.5rem; margin: 1rem;
+        }
+        .oracle-card {
+        background-color: rgba(255,255,255,0.95);
+        border: none; border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        padding: 1rem;
+        }
+        .oracle-btn {
+        background-color: var(--primary-dark);
+        border: none; color: #FFF;
+        width: 100%; padding: 0.6rem; border-radius: 4px;
+        }
+        .oracle-btn:hover { background-color: #333333; }
+        .text-link {
+        color: var(--link-blue); text-align: center; display: block;
+        margin-top: 1rem;
+        }
+        .login-wrapper .form-control {
+        max-width: 750px;  
+        margin: auto;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="login-wrapper">
+        <div class="card oracle-card">
+            <div class="card-body px-5 py-5">
+                <h3 class="text-center mb-4">Create New Account</h3>
+    
+                {% if error %}
+                <div class="alert alert-danger text-center">{{ error }}</div>
+                {% endif %}
+    
+                <form method="POST">
+                    <div class="form-group">
+                        <label for="fullname">Full Name</label>
+                        <input id="fullname" name="fullname" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="address">Address</label>
+                        <input id="address" name="address" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="phone">Phone</label>
+                        <input id="phone" name="phone" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="email">Email</label>
+                        <input id="email" name="email" type="email" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="ossn">OSSN</label>
+                        <input id="ossn" name="ossn" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="password">Password</label>
+                        <input id="password" name="password" type="password" class="form-control" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="bank">Bank</label>
+                        <select id="bank" name="bank" class="form-control" required>
+                            <option value="" disabled selected>Please choose one</option>
+                            <option value="BankChicago">Bank Chicago</option>
+                            <option value="BankMex">Bank Mex</option>
+                        </select>
+                    </div>
+    
+                    <button type="submit" class="btn oracle-btn btn-block mb-2">
+                        Create Account
+                    </button>
+                </form>
+    
+                <p class="text-center mt-3">
+                    <a href="{{ url_for('login') }}" class="text-link">
+                        Back to Login
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+</body>
+
+</html>

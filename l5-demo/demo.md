@@ -698,11 +698,11 @@ Then use `http://127.0.0.1:8080` for Swagger UI and `http://127.0.0.1:9411` for 
 
 ## Task 5: Run Sagas Without the UI
 
-These commands use the orchestrator API directly from Cloud Shell or the Compute host. They do not put the transfer password in shell history. If your `cloudbank_customer` table has legacy numeric IDs (`1`–`4`) instead of `ORACLE001`–`ORACLE004`, complete **Task 6: Optional—Align Data from a Legacy Archive** before running Scenario 1.
+Run these commands on the Compute host where the deployed services are running; the transfer functions use `127.0.0.1:8081`. Use Cloud Shell only when an SSH tunnel to the Compute host is open. These commands do not put the transfer password in shell history. If your `cloudbank_customer` table has legacy numeric IDs (`1`–`4`) instead of `ORACLE001`–`ORACLE004`, complete **Task 6: Optional—Align Data from a Legacy Archive** before running Scenario 1.
 
 ### Scenario 1: Successful transfer with curl
 
-The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). This scenario is intentionally split into a definition step and an execution step. Paste the definition first; it does **not** start a transfer or prompt for a password. Then run the short execution command separately and type the transfer password manually when prompted. Do not paste a script while a hidden password prompt is active.
+The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Open an interactive SSH session to the Compute instance, then paste the definition at the remote prompt. This scenario is intentionally split into a definition step and an execution step. The definition does **not** start a transfer or prompt for a password. Then run the short execution command separately and type the transfer password manually when prompted. Do not paste a script while a hidden password prompt is active.
 
 <pre id="runSagaCurl" class="interactive-command"><code>run_cloudbank_transfer() {
   local api_base="http://127.0.0.1:8081/orchestrator"
@@ -761,11 +761,11 @@ The operation is asynchronous; save the returned saga ID and wait briefly before
 
 Wait about 10 seconds, then query the exact Saga ID returned by Scenario 1. The following shell command only opens SQLcl; when it prompts for the database password, type the ADB administrator password manually. It is **not** the transfer password (`cb1`).
 
-<pre id="openSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="openSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
 test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
-export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
 SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
 
@@ -866,11 +866,11 @@ Save the returned Saga ID and wait about 10 seconds before checking its final st
 
 The following shell command only opens SQLcl. When it prompts for the database password, type the ADB administrator password manually; it is **not** the transfer password (`cb1`).
 
-<pre id="openRejectedSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/cloudbank-setup/oracle-saga-cloudbank"
+<pre id="openRejectedSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/oracle-saga-cloudbank"
 ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
 TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
 test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
-export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
 SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
 
@@ -919,9 +919,9 @@ When finished, remove the temporary function with `unset -f run_insufficient_fun
 
 ### Scenario 3: Query the specific saga with SQLcl
 
-Set the wallet path, start SQLcl, enter database passwords interactively, and paste the following. Starting from `/tmp` with `SQLPATH=/nonexistent` prevents local startup scripts from delaying SQLcl. Replace placeholders with your configured alias and usernames; do not put passwords in commands or history.
+On the Compute instance, set the wallet path, start SQLcl, enter database passwords interactively, and paste the following. Starting from `/tmp` with `SQLPATH=/nonexistent` prevents local startup scripts from delaying SQLcl. Replace placeholders with your configured alias and usernames; do not put passwords in commands or history.
 
-<pre id="verifySagaState" class="interactive-command"><code>export TNS_ADMIN="$HOME/cloudbank-setup/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+<pre id="verifySagaState" class="interactive-command"><code>export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
 SQLPATH=/nonexistent sql /nolog
 

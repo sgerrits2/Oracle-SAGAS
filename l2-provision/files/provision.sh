@@ -55,7 +55,7 @@ SSH_PRIVATE_KEY_PATH="$HOME/.ssh/cloudbank_key"
 SSH_PUBLIC_KEY_PATH="$HOME/.ssh/cloudbank_key.pub"
 CLOUD_INIT_FILE="./cloud-init.sh"
 SETUP_DIR="${SETUP_DIR:-$HOME/cloudbank-setup}"
-LAB_BRANCH="${LAB_BRANCH:-lab5_test_sgerrits}"
+LAB_BRANCH="${LAB_BRANCH:-main}"
 REPOSITORY_RAW_URL="${REPOSITORY_RAW_URL:-https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/${LAB_BRANCH}}"
 APP_ARCHIVE_URL="${APP_ARCHIVE_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/oracle-saga-cloudbank.zip}"
 USER_SETUP_SQL_URL="${USER_SETUP_SQL_URL:-${REPOSITORY_RAW_URL}/l2-provision/files/create-cloudbank-users.sql}"
@@ -137,7 +137,7 @@ prepare_cloudbank() {
   local preserved_env="$SETUP_DIR/.oracle-saga-cloudbank.env"
   local tns_alias
 
-  echo ">>> Downloading CloudBank package and database user setup script from branch: $LAB_BRANCH"
+  echo ">>> Downloading CloudBank package and database user setup files"
   mkdir -p "$SETUP_DIR"
   download_file "$APP_ARCHIVE_URL" "$app_archive"
   download_file "$USER_SETUP_SQL_URL" "$user_setup_sql"

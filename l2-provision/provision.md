@@ -53,21 +53,12 @@ Paste the returned OCID below to automatically update the command used to run th
 </div>
 </div>
 
-### Step 2: Download and Run the Provisioning Script from This Branch
+### Step 2: Download and Run the Provisioning Script
 
-This lab is branch-aware. The command below downloads `provision.sh` from `lab5_test_sgerrits`, and that script downloads the matching CloudBank ZIP and user-setup SQL from the same branch. This keeps the provisioning script and application package in sync.
+The command below downloads `provision.sh`, makes it executable, and runs it. The script also downloads the matching CloudBank ZIP and user-setup SQL needed by the environment.
 
-To use a different branch, replace the `LAB_BRANCH` value in both commands with its exact Git branch name.
-
-```bash
-<copy>
-LAB_BRANCH='lab5_test_sgerrits'
-curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/${LAB_BRANCH}/l2-provision/files/provision.sh"
-chmod +x provision.sh
-</copy>
-```
-
-<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">LAB_BRANCH='lab5_test_sgerrits'
+<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh" &amp;&amp;
+chmod +x provision.sh &amp;&amp;
 COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 <div class="button-center">
@@ -79,10 +70,6 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 > <br>
 >
 > **⚠️ 🔑 ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
->
-> <br>
->
-> **Demo credentials:** The CloudBank application schemas and wallet use the fixed password `Welcome_123#`.
 
 The script automatically:
 
@@ -90,7 +77,7 @@ The script automatically:
 - Opens only SSH port `22` and the CloudBank UI port `3000` in the OCI security list. The Java APIs remain private on the Compute host; Swagger UI and Zipkin remain optional and private by default.
 - Installs Podman and Podman Compose and pulls only the images required by the default ADB-backed deployment.
 - Configures a persistent 2 GB swap file and enables lingering for the rootless `ubuntu` Podman user, which keeps the 1 GB instance stable across builds and SSH disconnects.
-- Downloads and extracts the CloudBank application package from the selected branch.
+- Downloads and extracts the CloudBank application package.
 - Generates and extracts the Autonomous Database wallet.
 - Generates a private `.env` file from the new ADB wallet and configured database credentials, without printing its values.
 - Downloads and executes the matching CloudBank user-creation SQL script and verifies all eight schemas.
@@ -117,9 +104,9 @@ Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY
 
 ## Task 2: Review the Automated Database User Setup
 
-### Step 3: Review the SQL Verification
+### Step 1: Review the SQL Verification
 
-The SQL script creates the CloudBank broker, orchestrator, and participant schemas, grants the required Saga roles, assigns tablespace quotas, and finishes with this verification query:
+The SQL script creates the eight CloudBank database users, grants the required Saga roles, assigns tablespace quotas, and verifies the users.
 
 ```sql
 SELECT username
@@ -130,9 +117,6 @@ WHERE username IN (
 )
 ORDER BY username;
 ```
-
-The complete SQL executed by the provisioning script is available in [`create-cloudbank-users.sql`](files/create-cloudbank-users.sql).
-
 **✅ Expected output:**
 
 ```text
@@ -243,7 +227,9 @@ function updateProvisionCommand() {
 
   if (!command) return;
 
-  command.textContent = `LAB_BRANCH='lab5_test_sgerrits'\nCOMPARTMENT_ID='${ocid || 'YOUR_COMPARTMENT_OCID'}' ./provision.sh`;
+  command.textContent = `curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh" &&
+chmod +x provision.sh &&
+COMPARTMENT_ID='${ocid || 'YOUR_COMPARTMENT_OCID'}' ./provision.sh`;
 }
 
 async function copyProvisionCommand() {

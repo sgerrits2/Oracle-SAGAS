@@ -79,19 +79,6 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 >
 > **⚠️ 🔑 ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
 
-The script automatically:
-
-- Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
-- Opens only SSH port `22` and the CloudBank UI port `3000` in the OCI security list. The Java APIs remain private on the Compute host; Swagger UI and Zipkin remain optional and private by default.
-- Installs Podman and Podman Compose and pulls only the images required by the default ADB-backed deployment.
-- Configures a persistent 2 GB swap file and enables lingering for the rootless `ubuntu` Podman user, which keeps the 1 GB instance stable across builds and SSH disconnects.
-- Downloads and extracts the CloudBank application package.
-- Generates and extracts the Autonomous Database wallet.
-- Generates a private `.env` file from the new ADB wallet and configured database credentials, without printing its values.
-- Downloads and executes the matching CloudBank user-creation SQL script and verifies all eight schemas.
-- Transfers the prepared application and wallet to the compute instance.
-- Waits for compute initialization and verifies SSH, Podman, Podman Compose, the wallet, generated `.env`, Dockerfiles, and transferred application.
-
 Keep Cloud Shell open until the **PROVISIONING COMPLETE** summary appears.
 
 **✅ Expected output:**
@@ -109,6 +96,18 @@ CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank
 Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY
 ============================================================
 ```
+The script automatically:
+
+- Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
+- Opens only SSH port `22` and the CloudBank UI port `3000` in the OCI security list. The Java APIs remain private on the Compute host; Swagger UI and Zipkin remain optional and private by default.
+- Installs Podman and Podman Compose and pulls only the images required by the default ADB-backed deployment.
+- Configures a persistent 2 GB swap file and enables lingering for the rootless `ubuntu` Podman user, which keeps the 1 GB instance stable across builds and SSH disconnects.
+- Downloads and extracts the CloudBank application package.
+- Generates and extracts the Autonomous Database wallet.
+- Generates a private `.env` file from the new ADB wallet and configured database credentials, without printing its values.
+- Downloads and executes the matching CloudBank user-creation SQL script and verifies all eight schemas.
+- Transfers the prepared application and wallet to the compute instance.
+- Waits for compute initialization and verifies SSH, Podman, Podman Compose, the wallet, generated `.env`, Dockerfiles, and transferred application.
 
 ## Task 2: Review the Automated Database User Setup
 

@@ -68,17 +68,17 @@ done
 
 require_exact_line 'BankA publishers are disabled' 'osaga.banka.numPublishers=0' "$BANKA_PROPERTIES"
 require_exact_line 'BankA listener count is 1' 'osaga.banka.numListeners=1' "$BANKA_PROPERTIES"
-require_exact_line 'BankA maximum pool is 5' 'osaga.banka.maxpool=5' "$BANKA_PROPERTIES"
+require_exact_line 'BankA maximum pool is 10' 'osaga.banka.maxpool=10' "$BANKA_PROPERTIES"
 require_exact_line 'BankA initial pool is 2' 'osaga.banka.initialPoolSize=2' "$BANKA_PROPERTIES"
 
 require_exact_line 'BankB publishers are disabled' 'osaga.bankb.numPublishers=0' "$BANKB_PROPERTIES"
 require_exact_line 'BankB listener count is 1' 'osaga.bankb.numListeners=1' "$BANKB_PROPERTIES"
-require_exact_line 'BankB maximum pool is 5' 'osaga.bankb.maxpool=5' "$BANKB_PROPERTIES"
+require_exact_line 'BankB maximum pool is 10' 'osaga.bankb.maxpool=10' "$BANKB_PROPERTIES"
 require_exact_line 'BankB initial pool is 2' 'osaga.bankb.initialPoolSize=2' "$BANKB_PROPERTIES"
 
 require_exact_line 'CloudBank publisher count is 1' 'osaga.cloudbank.numPublishers=1' "$ORCHESTRATOR_PROPERTIES"
 require_exact_line 'CloudBank listener count is 1' 'osaga.cloudbank.numListeners=1' "$ORCHESTRATOR_PROPERTIES"
-require_exact_line 'CloudBank maximum pool is 5' 'osaga.cloudbank.maxpool=5' "$ORCHESTRATOR_PROPERTIES"
+require_exact_line 'CloudBank maximum pool is 10' 'osaga.cloudbank.maxpool=10' "$ORCHESTRATOR_PROPERTIES"
 require_exact_line 'CloudBank initial pool is 2' 'osaga.cloudbank.initialPoolSize=2' "$ORCHESTRATOR_PROPERTIES"
 
 require_exact_line 'Maven build heap is limited to 256 MB' 'ENV MAVEN_OPTS="-Xmx256m"' "$RUNTIME_FILE"

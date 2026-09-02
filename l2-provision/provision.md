@@ -132,13 +132,11 @@ ORCHESTRATORMEX
 SUCCESS: All eight CloudBank database users are configured and ready.
 ```
 
-The fixed schema names must remain consistent with the participant registrations and application configuration used in the following labs. The schema set is:
+The schema set is:
 
 - `brokerhub` and `orchestratorhub` for the Saga broker/coordinator
 - `brokermex` and `orchestratormex` for the distributed partner topology
 - `bankchicago`, `bankmex`, `banklondon`, and `banktokyo` for the participant schemas
-
-When a later lab requires a schema-specific connection, use the same `CONNECT ...` pattern already shown in that lab and keep the matching schema name consistent with the values above.
 
 You may now [proceed to the next lab](#next).
 

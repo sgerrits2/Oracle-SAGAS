@@ -29,7 +29,15 @@ The provisioning script performs the complete setup. Enter your compartment OCID
 
 ![Automated provisioning flow](./images/lab2-automated-provisioning.svg "The provisioning script prepares and verifies the complete CloudBank environment")
 
-### Step 1: Enter Your Compartment Information
+### Step 1: Open CloudShell
+
+Click the **CloudShell** tab in your browser.
+
+   > **Note:** If you don’t see any tabs, click **Actions** (to the left of Developer Tools), select **Tabs**, and then choose the **CloudShell** tab.
+
+![Open CloudShell](./images/cloudshell.png "Open CloudShell tab")
+
+### Step 2: Enter Your Compartment Information
 
 Run the following command in OCI Cloud Shell to obtain the root compartment OCID for your tenancy:
 
@@ -53,7 +61,7 @@ Paste the returned OCID below to automatically update the command used to run th
 </div>
 </div>
 
-### Step 2: Download and Run the Provisioning Script from This Branch
+### Step 3: Download and Run the Provisioning Script from This Branch
 
 This lab is branch-aware. The command below downloads `provision.sh` from `lab5_test_sgerrits`, and that script downloads the matching CloudBank ZIP and user-setup SQL from the same branch. This keeps the provisioning script and application package in sync.
 
@@ -117,7 +125,7 @@ Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY
 
 ## Task 2: Review the Automated Database User Setup
 
-### Step 3: Review the SQL Verification
+### Step 1: Review the SQL Verification
 
 The SQL script creates the CloudBank broker, orchestrator, and participant schemas, grants the required Saga roles, assigns tablespace quotas, and finishes with this verification query:
 

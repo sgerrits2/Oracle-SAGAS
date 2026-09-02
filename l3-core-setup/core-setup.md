@@ -151,15 +151,13 @@ In the next task, you will run the Saga Core Setup script to create and register
 
 ## Task 2: Setup Saga Entities
 
-### Step 1: Switch to CloudShell
+### Step 1: Open CloudShell
 
-Since we were using the Code Editor in Lab 2, we need to switch back to the CloudShell tab:
+Click the **CloudShell** tab in your browser.
 
-1. **Select CloudShell Tab**: Click on the **CloudShell** tab in your browser.
+   > **Note:** If you don’t see any tabs, click **Actions** (to the left of Developer Tools), select **Tabs**, and then choose the **CloudShell** tab.
 
-   > **Note**: If you don't see tabs, click on **Actions** (to the left of Developer Tools) and choose **Tabs**, then select the CloudShell tab.
-
-![Switch to CloudShell](./images/lab3-task1-step1.png "Switch to CloudShell tab")
+![Open CloudShell](./images/cloudshell.png "Open CloudShell tab")
 
 ### Step 2: Run the Saga Core Setup
 

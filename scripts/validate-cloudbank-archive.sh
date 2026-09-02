@@ -111,8 +111,8 @@ test "$request_count" -eq "$timeout_count" || {
 }
 echo 'OK: Every Flask outbound HTTP request has a timeout'
 
-grep -qF 'lab5_test_sgerrits' "$REPO_ROOT/l2-provision/files/provision.sh" || {
-  echo 'ERROR: Provisioning does not default to lab5_test_sgerrits.' >&2
+grep -qF 'LAB_BRANCH="${LAB_BRANCH:-main}"' "$REPO_ROOT/l2-provision/files/provision.sh" || {
+  echo 'ERROR: Provisioning does not default to main.' >&2
   exit 1
 }
 if grep -R -q 'lab5_test_lacruz' \

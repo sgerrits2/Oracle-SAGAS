@@ -17,19 +17,11 @@ In this lab, you will:
 
 ---
 
-### Prerequisites
-
-- Completion of Labs 1–5 and Lab 6 (Extended Lab).
-- Access to OCI Cloud Shell.
-- Permission to terminate and delete the workshop OCI resources.
-
----
-
 ## Task 1: Delete the Complete Workshop Environment
 
 Run the following commands from **OCI Cloud Shell**. The downloaded script locates only the fixed resources created by Lab 2, displays their OCIDs, and requires confirmation before permanently deleting anything.
 
-> **⚠️ Important:** Verify every resource name and compartment before confirming a termination or deletion. These operations cannot be undone.
+> **⚠️ Important:** Verify every resource name and compartment before confirming a termination or deletion. **These operations cannot be undone.**
 
 ```bash
 <copy>
@@ -43,13 +35,17 @@ chmod +x cleanup-oci.sh
 
 Review every displayed OCID. To confirm permanent deletion of the matched workshop resources, enter:
 
-```text
+````bash
+<copy>
 DELETE ORACLE SAGA
+</copy>
 ```
 
-The script terminates the compute instance and boot volume first, requests termination of `Oracle-Saga-Demo`, and then deletes the workshop subnet, route table, security list, internet gateway, and VCN in dependency order. If OCI reports that the subnet is still in use, wait for the terminated instance's VNIC to disappear and run the script again.
+<details>
+<summary><strong>The single script permanently deletes</strong></summary>
 
-The single script permanently deletes:
+
+The script terminates the compute instance and boot volume first, requests termination of `Oracle-Saga-Demo`, and then deletes the workshop subnet, route table, security list, internet gateway, and VCN in dependency order. If OCI reports that the subnet is still in use, wait for the terminated instance's VNIC to disappear and run the script again.
 
 - `oracle-saga-compute-instance` and its boot volume
 - `Oracle-Saga-Demo`
@@ -59,6 +55,7 @@ The single script permanently deletes:
 - `Oracle-Saga-IGW`
 - `Oracle-Saga-VCN`
 - The CloudBank archives, source, wallet, `.env`, provisioning files, and fixed SSH key pair in Cloud Shell
+</details>
 
 > **⏳ Timing note:** The script waits for the compute instance, boot volume, and networking deletions. Autonomous Database termination can continue asynchronously; the script waits up to 10 minutes and prints a warning if OCI is still finishing it.
 

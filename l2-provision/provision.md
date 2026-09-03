@@ -47,8 +47,7 @@ oci iam availability-domain list --query "data[0].\"compartment-id\"" --raw-outp
 </copy>
 ```
 
-Paste the returned OCID below to automatically update the command used to run the downloaded provisioning script.
-
+Paste the returned OCID below to automatically update the provisioning command.
 
 <div class="provision-input-section">
 <div class="provision-input-grid">
@@ -61,16 +60,18 @@ Paste the returned OCID below to automatically update the command used to run th
 </div>
 </div>
 
-### Step 2: Download and Run the Provisioning Script
+### Step 3: Download and Run the Provisioning Script
 
-The command below downloads `provision.sh`, makes it executable, and runs it. The script also downloads the matching CloudBank ZIP and user-setup SQL needed by the environment.
+Run the following commands in order. If a command fails, stop and resolve the error before continuing.
 
-<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh" &amp;&amp;
-chmod +x provision.sh &amp;&amp;
+The script also downloads the matching CloudBank ZIP and user-setup SQL needed by the environment.
+
+<pre id="provisionCommandContainer" class="interactive-command"><code id="provisionCommand">curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh"
+chmod +x provision.sh
 COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 
 <div class="button-center">
-<button id="copyProvisionButton" onclick="copyProvisionCommand()" class="copy-btn">Copy Provisioning Command</button>
+<button id="copyProvisionButton" onclick="copyProvisionCommand()" class="copy-btn">Copy</button>
 </div>
 
 > **⏱️ Timing note:** Provisioning normally takes approximately **5–20 minutes** and may take longer depending on Autonomous Database and compute capacity. Keep Cloud Shell open while the script is running.
@@ -78,7 +79,6 @@ COMPARTMENT_ID='YOUR_COMPARTMENT_OCID' ./provision.sh</code></pre>
 > <br>
 >
 > **⚠️ 🔑 ADB ADMIN password:** When the provisioning script starts, enter the password you want to use for the Autonomous Database `ADMIN` account. The suggested training password is `Welcome_123#`, but you may choose another password that satisfies the displayed requirements. **Remember this password because Labs 3, 5, and 6 require it again.**
-
 Keep Cloud Shell open until the **PROVISIONING COMPLETE** summary appears.
 
 **✅ Expected output:**
@@ -96,6 +96,10 @@ CloudBank VM:   /home/ubuntu/oracle-saga-cloudbank
 Validation:     USERS, WALLET, SSH, PODMAN, PODMAN-COMPOSE, SWAP, LINGER = READY
 ============================================================
 ```
+
+<details>
+<summary><strong>What the provisioning script does</strong></summary>
+
 The script automatically:
 
 - Creates the Autonomous Database, VCN, internet gateway, route table, security list, public subnet, SSH key pair, and Ubuntu compute instance.
@@ -108,6 +112,8 @@ The script automatically:
 - Downloads and executes the matching CloudBank user-creation SQL script and verifies all eight schemas.
 - Transfers the prepared application and wallet to the compute instance.
 - Waits for compute initialization and verifies SSH, Podman, Podman Compose, the wallet, generated `.env`, Dockerfiles, and transferred application.
+
+</details>
 
 ## Task 2: Review the Automated Database User Setup
 
@@ -139,11 +145,16 @@ ORCHESTRATORMEX
 SUCCESS: All eight CloudBank database users are configured and ready.
 ```
 
+<details>
+<summary><strong>CloudBank database users</strong></summary>
+
 The schema set is:
 
 - `brokerhub` and `orchestratorhub` for the Saga broker/coordinator
 - `brokermex` and `orchestratormex` for the distributed partner topology
 - `bankchicago`, `bankmex`, `banklondon`, and `banktokyo` for the participant schemas
+
+</details>
 
 You may now [proceed to the next lab](#next).
 
@@ -232,8 +243,8 @@ function updateProvisionCommand() {
 
   if (!command) return;
 
-  command.textContent = `curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh" &&
-chmod +x provision.sh &&
+  command.textContent = `curl -fL -o provision.sh "https://raw.githubusercontent.com/sgerrits2/Oracle-SAGAS/HEAD/l2-provision/files/provision.sh"
+chmod +x provision.sh
 COMPARTMENT_ID='${ocid || 'YOUR_COMPARTMENT_OCID'}' ./provision.sh`;
 }
 

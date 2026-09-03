@@ -1,14 +1,8 @@
 # Lab 4: Developing Oracle Sagas with the Java Client
 
-## **Introduction**
+## Introduction
 
 In this lab, you will examine a Java-based saga client that provides an application-layer interface to the `DBMS_SAGA` package in PL/SQL. You will use the CloudBank demo application, a Jersey-based Spring application that demonstrates distributed transaction management with Oracle Sagas.
-
-### What You Will Do in This Lab
-
-1. **Review the Maven dependency** required by the Java client.
-2. **Verify and understand the supplied annotations** in the CloudBank initiator and participants.
-3. **Follow the CloudBank saga flow** from request through completion or compensation.
 
 ### About the CloudBank Demo Application
 
@@ -20,19 +14,19 @@ CloudBank runs in one Oracle Database 23ai PDB with separate schemas for these s
 
 > **⚠️ Important:** CloudBank is a demo application designed for learning. Its business logic is simplified and may not cover all production cases; focus on the saga patterns and compensation workflow.
 
-*Estimated Time: 10 minutes*
+- **Estimated time:** 10 minutes
 
 ### Objectives
 
+By completing this lab, you will be able to:
+
 - **Review Maven dependencies** for Oracle Saga integration.
-- **Verify the supplied Saga annotations** and understand why each one is used.
-- **Understand** the CloudBank architecture and saga workflows.
+- **Verify Saga annotations** in the CloudBank services.
+- **Understand the Saga workflow** from request through completion or compensation.
 
 > **👀 Note:** Lab 4 is review-only. The CloudBank source, Maven dependencies, and annotations are already complete. You do not need to edit, build, or run the application in this lab.
 
 ## Task 1: Maven Dependency
-
----
 
 The Oracle Saga Maven dependency provides the annotations and client functionality used by the CloudBank demo application.
 
@@ -51,7 +45,7 @@ The supplied CloudBank project already includes the following dependency in each
 ### Step 2: CloudBank Project Structure
 
 <details>
-<summary>CloudBank service POM files</summary>
+<summary><strong>📋 CloudBank service POM files</strong></summary>
 
 - `oracle-saga-cloudbank/CloudBank/orchestrator/pom.xml`
 - `oracle-saga-cloudbank/CloudBank/banka/pom.xml` — BankChicago source directory
@@ -70,8 +64,6 @@ The Maven environment is configured and verified in the next lab when you config
 
 ## Task 2: Understanding Annotations in CloudBank Files
 
----
-
 Use the code editor to inspect the supplied CloudBank implementation. All annotations are already present; do not change the source files. Verify where each annotation is used and review how it participates in the Saga lifecycle. The participant names are fixed: `CloudBank`, `BankChicago`, and `BankMex`.
 
 ### Step 1: Annotation Map
@@ -87,7 +79,7 @@ Use the code editor to inspect the supplied CloudBank implementation. All annota
 | `@Complete` / `@Compensate` | Initiator callback | Finalizes or compensates the saga. |
 
 <details>
-<summary>Optional: declarative alternative</summary>
+<summary><strong>💡 Optional: Declarative alternative</strong></summary>
 
 `@LRA` provides a declarative lifecycle model. CloudBank uses `beginSaga()` instead so that the controller explicitly decides when to commit or roll back.
 
@@ -169,7 +161,7 @@ public class AccountsController extends SagaParticipant {
 ![BankChicago Annotations](./images/lab4-task2-banka.png "Annotation set in the BankChicago participant")
 
 <details>
-<summary>BankMex equivalent</summary>
+<summary><strong>📋 BankMex equivalent</strong></summary>
 
 The supplied BankMex implementation is in `oracle-saga-cloudbank/CloudBank/bankb/src/main/java/com/oracle/saga/cloudbank/bankb/controller/AccountsController.java` and uses `@Participant(name = "BankMex")` with the same `@Request(sender = "CloudBank")` pattern. No changes are required in this file.
 
@@ -223,6 +215,8 @@ Together, these are the three key orchestrator annotations reviewed in this lab:
 
 The annotations and remaining implementation are supplied by the project. No edits or save operation are required.
 
+> **✅ Review outcome:** The CloudBank initiator and bank participants already contain the required Saga annotations. No source changes are required.
+
 Find the lifecycle calls in the controller:
 
 ```java
@@ -249,7 +243,7 @@ saga.rollbackSaga();
 - `@Request` processes work, `@Complete` finalizes it, and `@Compensate` reverses it safely.
 
 <details>
-<summary>CloudBank architecture and workflow reference</summary>
+<summary><strong>📖 CloudBank architecture and workflow reference</strong></summary>
 
 CloudBank coordinates account creation and inter-bank transfers. Bank balances use Oracle `RESERVABLE` columns to support lock-free fund reservations while a saga is in progress.
 
@@ -259,7 +253,7 @@ CloudBank coordinates account creation and inter-bank transfers. Bank balances u
 
 </details>
 
-**Next Step: Continue to Lab 5**
+**➡️ Next step: Continue to Lab 5**
 
 After reviewing the supplied annotations and Saga lifecycle, continue to **Lab 5: Oracle Sagas in Action — The CloudBank Application** to build, start, and test the application.
 

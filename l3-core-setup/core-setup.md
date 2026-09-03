@@ -1,6 +1,6 @@
 # Core Setup: Sagas Broker, Coordinator & Participants
 
-## **Introduction**
+## Introduction
 
 **Oracle Sagas** extend database transaction management with a **long-running transaction pattern**. Instead of relying on a single atomic commit across distributed services, sagas break business logic into multiple steps coordinated by a **Saga Broker** and **Saga Coordinator**, with individual **Saga Participants** executing work and compensating on failure.  
 
@@ -12,8 +12,8 @@ At their core, sagas address challenges of **distributed transactions** in micro
 - **Built-in administration** with `DBMS_SAGA_ADM`.
 - **Observability** through dictionary views of saga state.
 
-<details open>
-<summary><mark>Key Characteristics of Oracle Sagas:</mark></summary>
+<details>
+<summary><strong>📋 Key Characteristics of Oracle Sagas</strong></summary>
 
 - **Broker:** The message hub that propagates saga events between coordinators and participants.
 - **Coordinator:** The central orchestrator that maintains saga state and invokes compensations.
@@ -27,105 +27,21 @@ At their core, sagas address challenges of **distributed transactions** in micro
 
 In this lab, we will use **SQLcl** to configure the **Broker, Coordinator, and Participants** using the `DBMS_SAGA_ADM` package. These components establish the foundation for Java and PL/SQL saga clients in future labs.
 
-- Estimated time: 15 minutes
-<!-- 
-Watch the video below for a quick walk-through of the lab.
-
-<!-- [Prepare your environment](videohub:1_nw8ufqzp:medium) -->
-
-[Prepare your environment](videohub::medium)
-
- -->
-
-
-<style>
-.interactive-command {
-  position: relative;
-  background: #f5f5f5;
-  border: 1px solid #ccc;
-  padding: 12px 14px;
-  border-radius: 6px;
-  margin: 12px 0;
-  font-family: 'Courier New', monospace;
-  white-space: pre-wrap;
-  overflow: visible;
-}
-
-.command-text {
-  white-space: pre-wrap;
-  font-size: 14px;
-  line-height: 1.5;
-}
-
-.copy-btn {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  background: white;
-  border: 1px solid #ccc;
-  padding: 3px 8px;
-  cursor: pointer;
-  font-size: 13px;
-  border-radius: 3px;
-  transition: background 0.2s, color 0.2s;
-  color: black;
-  z-index: 2;
-}
-
-.copy-btn:hover {
-  background: grey;
-  color: white;
-}
-
-.copy-btn.copied {
-  background: #2e7d32;
-  color: white;
-}
-</style>
-
-<script>
-function copyToClipboard(elementId, containerId) {
-  let text = document.getElementById(elementId).innerText;
-  if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(text);
-  } else {
-    const textarea = document.createElement('textarea');
-    textarea.value = text;
-    textarea.setAttribute('readonly', '');
-    textarea.style.position = 'fixed';
-    textarea.style.left = '-9999px';
-    document.body.appendChild(textarea);
-    textarea.select();
-    document.execCommand('copy');
-    document.body.removeChild(textarea);
-  }
-
-  let container = document.getElementById(containerId);
-  if (container) {
-    container.style.opacity = '0.5';
-    setTimeout(() => container.style.opacity = '1', 200);
-  }
-}
-</script>
+- **Estimated time:** 15 minutes
 
 ### Objectives
 
 In this lab, you will:
 
-- **Create a Saga Broker** <br />
-  Learn how to define and set up the message hub for saga communication.
+- **Create a Saga Broker:** Learn how to define and set up the message hub for saga communication.
 
-- **Configure a Saga Coordinator** <br />
-  Register the saga orchestrator responsible for maintaining saga state.
+- **Configure a Saga Coordinator:** Register the saga orchestrator responsible for maintaining saga state.
 
-- **Register Saga Participants** <br />
-  Implement business services that handles REQUEST, RESPONSE, COMMIT AND ROLLBACK etc requests.
+- **Register Saga Participants:** Implement business services that handles REQUEST, RESPONSE, COMMIT AND ROLLBACK etc requests.
 
-- **Assign Roles & Permissions** <br />
-  Ensure the correct privileges are available for administrators and applications.
+- **Assign Roles & Permissions:** Ensure the correct privileges are available for administrators and applications.
 
-- **Explore Saga Monitoring Views** <br />
-  Query system views to inspect saga executions, incomplete sagas, and history.
+- **Explore Saga Monitoring Views:** Query system views to inspect saga executions, incomplete sagas, and history.
 
 
 ### Prerequisites
@@ -465,11 +381,10 @@ The participant registration is already included in the single script at the top
 
 ## Task 6: Roles & Permissions
 
-The saga setup uses the minimum role needed per schema:
+The Lab 2 user-setup script assigns the following roles to the CloudBank schemas:
 
-- **brokerhub**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
-- **orchestratorhub**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
-- **bankchicago / bankmex**: `SAGA_PARTICIPANT_ROLE`
+- **brokerhub / brokermex**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
+- **orchestratorhub / orchestratormex / bankchicago / bankmex / banklondon / banktokyo**: `SAGA_ADM_ROLE` + `SAGA_PARTICIPANT_ROLE`
 
 This keeps the security model simple and aligned with the demo architecture.
 
@@ -581,7 +496,7 @@ Without these database links, participants in different database instances canno
 
 For multi-database Saga deployments, two approaches are available depending on your environment:
 
-<details close>
+<details>
 <summary><strong>📋 Traditional Database Links (Local/On-Premises)</strong></summary>
 
 **For Local Oracle Database deployments:**
@@ -610,7 +525,7 @@ SELECT * FROM dual@remote_saga_db;
 - **`SERVICE_NAME`**: Target database service name
 </details>
 
-<details close>
+<details>
 <summary><strong>📋 DBMS_CLOUD Database Links (ADB-S Environment)</strong></summary>
 
 **For Autonomous Database Serverless deployments:**
@@ -823,12 +738,12 @@ PL/SQL callbacks provide a powerful way to implement database-native saga partic
 
 ✅ **Congratulations!** You have successfully completed Lab 3: Core Setup. You have:
 
-- ✅ **Created a Saga Broker** (`brokerhub`) for message coordination
-- ✅ **Configured a Saga Coordinator** (`orchestratorhub`) for saga orchestration
-- ✅ **Registered Saga Participants** (`CloudBank`, `BankChicago`, and `BankMex`) for Java client implementation
-- ✅ **Verified roles and permissions** for saga framework access
-- ✅ **Explored monitoring views** and infrastructure components
-- ✅ **Learned advanced configuration options** for production deployments
+-  **Created a Saga Broker** (`brokerhub`) for message coordination
+-  **Configured a Saga Coordinator** (`orchestratorhub`) for saga orchestration
+-  **Registered Saga Participants** (`CloudBank`, `BankChicago`, and `BankMex`) for Java client implementation
+-  **Verified roles and permissions** for saga framework access
+-  **Explored monitoring views** and infrastructure components
+-  **Learned advanced configuration options** for production deployments
 
 Your Oracle Sagas foundation is now ready for implementing actual business logic!
 
@@ -840,6 +755,76 @@ Your Oracle Sagas foundation is now ready for implementing actual business logic
 
 - [Oracle Database 23ai: Developing Applications with Saga](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)  
 - [DBMS_SAGA_ADM Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/arpls/dbms_saga_adm.html)  
+
+<style>
+.interactive-command {
+  position: relative;
+  background: #f5f5f5;
+  border: 1px solid #ccc;
+  padding: 12px 14px;
+  border-radius: 6px;
+  margin: 12px 0;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  overflow: visible;
+}
+
+.command-text {
+  white-space: pre-wrap;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.copy-btn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  background: white;
+  border: 1px solid #ccc;
+  padding: 3px 8px;
+  cursor: pointer;
+  font-size: 13px;
+  border-radius: 3px;
+  transition: background 0.2s, color 0.2s;
+  color: black;
+  z-index: 2;
+}
+
+.copy-btn:hover {
+  background: grey;
+  color: white;
+}
+
+.copy-btn.copied {
+  background: #2e7d32;
+  color: white;
+}
+</style>
+
+<script>
+function copyToClipboard(elementId, containerId) {
+  let text = document.getElementById(elementId).innerText;
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(text);
+  } else {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.left = '-9999px';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+
+  let container = document.getElementById(containerId);
+  if (container) {
+    container.style.opacity = '0.5';
+    setTimeout(() => container.style.opacity = '1', 200);
+  }
+}
+</script>
 
 ## Acknowledgements
 

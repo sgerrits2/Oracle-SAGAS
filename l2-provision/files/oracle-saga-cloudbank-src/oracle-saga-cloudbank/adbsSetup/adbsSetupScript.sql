@@ -80,16 +80,16 @@ CREATE TABLE cloudbank_book (
 
 -- MOCK LIST OF CUSTOMERS FOR THE CLOUDBANK
 INSERT INTO cloudbank_customer (customer_id, password, full_name, address, phone, email, ossn, bank, created_at)
-VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb1', 'CUSTOMER 1', 'CUSTOMER 1 HOME, CALIFORNIA', '555-1234', 'customer1@example.com', 'OSN001', 'BankChicago', DEFAULT);
+VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb1', 'Frank', 'Frank HOME, CALIFORNIA', '555-1234', 'frank@example.com', 'OSN001', 'BankChicago', DEFAULT);
 
 INSERT INTO cloudbank_customer (customer_id, password, full_name, address, phone, email, ossn, bank, created_at)
-VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb2', 'CUSTOMER 2', 'CUSTOMER 2 HOME, CALIFORNIA', '555-5678', 'customer2@example.com', 'OSN002', 'BankMex', DEFAULT);
+VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb2', 'Nathan', 'Nathan HOME, CALIFORNIA', '555-5678', 'nathan@example.com', 'OSN002', 'BankMex', DEFAULT);
 
 INSERT INTO cloudbank_customer (customer_id, password, full_name, address, phone, email, ossn, bank, created_at)
-VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb3', 'CUSTOMER 3', 'CUSTOMER 3 HOME, CALIFORNIA', '555-9012', 'customer3@example.com', 'OSN003', 'BankMex', DEFAULT);
+VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb3', 'John', 'John HOME, CALIFORNIA', '555-9012', 'john@example.com', 'OSN003', 'BankMex', DEFAULT);
 
 INSERT INTO cloudbank_customer (customer_id, password, full_name, address, phone, email, ossn, bank, created_at)
-VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb4', 'CUSTOMER 4', 'CUSTOMER 4 HOME, CALIFORNIA', '555-3456', 'customer4@example.com', 'OSN004', 'BankChicago', DEFAULT);
+VALUES (SEQ_CLOUDBANK_CUSTOMER_ID.NEXTVAL,'cb4', 'William', 'William HOME, CALIFORNIA', '555-3456', 'william@example.com', 'OSN004', 'BankChicago', DEFAULT);
 
 DECLARE
   seeded_customer_count PLS_INTEGER;

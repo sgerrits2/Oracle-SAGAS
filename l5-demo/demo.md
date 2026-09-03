@@ -6,20 +6,20 @@ This lab runs the CloudBank application with Podman and lets you observe Oracle 
 
 You will build the Java/Flask image, start the existing ADB-backed services, run a transfer through the UI or API, and verify the specific saga with SQLcl.
 
-> Keep passwords, wallet files, and .env values private. The Lab 3 Saga topology and the CloudBank business schema are separate prerequisites. Before running the application, verify the business objects as instructed below; run ADB setup exactly once only when none of those objects exists.
+> **🔒 Important:** Keep passwords, wallet files, and `.env` values private. The Lab 3 Saga topology and the CloudBank business schema are separate prerequisites. Before running the application, verify the business objects as instructed below; run ADB setup exactly once only when none of those objects exists.
 
-*Estimated time: 30–45 minutes*
+- **Estimated time:** 30–45 minutes
 
 ---
 
 ## Prerequisites
 
-- Project directory: $HOME/cloudbank-setup/oracle-saga-cloudbank
-- ADB wallet: adbsSetup/adb_wallet
-- A configured .env file. Do not overwrite or publish it.
-- Podman 4.9+ and podman-compose.
-- OCI ingress for TCP 22 and 3000. The Java APIs, Swagger UI, and Zipkin stay private; use SSH or an SSH tunnel when accessing them.
-- A persistent 2 GB swap file and `Linger=yes` on the 1 GB Compute instance. Lab 2 configures both automatically; Task 3 verifies them before deployment.
+- **Project directory:** `$HOME/cloudbank-setup/oracle-saga-cloudbank`
+- **ADB wallet:** `adbsSetup/adb_wallet`
+- **Environment file:** A configured `.env` file. Do not overwrite or publish it.
+- **Container tools:** Podman 4.9+ and `podman-compose`.
+- **Network access:** OCI ingress for TCP ports `22` and `3000`. The Java APIs, Swagger UI, and Zipkin stay private; use SSH or an SSH tunnel when accessing them.
+- **Compute requirements:** A persistent 2 GB swap file and `Linger=yes` on the 1 GB Compute instance. Lab 2 configures both automatically; Task 3 verifies them before deployment.
 
 Docker Engine is not required.
 
@@ -52,7 +52,7 @@ sed -nE 's/^([A-Za-z_][A-Za-z0-9_]*)=.*/\1=[configured]/p' .env | sort
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 The exact versions may differ. Confirm these key results:
 
@@ -114,7 +114,7 @@ echo 'OK: Java runtime image contains all application artifacts'
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 The first build can download images and dependencies, so intermediate output varies. Confirm these final lines:
 
@@ -170,7 +170,7 @@ EXIT
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 On a new database, the expected result is:
 
@@ -216,7 +216,7 @@ COMPOSE_PROFILES=adbssagasetup podman-compose -f osagaAdbsSetup.yaml up osagas-s
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 ```text
 [osagas-setup-adbs] | Connected! Now running setup script...
@@ -268,7 +268,7 @@ podman ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 The first Java startup can take about two minutes. Each endpoint has a five-minute deadline and every individual request is bounded, so dots or a quiet startup period are normal. Continue when every endpoint reaches `OK`:
 
@@ -339,7 +339,7 @@ If SSH reports a changed host key, first confirm that `INSTANCE_IP` is the inten
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 Memory and disk values vary by instance. Confirm that swap is 2 GB, lingering is enabled, and the tool versions print successfully:
 
@@ -417,7 +417,7 @@ REMOTE
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 The archive transfer reaches `100%`. A first deployment downloads images and packages, so build details vary. Confirm the final image tag and created containers:
 
@@ -493,7 +493,7 @@ REMOTE
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 ```text
 Waiting for http://127.0.0.1:8082/banka/version ... OK
@@ -565,7 +565,7 @@ REMOTE
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 Brief `Connection reset by peer` messages can occur while Flask starts. Continue when this message appears:
 
@@ -612,7 +612,7 @@ REMOTE
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 ```text
 run-parts: executing .../15-ip4tables save
@@ -641,7 +641,7 @@ Run this from Cloud Shell. `--max-time` prevents an unresponsive endpoint from w
 </div>
 
 <details>
-<summary><strong>Expected output ‼️</strong></summary>
+<summary><strong>✅ Expected output</strong></summary>
 
 ```text
 HTTP/1.1 200 OK
@@ -658,7 +658,8 @@ User ID:  ORACLE001
 Password: cb1
 ```
 
-### Optional: Start Swagger UI and Zipkin
+<details>
+<summary><strong>📋 Optional: Start Swagger UI and Zipkin</strong></summary>
 
 Skip this section on the 1 GB Always Free instance. On an instance with additional memory, start both optional services with:
 
@@ -693,6 +694,8 @@ The optional ports are not exposed publicly. From a separate Cloud Shell termina
 </div>
 
 Then use `http://127.0.0.1:8080` for Swagger UI and `http://127.0.0.1:9411` for Zipkin from the tunneled client. Do not enable these services on the 1 GB shape.
+
+</details>
 
 ---
 
@@ -908,7 +911,7 @@ ORDER BY start_time DESC;</code></pre>
 
 </div>
 
-Expected evidence:
+**✅ Expected evidence:**
 
 - The initial HTTP response is `202 Accepted`; this confirms the validation Saga started, not that money moved.
 - The Saga later has a rollback/non-committed terminal result instead of `Committed`.
@@ -982,7 +985,8 @@ SELECT account_number, balance_amount FROM bankb WHERE account_number = 12345603
 
 ---
 
-## Task 6 (Optional): Align Data from a Legacy Archive
+<details>
+<summary><strong>🧹 Task 6 (Optional): Align Data from a Legacy Archive</strong></summary>
 
 Run this one-time task **only** when `cloudbank_customer` contains the legacy numeric customer IDs `1`, `2`, `3`, and `4`. Skip it when Task 1 setup was just completed or when the table already shows `ORACLE001` through `ORACLE004`. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
 
@@ -1024,6 +1028,19 @@ EXIT
 </div>
 
 `0 rows updated` means the IDs were already aligned; it is successful and requires no further action.
+
+</details>
+
+## Summary
+
+✅ **Congratulations!** You have validated the CloudBank environment, deployed the application, opened the UI, and tested successful and rejected Saga transactions.
+
+**➡️ Next step:** Continue to Lab 6 to clean up the OCI resources.
+
+## Learn More
+
+- [Oracle Database Saga Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)
+- [Podman Documentation](https://docs.podman.io/)
 
 <style>
 .input-section { background-color: #f9f9f9; padding: 15px; margin: 12px 0; border-radius: 8px; border: 1px solid #ddd; }
@@ -1097,3 +1114,7 @@ function copyBlock(elementId, button) {
 }
 if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", loadPreviousLabValues); else loadPreviousLabValues();
 </script>
+
+## Acknowledgements
+
+- **Contributors** — Amit Ketkar, Pavas Navaney, Vinay Pandhariwal, Luis Cruz, Sebastian Gerritsen

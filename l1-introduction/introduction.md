@@ -59,7 +59,7 @@ Hence, a better strategy is to model the transaction as a **Saga**, where each s
 
 ---
 
-The **Saga Pattern** is a sequence of **local transactions**, where each transaction updates data within a single service, and subsequent steps are triggered by messaging. The **Saga Pattern** is an architectural pattern that breaks a long-running transaction into a sequence of **smaller, independent sub-transactions**, each with a corresponding **compensating transaction**. If one of the steps fails, a series of **compensating transactions** are executed to undo the previous operations.
+The **Saga Pattern** is an architectural approach for managing a long-running distributed transaction as a sequence of smaller, independent local transactions. Each transaction updates data within one service, and messaging triggers the next step. If a step fails, compensating transactions are executed to reverse the business effects of the steps that already completed.
 
 ### Key Concepts:
 
@@ -73,6 +73,16 @@ The **Saga Pattern** is a sequence of **local transactions**, where each transac
 - **No global locks**
 - **Eventually consistent**
 - **Scalable and fault-tolerant**
+
+### Core Saga Roles:
+
+The Saga Pattern uses the following roles to coordinate a distributed workflow and preserve business consistency:
+
+- **Initiator Service:** Receives the business request, starts the Saga, and orchestrates its execution.
+- **Saga Coordinator:** Tracks the overall outcome of the Saga.
+- **Participant Service:** Performs an independent local transaction, owns its local data, and provides a compensating action when needed.
+
+The **Saga Broker** is supporting infrastructure rather than a business participant. It acts as the message hub that propagates Saga events between the coordinator and participant services.
 
 ---
 
@@ -97,7 +107,7 @@ Oracle Sagas allow developers to:
 - Monitor saga execution states.
 - Scale across PDBs or databases using TEQ and DB links.
 
-The diagram below illustrates this architecture: an Initiator Service starts the saga, the Saga Coordinator orchestrates execution, and each participant service can compensate independently if a step fails.
+Oracle Sagas provides native Oracle Database support for the Initiator, Coordinator, and Participant roles introduced in Task 2. The following diagram shows how they interact during a distributed workflow. Services A through D represent generic participant services; the diagram focuses on the Saga lifecycle and compensation rather than the underlying messaging infrastructure.
 
 ![Oracle Saga Pattern](./images/OracleSagas.svg "Oracle Saga Pattern")
 

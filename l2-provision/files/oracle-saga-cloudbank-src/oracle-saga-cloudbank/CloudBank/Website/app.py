@@ -25,7 +25,7 @@
 import eventlet
 eventlet.monkey_patch()
 
-from flask import Flask, request, session, redirect, url_for, render_template, jsonify, current_app
+from flask import Flask, request, session, redirect, url_for, render_template, jsonify, current_app, abort
 from flask_restx import Api, Resource, fields
 from flask_cors import CORS
 from flask_socketio import SocketIO, emit, join_room, leave_room
@@ -235,6 +235,12 @@ def transfer():
                 user_data[key] = []
         else:
             user_data[key] = value
+
+    form_data = {
+        'from_account': '',
+        'to_account': '',
+        'amount': ''
+    }
     
     if request.method == 'POST':
     
@@ -242,21 +248,44 @@ def transfer():
         to_account = request.form.get('to_account')
         amount = request.form.get('amount')
         password = request.form.get('password')
+
+        form_data.update({
+            'from_account': from_account or '',
+            'to_account': to_account or '',
+            'amount': amount or ''
+        })
+
+        if not from_account or not to_account or not amount or not password:
+            error = 'Please complete the source account, destination account, amount, and password fields.'
+            return render_template('transfer.html', error=error, user_data=user_data, form_data=form_data)
     
-        response = requests.post(URL_CLOUDBANK_TRANSFER, json={'ucid': session.get("ucid"), 'toAccountNumber': to_account, 'fromAccountNumber': from_account, 'amount': amount, 'password': password}, timeout=HTTP_TIMEOUT)
+        try:
+            response = requests.post(URL_CLOUDBANK_TRANSFER, json={
+                'ucid': session.get("ucid"),
+                'toAccountNumber': to_account,
+                'fromAccountNumber': from_account,
+                'amount': amount,
+                'password': password
+            }, timeout=HTTP_TIMEOUT)
+            response_data = response.json()
+        except requests.RequestException:
+            error = 'The transfer service is temporarily unavailable. Confirm that the CloudBank services are running and try again.'
+            return render_template('transfer.html', error=error, user_data=user_data, form_data=form_data)
+        except ValueError:
+            error = 'The transfer service returned an unexpected response. Try again after confirming the services are healthy.'
+            return render_template('transfer.html', error=error, user_data=user_data, form_data=form_data)
 
         if response.status_code == requests.codes.accepted: 
-            response_data = response.json()
             reason = response_data.get('reason')
             saga_id = response_data.get('id')
             session['new_bank_saga_id'] = saga_id
             session['new_bank_reason'] = reason
             return redirect(url_for('dashboard')) 
         else:
-            error = 'Unable to initiate transfer. Please check all the details and try again'
-            return render_template('transfer.html', error=error, user_data=user_data)
+            error = response_data.get('reason') or 'Unable to initiate transfer. Please check all the details and try again.'
+            return render_template('transfer.html', error=error, user_data=user_data, form_data=form_data)
     else:
-        return render_template('transfer.html', user_data=user_data)
+        return render_template('transfer.html', user_data=user_data, form_data=form_data)
     
 
 # Endpoint to serve the account_details.html page

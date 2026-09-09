@@ -734,23 +734,6 @@ PL/SQL callbacks provide a powerful way to implement database-native saga partic
 
 ---
 
-## Summary
-
-✅ **Congratulations!** You have successfully completed Lab 3: Core Setup. You have:
-
--  **Created a Saga Broker** (`brokerhub`) for message coordination
--  **Configured a Saga Coordinator** (`orchestratorhub`) for saga orchestration
--  **Registered Saga Participants** (`CloudBank`, `BankChicago`, and `BankMex`) for Java client implementation
--  **Verified roles and permissions** for saga framework access
--  **Explored monitoring views** and infrastructure components
--  **Learned advanced configuration options** for production deployments
-
-Your Oracle Sagas foundation is now ready for implementing actual business logic!
-
-**Next Steps:** In **Lab 4: Developing with PL/SQL**, you'll implement the money transfer saga logic in your callback packages and execute your first saga transactions.
-
----
-
 ## Learn More
 
 - [Oracle Database 23ai: Developing Applications with Saga](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)  

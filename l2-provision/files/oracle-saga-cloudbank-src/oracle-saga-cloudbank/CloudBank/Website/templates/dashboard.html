@@ -66,6 +66,22 @@
         .ml-auto {
             margin-left: auto;
         }
+
+        .saga-request-id {
+            display: inline-block;
+            margin: 8px 0 12px;
+            padding: 8px 10px;
+            border-radius: 5px;
+            background: #f1f3f5;
+            color: #212529;
+            font-family: monospace;
+            word-break: break-all;
+        }
+
+        .saga-result-note {
+            color: #6c757d;
+            font-size: 0.9rem;
+        }
     </style>
 </head>
 
@@ -97,20 +113,23 @@
     </nav>
 
     <!-- Modal -->
-    <div class="modal fade" id="usernameModal" tabindex="-1" aria-labelledby="usernameModalLabel" aria-hidden="true">
+    <div class="modal fade" id="sagaResultModal" tabindex="-1" aria-labelledby="sagaResultModalLabel" aria-hidden="true">
         <div class="modal-dialog">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title" id="usernameModalLabel">SAGA INITIATED SUCCESSFULLY</h5>
+                    <h5 class="modal-title" id="sagaResultModalLabel">SAGA REQUEST ACCEPTED</h5>
                     <button type="button" class="close" data-dismiss="modal" aria-label="Close">
                     <span aria-hidden="true">&times;</span>
                     </button>
                 </div>
                 <div class="modal-body">
-                    Request ID: <span id="generatedSagaId"></span>.<br>
-                    <span id="generatedReason"></span>
+                    <div>Keep this request ID if you need to reference the transfer:</div>
+                    <div class="saga-request-id" id="generatedSagaId"></div>
+                    <div id="generatedReason"></div>
+                    <p class="saga-result-note mb-0 mt-3">The Saga runs asynchronously. A request accepted here is not yet a final transfer result.</p>
                 </div>
                 <div class="modal-footer">
+                    <button type="button" class="btn btn-outline-primary" id="copySagaId">Copy request ID</button>
                     <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
                 </div>
             </div>
@@ -372,7 +391,7 @@
             }
         });
 
-        $('#usernameModal, #notificationModal').on('hidden.bs.modal', () => {
+        $('#sagaResultModal, #notificationModal').on('hidden.bs.modal', () => {
             $('#refresh-form').submit();
             const active = $('#transTabs .nav-link.active').attr('href');
             if (active === '#participantTab') {
@@ -384,16 +403,45 @@
     });
 </script>
 <script type="text/javascript">
-    function showSuccessModal(sagaId, reason) {
+    function showSagaResultModal(sagaId, reason) {
         document.getElementById('generatedSagaId').innerText = sagaId;
         document.getElementById('generatedReason').innerText = reason;
-        $('#usernameModal').modal('show');
+        const copyButton = document.getElementById('copySagaId');
+        copyButton.onclick = function () {
+            if (navigator.clipboard && navigator.clipboard.writeText) {
+                navigator.clipboard.writeText(sagaId).then(function () {
+                    copyButton.innerText = 'Copied';
+                    setTimeout(function () { copyButton.innerText = 'Copy request ID'; }, 1600);
+                });
+                return;
+            }
+
+            const textArea = document.createElement('textarea');
+            textArea.value = sagaId;
+            textArea.setAttribute('readonly', '');
+            textArea.style.position = 'fixed';
+            textArea.style.opacity = '0';
+            document.body.appendChild(textArea);
+            textArea.select();
+            let copied = false;
+            try {
+                copied = document.execCommand('copy');
+            } catch (error) {
+                copied = false;
+            }
+            document.body.removeChild(textArea);
+            if (copied) {
+                copyButton.innerText = 'Copied';
+                setTimeout(function () { copyButton.innerText = 'Copy request ID'; }, 1600);
+            }
+        };
+        $('#sagaResultModal').modal('show');
     }
 </script>
 <script>
     $(function () {
-        {% if saga_id and reason %}
-        showSuccessModal('{{ saga_id }}', '{{ reason }}');
+        {% if saga_id %}
+        showSagaResultModal({{ saga_id|tojson }}, {{ (reason or 'Transfer request accepted. Follow the Saga status in the dashboard and SQLcl.')|tojson }});
         {% endif %}
 
     });

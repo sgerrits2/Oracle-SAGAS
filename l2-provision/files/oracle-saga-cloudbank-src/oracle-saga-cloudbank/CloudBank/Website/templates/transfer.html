@@ -101,6 +101,27 @@
         .ml-auto {
             margin-left: auto;
         }
+
+        .transfer-guide {
+            border-left: 4px solid #0d6efd;
+            background: #eef6ff;
+            color: #17324d;
+            padding: 14px 16px;
+            border-radius: 6px;
+            margin: 18px 0 24px;
+        }
+
+        .transfer-guide strong {
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .field-help {
+            display: block;
+            margin-top: 5px;
+            color: #6c757d;
+            font-size: 0.875rem;
+        }
     </style>
 </head>
 
@@ -161,22 +182,26 @@
     </div>
     {% if error %}
     <script type="text/javascript">
-        showErrorModal('{{ error }}');
+        showErrorModal({{ error|tojson }});
     </script>
     {% endif %}
 
 
     <div class="container mt-5">
         <h2>Account Transfer</h2>
+        <div class="transfer-guide" role="note">
+            <strong>Transfers are asynchronous.</strong>
+            After you submit, CloudBank starts a Saga and returns a request ID. The dashboard refreshes with the asynchronous outcome when the request finishes.
+        </div>
         <form action="{{ url_for('transfer') }}" method="post">
             <div class="form-group">
                 <label for="from_account">From Account:</label>
-                <select id="from_account" name="from_account" class="form-control">
-                    <option value="" disabled selected>Please choose one</option>
+                <select id="from_account" name="from_account" class="form-control" required>
+                    <option value="" disabled {% if not form_data.get('from_account') %}selected{% endif %}>Please choose one</option>
                     {% for account_type, accounts in user_data.items() %}
                         {% if account_type in ['CHECKING', 'SAVING'] %}
                             {% for account in accounts %}
-                                <option value="{{ account['account_number'] }}">
+                                <option value="{{ account['account_number'] }}" {% if form_data.get('from_account') == account['account_number']|string %}selected{% endif %}>
                                     {{ account_type }}: {{ account['account_number'] }} - ${{ account['balance_amount'] }}
                                 </option>
                             {% endfor %}
@@ -186,15 +211,17 @@
             </div>
             <div class="form-group">
                 <label for="to_account">To Account:</label>
-                <input type="text" id="to_account" name="to_account" class="form-control" required>
+                <input type="text" id="to_account" name="to_account" class="form-control" value="{{ form_data.get('to_account', '') }}" inputmode="numeric" required>
+                <small class="field-help">Enter the complete destination account number.</small>
             </div>
             <div class="form-group">
                 <label for="amount">Amount:</label>
-                <input type="number" id="amount" name="amount" class="form-control" required>
+                <input type="number" id="amount" name="amount" class="form-control" value="{{ form_data.get('amount', '') }}" min="0.01" step="0.01" required>
+                <small class="field-help">Use a positive amount with up to two decimal places.</small>
             </div>
             <div class="form-group">
                 <label for="password">Password:</label>
-                <input type="password" id="password" name="password" class="form-control" required>
+                <input type="password" id="password" name="password" class="form-control" autocomplete="current-password" required>
             </div>
             <button type="submit" class="btn btn-primary">Initiate Transfer</button>
         </form>

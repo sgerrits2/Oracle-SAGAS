@@ -4,7 +4,7 @@
 
 This lab runs the CloudBank application with Podman and lets you observe Oracle Sagas. The supplied application archive now includes the required Java build files and a corrected Compose configuration.
 
-You will build the Java/Flask image, start the existing ADB-backed services, run a transfer through the UI or API, and verify the specific saga with SQLcl.
+You will build the Java/Flask image, start the existing ADB-backed services, run transfers through the CloudBank UI, and observe the asynchronous outcomes in the dashboard.
 
 > **🔒 Important:** Keep passwords, wallet files, and `.env` values private. The Lab 3 Saga topology and the CloudBank business schema are separate prerequisites. Before running the application, verify the business objects as instructed below; run ADB setup exactly once only when none of those objects exists.
 
@@ -517,7 +517,7 @@ The services start in dependency order. After an instance reboot, this same comm
 
 ## Task 4: Configure and Open the CloudBank UI
 
-Flask is the CloudBank UI. Swagger UI and Zipkin are optional for the API and SQL scenarios in Task 5. On a constrained Compute instance, leave optional services stopped unless you specifically need them.
+Flask is the CloudBank UI used for the transfer exercises in Task 5. Swagger UI and Zipkin remain optional and are not required for this lab path. On a constrained Compute instance, leave optional services stopped.
 
 ### Step 1: Start and verify Flask on the Compute instance
 
@@ -699,237 +699,123 @@ Then use `http://127.0.0.1:8080` for Swagger UI and `http://127.0.0.1:9411` for 
 
 ---
 
-## Task 5: Run Sagas Without the UI
+## Task 5: Run Sagas with the CloudBank UI
 
-Run these commands on the Compute host where the deployed services are running; the transfer functions use `127.0.0.1:8081`. Use Cloud Shell only when an SSH tunnel to the Compute host is open. These commands do not put the transfer password in shell history. If your `cloudbank_customer` table has legacy numeric IDs (`1`–`4`) instead of `ORACLE001`–`ORACLE004`, complete **Task 6: Optional—Align Data from a Legacy Archive** before running Scenario 1.
+Use the CloudBank UI to initiate both transfers. Complete Task 4 first, open the UI, and sign in as `ORACLE001` with password `cb1`. If the database still uses legacy numeric customer IDs (`1`–`4`), complete **(Optional) Task 6: Align Data from a Legacy Archive** before starting Scenario 1.
 
-### Scenario 1: Successful transfer with curl
+<table class="task5-scenario-table">
+<thead>
+<tr><th>Scenario</th><th>Source</th><th>Destination</th><th>Amount</th><th>Expected outcome</th></tr>
+</thead>
+<tbody>
+<tr class="task5-success-row">
+<td><span class="task5-badge task5-success-badge">1 · Successful</span></td>
+<td><code>1234560001</code><br/><small>BankChicago</small></td>
+<td><code>1234560301</code><br/><small>BankMex</small></td>
+<td><strong>$10.00</strong></td>
+<td><strong>Saga commits</strong><br/><small>Balances move by $10.00</small></td>
+</tr>
+<tr class="task5-rejection-row">
+<td><span class="task5-badge task5-rejection-badge">2 · Rejected</span></td>
+<td><code>1234560001</code><br/><small>BankChicago</small></td>
+<td><code>1234560301</code><br/><small>BankMex</small></td>
+<td><strong>$999,999.00</strong></td>
+<td><strong>Validation fails</strong><br/><small>No balance change</small></td>
+</tr>
+</tbody>
+</table>
 
-The seeded transfer uses customer/account UCID `ORACLE001`, source account 1234560001 (`BankChicago`), and target account 1234560301 (`BankMex`). Open an interactive SSH session to the Compute instance, then paste the definition at the remote prompt. This scenario is intentionally split into a definition step and an execution step. The definition does **not** start a transfer or prompt for a password. Then run the short execution command separately and type the transfer password manually when prompted. Do not paste a script while a hidden password prompt is active.
+### Scenario 1: Successful transfer with the UI
 
-<pre id="runSagaCurl" class="interactive-command"><code>run_cloudbank_transfer() {
-  local api_base="http://127.0.0.1:8081/orchestrator"
-  local ucid="ORACLE001"
-  local from_account="1234560001"
-  local to_account="1234560301"
-  local amount="10.00"
-  local transfer_password payload transfer_response saga_id http_status response_file
+The seeded source account is `1234560001` at **BankChicago**. The destination account is `1234560301` at **BankMex**. The source balance starts at `$2,000.00`, so the `$10.00` transfer has sufficient funds.
 
-  read -r -s -p 'Transfer password: ' transfer_password
-  echo
-  payload=$(printf '{"ucid":"%s","fromAccountNumber":"%s","toAccountNumber":"%s","amount":"%s","password":"%s"}' \
-    "$ucid" "$from_account" "$to_account" "$amount" "$transfer_password")
-  response_file=$(mktemp)
-  http_status=$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "$api_base/transfer" \
-    -H 'Content-Type: application/json' \
-    --data "$payload")
-  unset transfer_password
-  transfer_response=$(cat "$response_file")
-  rm -f "$response_file"
-  printf 'HTTP status: %s\n' "$http_status"
-  printf '%s\n' "$transfer_response"
+### Step 1: Submit the transfer
 
-  if [ "$http_status" != '202' ]; then
-    echo 'Transfer was not accepted. Verify that the typed transfer password is correct, then retry.'
-    return 1
-  fi
+Open **Transfer** in the CloudBank UI and enter the following values:
 
-  saga_id=$(printf '%s' "$transfer_response" | sed -nE 's/.*\"id\"[[:space:]]*:[[:space:]]*\"([^\"]+)\".*/\1/p')
-  test -n "$saga_id" || { echo 'ERROR: no saga ID was returned'; return 1; }
-  printf 'Saga ID: %s\n' "$saga_id"
-}
-</code></pre>
+<table class="task5-input-table">
+<tbody>
+<tr><th>From account</th><td><code>1234560001</code> — BankChicago</td></tr>
+<tr><th>To account</th><td><code>1234560301</code> — BankMex</td></tr>
+<tr><th>Amount</th><td><strong><code>10.00</code></strong></td></tr>
+<tr><th>Password</th><td><code>cb1</code></td></tr>
+</tbody>
+</table>
 
-<div class="button-center">
+Click **Initiate Transfer**.
 
-<button onclick="copyBlock('runSagaCurl', this)" class="copy-btn-pastel">📋 Copy API Transfer</button>
-
+<div class="task5-result-note">
+<strong>Accepted response:</strong> The dashboard opens a <strong>SAGA REQUEST ACCEPTED</strong> dialog. This confirms that the asynchronous Saga was accepted; it does not yet confirm completion.
 </div>
 
-After the paste finishes and the normal shell prompt returns, run this command **separately**. When `Transfer password:` appears, type the password manually (the characters will not be displayed) and press Enter. For the seeded `ORACLE001` user, the transfer password is `cb1`.
+### Step 2: Follow the successful transfer in the UI
 
-<pre id="executeSagaCurl" class="interactive-command"><code>run_cloudbank_transfer</code></pre>
+Use **Copy request ID** if you want to keep the request reference, then close the confirmation dialog. Wait about 10 seconds and click **Refresh** if the latest status is not visible yet.
 
-<div class="button-center">
-
-<button onclick="copyBlock('executeSagaCurl', this)" class="copy-btn-pastel">📋 Copy Transfer Execution</button>
-
+<div class="task5-result-note">
+<strong>Expected dashboard result:</strong> The CloudBank Logs tab shows the transfer request as completed. Starting from a clean seed, the BankChicago account card changes from `$2,000.00` to `$1,990.00`.
 </div>
 
-Success prints `HTTP status: 202`, an `Accepted` JSON response, and a new `Saga ID`. Save that ID for Scenario 3. If the status is `401`, the password entry did not match; re-run only the one-line execution command and type `cb1` manually. When the demonstration is complete, remove the temporary shell function with `unset -f run_cloudbank_transfer`.
+### Scenario 2: Expected validation rejection in the UI
 
-The operation is asynchronous; save the returned saga ID and wait briefly before querying it.
+This scenario deliberately requests more than the source account can cover. It exercises the withdrawal-check validation before a debit or deposit is performed; it is **not** a compensation demonstration.
 
-### Scenario 1 follow-up: Check the returned Saga status
+### Step 1: Submit the rejection test
 
-Wait about 10 seconds, then query the exact Saga ID returned by Scenario 1. The following shell command only opens SQLcl; when it prompts for the database password, type the ADB administrator password manually. It is **not** the transfer password (`cb1`).
+Return to **Transfer** in the CloudBank UI and enter the following values:
 
-<pre id="openSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/oracle-saga-cloudbank"
-ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
-TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
-export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-cd /tmp
-SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
+<table class="task5-input-table">
+<tbody>
+<tr><th>From account</th><td><code>1234560001</code> — BankChicago</td></tr>
+<tr><th>To account</th><td><code>1234560301</code> — BankMex</td></tr>
+<tr><th>Amount</th><td><strong><code>999999.00</code></strong></td></tr>
+<tr><th>Password</th><td><code>cb1</code></td></tr>
+</tbody>
+</table>
 
-<div class="button-center">
+Click **Initiate Transfer**.
 
-<button onclick="copyBlock('openSagaStatusSqlcl', this)" class="copy-btn-pastel">📋 Copy SQLcl Start</button>
-
+<div class="task5-result-note">
+<strong>Accepted response:</strong> The UI displays another <strong>SAGA REQUEST ACCEPTED</strong> dialog. Save the request ID before closing the dialog. Wait about 10 seconds, then close it. The dashboard refreshes automatically; if the history has not updated yet, click **Refresh** once more.
 </div>
 
-<div class="input-section">
+### Step 2: Follow the validation result in the UI
 
-<strong>Saga ID returned by Scenario 1:</strong>
+Use **Copy request ID** if you want to keep the request reference, then close the confirmation dialog. Wait about 10 seconds and click **Refresh** if the latest status is not visible yet.
 
-<input type="text" id="returnedSagaId" placeholder="Paste the 32-character Saga ID returned by the transfer" class="input-field" oninput="updateLabValues()"><br/>
-
+<div class="task5-result-note">
+<strong>Expected dashboard result:</strong> The CloudBank Logs tab shows the transfer request as failed. The BankChicago account card remains unchanged from before the rejection test.
 </div>
 
-After `Connected to:` appears, paste the Saga ID returned by Scenario 1 into the field above. The query below updates automatically; then copy it and paste it at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
+<details>
+<summary><strong>🔎 (Optional) SQLcl verification of the UI-generated Sagas</strong></summary>
 
-<pre id="checkReturnedSagaStatus" class="interactive-command"><code>SELECT saga_id, status, coordinator, start_time, saga_source
-FROM (
-  SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
-  FROM DBA_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('<span class="saga-id-value">PASTE_SAGA_ID_HERE</span>')
-  UNION
-  SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
-  FROM DBA_HIST_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('<span class="saga-id-value">PASTE_SAGA_ID_HERE</span>')
-)
-ORDER BY start_time DESC;</code></pre>
+If you want database-level evidence after completing the UI scenarios, use the Saga ID shown in the CloudBank confirmation dialog. Run this check once for each scenario. It is optional and does not change the UI workflow above.
 
-<div class="button-center">
+<table class="task5-scenario-table">
+<thead>
+<tr><th>UI scenario</th><th>Expected database result</th></tr>
+</thead>
+<tbody>
+<tr class="task5-success-row">
+<td><span class="task5-badge task5-success-badge">1 · Successful</span></td>
+<td><code>Committed</code> Saga, completed transfer, BankChicago debit, and BankMex deposit.</td>
+</tr>
+<tr class="task5-rejection-row">
+<td><span class="task5-badge task5-rejection-badge">2 · Rejected</span></td>
+<td>Non-committed Saga, failed transfer, and no balance change.</td>
+</tr>
+</tbody>
+</table>
 
-<button onclick="copyBlock('checkReturnedSagaStatus', this)" class="copy-btn-pastel">📋 Copy Saga Status Query</button>
+On the Compute instance, start SQLcl and enter database passwords at the prompts. Do not place passwords in commands or shell history. Replace the values in angle brackets with the configured usernames and TNS alias.
 
-</div>
-
-`SAGA_SOURCE` is a label added by this query, not a status: `ACTIVE` means the row came from `DBA_SAGAS`, while `HISTORY` means it came from `DBA_HIST_SAGAS`. A `Committed` row from the history view is successful completion. It is normal to briefly also see `Committing` in the active view while Oracle finishes lifecycle cleanup. The query uses `UNION` to avoid duplicate identical history rows. Continue to Scenario 3 to show the corresponding orchestrator and bank ledger entries, plus the changed balances.
-
-### Scenario 2: Expected validation rejection
-
-This scenario deliberately requests more than the source account can cover. It exercises the withdrawal-check validation before a debit or deposit is performed; it is **not** a compensation demonstration. The API initially returns `202` because the request was accepted for asynchronous processing. The later Saga result must be a rollback/non-committed outcome, and both account balances must remain unchanged.
-
-Paste this definition first. It does not submit a transfer or prompt for a password.
-
-<pre id="runRejectedSagaCurl" class="interactive-command"><code>run_insufficient_funds_transfer() {
-  local api_base="http://127.0.0.1:8081/orchestrator"
-  local ucid="ORACLE001"
-  local from_account="1234560001"
-  local to_account="1234560301"
-  local amount="999999.00"
-  local transfer_password payload transfer_response saga_id http_status response_file
-
-  read -r -s -p 'Transfer password: ' transfer_password
-  echo
-  payload=$(printf '{"ucid":"%s","fromAccountNumber":"%s","toAccountNumber":"%s","amount":"%s","password":"%s"}' \
-    "$ucid" "$from_account" "$to_account" "$amount" "$transfer_password")
-  response_file=$(mktemp)
-  http_status=$(curl -sS -o "$response_file" -w '%{http_code}' -X POST "$api_base/transfer" \
-    -H 'Content-Type: application/json' \
-    --data "$payload")
-  unset transfer_password
-  transfer_response=$(cat "$response_file")
-  rm -f "$response_file"
-  printf 'HTTP status: %s\n' "$http_status"
-  printf '%s\n' "$transfer_response"
-
-  if [ "$http_status" != '202' ]; then
-    echo 'The request was not accepted for validation. Verify the typed transfer password, then retry.'
-    return 1
-  fi
-
-  saga_id=$(printf '%s' "$transfer_response" | sed -nE 's/.*"id"[[:space:]]*:[[:space:]]*"([^"]+)".*/\1/p')
-  test -n "$saga_id" || { echo 'ERROR: no saga ID was returned'; return 1; }
-  printf 'Saga ID: %s\n' "$saga_id"
-}
-</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('runRejectedSagaCurl', this)" class="copy-btn-pastel">📋 Copy Rejection Test Definition</button>
-
-</div>
-
-After the normal shell prompt returns, run this command **separately**. At the password prompt, type `cb1` manually and press Enter.
-
-<pre id="executeRejectedSagaCurl" class="interactive-command"><code>run_insufficient_funds_transfer</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('executeRejectedSagaCurl', this)" class="copy-btn-pastel">📋 Copy Rejection Test Execution</button>
-
-</div>
-
-Save the returned Saga ID and wait about 10 seconds before checking its final state.
-
-### Scenario 2 follow-up: Check the rejected Saga status
-
-The following shell command only opens SQLcl. When it prompts for the database password, type the ADB administrator password manually; it is **not** the transfer password (`cb1`).
-
-<pre id="openRejectedSagaStatusSqlcl" class="interactive-command"><code>cd "$HOME/oracle-saga-cloudbank"
-ADBS_USER="$(sed -n 's/^ADBS_USERNAME=//p' .env)"
-TNS_ALIAS="$(sed -n 's/^TNS_ALIAS_CONTAINER=//p' .env)"
-test -n "$ADBS_USER" &amp;&amp; test -n "$TNS_ALIAS" || { echo 'ERROR: ADBS_USERNAME or TNS_ALIAS_CONTAINER is missing from .env'; exit 1; }
-export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
-cd /tmp
-SQLPATH=/nonexistent sql -L "$ADBS_USER@$TNS_ALIAS"</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('openRejectedSagaStatusSqlcl', this)" class="copy-btn-pastel">📋 Copy SQLcl Start</button>
-
-</div>
-
-After `Connected to:` appears, paste the Saga ID returned by Scenario 2 into this field. The query below updates automatically; copy it and paste it at the `SQL>` prompt. Do not paste it while SQLcl is asking for a password.
-
-<div class="input-section">
-
-<strong>Saga ID returned by Scenario 2:</strong>
-
-<input type="text" id="rejectedSagaId" placeholder="Paste the 32-character Saga ID returned by the rejection test" class="input-field" oninput="updateLabValues()"><br/>
-
-</div>
-
-<pre id="checkRejectedSagaStatus" class="interactive-command"><code>SELECT saga_id, status, coordinator, start_time, saga_source
-FROM (
-  SELECT RAWTOHEX(id) AS saga_id, status, coordinator, start_time, 'ACTIVE' AS saga_source
-  FROM DBA_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('<span class="rejected-saga-id-value">PASTE_REJECTED_SAGA_ID_HERE</span>')
-  UNION
-  SELECT RAWTOHEX(id), status, coordinator, start_time, 'HISTORY'
-  FROM DBA_HIST_SAGAS
-  WHERE RAWTOHEX(id) = UPPER('<span class="rejected-saga-id-value">PASTE_REJECTED_SAGA_ID_HERE</span>')
-)
-ORDER BY start_time DESC;</code></pre>
-
-<div class="button-center">
-
-<button onclick="copyBlock('checkRejectedSagaStatus', this)" class="copy-btn-pastel">📋 Copy Rejection Status Query</button>
-
-</div>
-
-**✅ Expected evidence:**
-
-- The initial HTTP response is `202 Accepted`; this confirms the validation Saga started, not that money moved.
-- The Saga later has a rollback/non-committed terminal result instead of `Committed`.
-- The orchestrator ledger records the rejected transfer workflow.
-- No successful debit appears for BankChicago, no successful deposit appears for BankMex, and both balances are unchanged.
-
-When finished, remove the temporary function with `unset -f run_insufficient_funds_transfer`.
-
-### Scenario 3: Query the specific saga with SQLcl
-
-On the Compute instance, set the wallet path, start SQLcl, enter database passwords interactively, and paste the following. Starting from `/tmp` with `SQLPATH=/nonexistent` prevents local startup scripts from delaying SQLcl. Replace placeholders with your configured alias and usernames; do not put passwords in commands or history.
-
-<pre id="verifySagaState" class="interactive-command"><code>export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
+<pre id="optionalSagaVerificationSql" class="interactive-command"><code>export TNS_ADMIN="$HOME/oracle-saga-cloudbank/adbsSetup/adb_wallet"
 cd /tmp
 SQLPATH=/nonexistent sql /nolog
 
 CONNECT &lt;ADMIN_USERNAME&gt;@&lt;TNS_ALIAS&gt;
-ACCEPT saga_id CHAR PROMPT 'Saga ID: '
+ACCEPT saga_id CHAR PROMPT 'Saga ID from CloudBank UI: '
 
 SELECT saga_id, status, coordinator, start_time, saga_source
 FROM (
@@ -960,17 +846,8 @@ SELECT saga_id, operationtype, transactiontype, transaction_amount, operation_st
 FROM bankb_book
 WHERE saga_id = '&amp;saga_id'
 ORDER BY created_at;
-</code></pre>
 
-<div class="button-center">
-
-<button onclick="copyBlock('verifySagaState', this)" class="copy-btn-pastel">📋 Copy SQLcl Saga Verification</button>
-
-</div>
-
-Check the balances from the request:
-
-<pre id="verifyBalances" class="interactive-command"><code>CONNECT &lt;BANKA_USERNAME&gt;@&lt;TNS_ALIAS&gt;
+CONNECT &lt;BANKA_USERNAME&gt;@&lt;TNS_ALIAS&gt;
 SELECT account_number, balance_amount FROM banka WHERE account_number = 1234560001;
 
 CONNECT &lt;BANKB_USERNAME&gt;@&lt;TNS_ALIAS&gt;
@@ -979,14 +856,18 @@ SELECT account_number, balance_amount FROM bankb WHERE account_number = 12345603
 
 <div class="button-center">
 
-<button onclick="copyBlock('verifyBalances', this)" class="copy-btn-pastel">📋 Copy Balance Verification</button>
+<button onclick="copyBlock('optionalSagaVerificationSql', this)" class="copy-btn-pastel">📋 Copy Optional SQL Verification</button>
 
 </div>
+
+Type `EXIT` when you finish, then continue to the next optional task if needed.
+
+</details>
 
 ---
 
 <details>
-<summary><strong>🧹 Task 6 (Optional): Align Data from a Legacy Archive</strong></summary>
+<summary><strong>🧹 (Optional) Task 6: Align Data from a Legacy Archive</strong></summary>
 
 Run this one-time task **only** when `cloudbank_customer` contains the legacy numeric customer IDs `1`, `2`, `3`, and `4`. Skip it when Task 1 setup was just completed or when the table already shows `ORACLE001` through `ORACLE004`. The current archive seeds the matching UCIDs directly. The command reads the application database schema username from `ORCHESTRATOR_USERNAME` in `.env`; it does not use the Lab 3 participant-owner name.
 
@@ -1031,18 +912,28 @@ EXIT
 
 </details>
 
-## Summary
-
-✅ **Congratulations!** You have validated the CloudBank environment, deployed the application, opened the UI, and tested successful and rejected Saga transactions.
-
-**➡️ Next step:** Continue to Lab 6 to clean up the OCI resources.
-
 ## Learn More
 
 - [Oracle Database Saga Documentation](https://docs.oracle.com/en/database/oracle/oracle-database/23/adfns/developing-applications-saga.html)
 - [Podman Documentation](https://docs.podman.io/)
 
 <style>
+/* LiveLabs can add generated "Table N: ..." captions; Task 5 tables should not show them. */
+.task5-scenario-table caption, .task5-input-table caption { display: none !important; visibility: hidden !important; height: 0; padding: 0; margin: 0; }
+.task5-scenario-table, .task5-input-table { width: 100%; border-collapse: separate; border-spacing: 0; margin: 18px 0 24px; border: 1px solid #d9e2ec; border-radius: 9px; overflow: hidden; box-shadow: 0 2px 7px rgba(33, 37, 41, .07); background: #fff; }
+.task5-scenario-table th { background: #312D2A; color: #fff; padding: 12px 13px; text-align: left; font-weight: 600; }
+.task5-scenario-table td { padding: 13px; vertical-align: top; border-top: 1px solid #e8edf2; color: #263746; }
+.task5-scenario-table .task5-success-row td:first-child { border-left: 5px solid #2e7d32; }
+.task5-scenario-table .task5-rejection-row td:first-child { border-left: 5px solid #d97706; }
+.task5-scenario-table small { color: #64748b; }
+.task5-badge { display: inline-block; padding: 5px 8px; border-radius: 999px; font-weight: 700; white-space: nowrap; }
+.task5-success-badge { background: #e8f5e9; color: #216e39; }
+.task5-rejection-badge { background: #fff4e5; color: #9a5b00; }
+.task5-input-table th { width: 28%; background: #f5f7fa; color: #34495e; padding: 11px 13px; text-align: left; border-top: 1px solid #e8edf2; }
+.task5-input-table td { padding: 11px 13px; border-top: 1px solid #e8edf2; color: #263746; }
+.task5-input-table tr:first-child th, .task5-input-table tr:first-child td { border-top: 0; }
+.task5-result-note { background: #f8fbff; border: 1px solid #d9e8f5; border-left: 4px solid #1976d2; padding: 12px 14px; margin: 16px 0; border-radius: 6px; color: #263746; }
+@media (max-width: 700px) { .task5-scenario-table, .task5-input-table { display: block; overflow-x: auto; } .task5-scenario-table { white-space: nowrap; } .task5-scenario-table td, .task5-scenario-table th { padding: 10px; } }
 .input-section { background-color: #f9f9f9; padding: 15px; margin: 12px 0; border-radius: 8px; border: 1px solid #ddd; }
 .input-field { width: 300px; max-width: 100%; padding: 8px 10px; font-size: 14px; border: 1px solid #ccc; border-radius: 4px; margin: 6px 0; box-sizing: border-box; }
 .interactive-command { position: relative; background-color: #f5f5f5; border: 1px solid #ddd; padding: 12px 14px; border-radius: 6px; margin: 12px 0; font-family: "Courier New", monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
@@ -1057,40 +948,16 @@ function getComputeIP() {
   const input = document.getElementById("computeInstanceIP");
   return (input ? input.value : "").trim();
 }
-function getReturnedSagaId() {
-  const input = document.getElementById("returnedSagaId");
-  const sagaId = (input ? input.value : "").trim().toUpperCase();
-  return /^[0-9A-F]{32}$/.test(sagaId) ? sagaId : "";
-}
-function getRejectedSagaId() {
-  const input = document.getElementById("rejectedSagaId");
-  const sagaId = (input ? input.value : "").trim().toUpperCase();
-  return /^[0-9A-F]{32}$/.test(sagaId) ? sagaId : "";
-}
 function updateLabValues() {
   const ipInput = document.getElementById("computeInstanceIP");
   const instanceIP = getComputeIP() || "INSTANCE_IP";
-  const sagaInput = document.getElementById("returnedSagaId");
-  const sagaId = getReturnedSagaId();
-  const rejectedSagaInput = document.getElementById("rejectedSagaId");
-  const rejectedSagaId = getRejectedSagaId();
   setTextForClass("instance-ip-value", instanceIP);
-  setTextForClass("saga-id-value", sagaId || "PASTE_SAGA_ID_HERE");
-  setTextForClass("rejected-saga-id-value", rejectedSagaId || "PASTE_REJECTED_SAGA_ID_HERE");
   if (ipInput && ipInput.value.trim()) sessionStorage.setItem("computePublicIP", ipInput.value.trim());
-  if (sagaInput && sagaId) sessionStorage.setItem("returnedSagaId", sagaId);
-  if (rejectedSagaInput && rejectedSagaId) sessionStorage.setItem("rejectedSagaId", rejectedSagaId);
 }
 function loadPreviousLabValues() {
   const ipInput = document.getElementById("computeInstanceIP");
-  const sagaInput = document.getElementById("returnedSagaId");
-  const rejectedSagaInput = document.getElementById("rejectedSagaId");
   const savedIP = sessionStorage.getItem("computePublicIP");
-  const savedSagaId = sessionStorage.getItem("returnedSagaId");
-  const savedRejectedSagaId = sessionStorage.getItem("rejectedSagaId");
   if (ipInput && savedIP) ipInput.value = savedIP;
-  if (sagaInput && savedSagaId) sagaInput.value = savedSagaId;
-  if (rejectedSagaInput && savedRejectedSagaId) rejectedSagaInput.value = savedRejectedSagaId;
   updateLabValues();
 }
 function copyBlock(elementId, button) {
@@ -1102,11 +969,7 @@ function copyBlock(elementId, button) {
     .replace(/&amp;/g, "&")
     .replace(/<\/?span\b[^>]*>/gi, "");
   const instanceIP = getComputeIP();
-  const sagaId = getReturnedSagaId();
-  const rejectedSagaId = getRejectedSagaId();
   let resolvedText = instanceIP ? text.replace(/\bINSTANCE_IP\b/g, instanceIP) : text;
-  if (sagaId) resolvedText = resolvedText.replace(/PASTE_SAGA_ID_HERE/g, sagaId);
-  if (rejectedSagaId) resolvedText = resolvedText.replace(/PASTE_REJECTED_SAGA_ID_HERE/g, rejectedSagaId);
   const originalText = button ? button.innerHTML : "";
   const done = function() { if (button) { button.innerHTML = "✅ Copied!"; setTimeout(function() { button.innerHTML = originalText; }, 2000); } };
   if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(resolvedText).then(done);
